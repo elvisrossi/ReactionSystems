@@ -1,0 +1,88 @@
+use std::str::FromStr;
+use lalrpop_util::ParseError;
+use crate::rsprocess::{RSprocess, RSenvironment, RSassert, RSassertOp, RSBHML};
+
+grammar;
+
+Literal = { r"[[:alpha:]][[:word:]]*" };
+
+Num: i64 = {
+    r"[0-9]+" =>? i64::from_str(<>)
+	.map_err(|_| ParseError::User { error: "Number is too big" })
+};
+
+Comma<T, C>: Vec<T> = {
+    <mut v:(<T> C)+> <e:T?> => match e {
+	None => v,
+	Some(e) => {
+	    v.push(e);
+	    v
+	}
+    }
+};
+
+pub Set: Vec<&'input str> = {
+    <s: Set_of_entities> => s
+};
+
+pub Context: Box<RSprocess<'input>> = {
+    "[" "]" => Box::new(RSprocess::Nill),
+    "[" <t: CTX_process>  "]" => Box::new(t),
+    "[" <t: Comma<CTX_process, ",">> "]" => Box::new(RSprocess::NondeterministicChoice{children: t})
+};
+
+CTX_process: RSprocess<'input> = {
+    <c: Set_of_entities> "." <k: CTX_process> => RSprocess::EntitySet{entities: c, next_process: Box::new(k)},
+    "(" <k: CTX_process>  ")" => k,
+    "(" <k: Comma<CTX_process, "+">> ")" => RSprocess::Summation{children: k},
+    "<" <n: Num> <k1: CTX_process> ">" "." <k: CTX_process> => RSprocess::WaitEntity{repeat: n, repeated_process: Box::new(k1), next_process: Box::new(k)},
+    "nil" => RSprocess::Nill,
+    <identifier: Literal> => RSprocess::ConstantIdentifier{identifier: identifier}
+};
+
+Set_of_entities: Vec<&'input str> = {
+    "{" "}" => vec![],
+    "{" <t: Literal> "}" => vec![t],
+    "{" <mut t: Comma<Literal, ",">> "}" => {t.sort(); t}
+};
+
+pub Environment: Box<RSenvironment<'input>> = {
+    "[" "]" => Box::new(RSenvironment::new()),
+    "[" <t: Comma<Env_term, ",">> "]" => Box::new(RSenvironment::from(t))
+};
+
+Env_term: (&'input str, Box<RSprocess<'input>>) = {
+    <identifier: Literal> "=" <k: CTX_process> => (identifier, Box::new(k))
+};
+
+pub Assert: Box<RSassert<'input>> = {
+    <f: Formula_Assert> => Box::new(f)
+};
+
+Formula_Assert: RSassert<'input> = {
+    "-" <f: Formula_Assert> => RSassert::Not(Box::new(f)),
+    "(" <f1: Formula_Assert> "^" <f2: Formula_Assert> ")" => RSassert::Xor(Box::new(f1), Box::new(f2)),
+    "(" <f: Comma<Formula_Assert, "\\/">> ")" => RSassert::Or(f),
+    "(" <f: Comma<Formula_Assert, "/\\">> ")" => RSassert::And(f),
+    <c: Set_of_entities> "inW" => RSassert::Sub(c, RSassertOp::InW),
+    <c: Set_of_entities> "inR" => RSassert::Sub(c, RSassertOp::InR),
+    <c: Set_of_entities> "inI" => RSassert::Sub(c, RSassertOp::InI),
+    <c: Set_of_entities> "inP" => RSassert::Sub(c, RSassertOp::InP),
+    "?" "inW" => RSassert::NonEmpty(RSassertOp::InW),
+    "?" "inR" => RSassert::NonEmpty(RSassertOp::InR),
+    "?" "inI" => RSassert::NonEmpty(RSassertOp::InI),
+    "?" "inP" => RSassert::NonEmpty(RSassertOp::InP),
+};
+
+pub BHML: Box<RSBHML<'input>> = {
+    <g: Formula_BHML> => Box::new(g)
+};
+
+Formula_BHML: RSBHML<'input> = {
+    "true" => RSBHML::True,
+    "false" => RSBHML::False,
+    "(" <g: Comma<Formula_BHML, "\\/">> ")" => RSBHML::Or(g),
+    "(" <g: Comma<Formula_BHML, "/\\">> ")" => RSBHML::And(g),
+    "<" <f: Formula_Assert> ">" <g: Formula_BHML> => RSBHML::Diamond(Box::new(f), Box::new(g)),
+    "[" <f: Formula_Assert> "]" <g: Formula_BHML> => RSBHML::Box(Box::new(f), Box::new(g)),
+};
