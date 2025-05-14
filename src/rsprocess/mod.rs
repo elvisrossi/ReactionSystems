@@ -2,10 +2,39 @@ use std::collections::BTreeMap;
 
 #[derive(Clone, Debug)]
 #[allow(dead_code)]
+pub struct RSset<'a> {
+    identifiers: Vec<&'a str>
+}
+
+impl<'a, const N: usize> From<[&'a str; N]> for RSset<'a> {
+    fn from(mut arr: [&'a str; N]) -> Self {
+	arr.sort();
+	RSset{identifiers: arr.to_vec()}
+    }
+}
+
+impl<'a> From<&[&'a str]> for RSset<'a> {
+    fn from(arr: &[&'a str]) -> Self {
+	let mut tmp = arr.to_vec();
+	tmp.sort();
+	RSset{identifiers: tmp}
+    }
+}
+
+impl<'a> From<Vec<&'a str>> for RSset<'a> {
+    fn from(mut arr: Vec<&'a str>) -> Self {
+	arr.sort();
+	RSset{identifiers: arr}
+    }
+}
+
+
+#[derive(Clone, Debug)]
+#[allow(dead_code)]
 pub enum RSprocess<'a> {
     Nill,
     ConstantIdentifier{identifier: &'a str},
-    EntitySet{entities: Vec<&'a str>, next_process: Box<RSprocess<'a>>},
+    EntitySet{entities: RSset<'a>, next_process: Box<RSprocess<'a>>},
     WaitEntity{repeat: i64, repeated_process: Box<RSprocess<'a>>, next_process: Box<RSprocess<'a>>},
     NondeterministicChoice{children: Vec<RSprocess<'a>>},
     Summation{children: Vec<RSprocess<'a>>}
@@ -58,7 +87,7 @@ pub enum RSassert<'a> {
     Xor(Box<RSassert<'a>>, Box<RSassert<'a>>),
     Or(Vec<RSassert<'a>>),
     And(Vec<RSassert<'a>>),
-    Sub(Vec<&'a str>, RSassertOp),
+    Sub(RSset<'a>, RSassertOp),
     NonEmpty(RSassertOp)
 }
 
