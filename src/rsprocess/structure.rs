@@ -164,6 +164,7 @@ pub enum RSassert<'a> {
 // -----------------------------------------------------------------------------
 #[derive(Clone, Debug)]
 #[allow(dead_code)]
+#[allow(clippy::upper_case_acronyms)]
 pub enum RSBHML<'a> {
     True,
     False,
