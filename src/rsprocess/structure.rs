@@ -40,11 +40,23 @@ impl<'a> RSset<'a> {
 	self.identifiers.is_disjoint(&b.identifiers)
     }
 
+    #[allow(dead_code)]
     pub fn union(&self, b: &RSset<'a>) -> RSset<'a> {
 	// TODO maybe find more efficient way
 	let mut ret: RSset = b.clone();
 	ret.identifiers.extend(self.identifiers.iter());
 	ret
+    }
+
+    pub fn union_option(&self, b: Option<&RSset<'a>>) -> RSset<'a> {
+	if let Some(b) = b {
+	    // TODO maybe find more efficient way
+	    let mut ret: RSset = b.clone();
+	    ret.identifiers.extend(self.identifiers.iter());
+	    ret
+	} else {
+	    self.clone()
+	}
     }
 }
 
@@ -61,6 +73,7 @@ pub struct RSreaction<'a> {
 }
 
 impl<'a> RSreaction<'a> {
+    #[allow(dead_code)]
     pub fn new() -> Self {
 	RSreaction{ reactants:   RSset::new(),
 		    inihibitors: RSset::new(),
@@ -78,8 +91,13 @@ impl<'a> RSreaction<'a> {
 	    && self.inihibitors.is_disjoint(current_state)
     }
 
+    #[allow(dead_code)]
     pub fn products_clone(&self) -> RSset<'a> {
 	self.products.clone()
+    }
+
+    pub fn products(&self) -> &RSset<'a> {
+	&self.products
     }
 }
 

@@ -55,7 +55,7 @@ CTX_process: RSprocess<'input> = {
 			       next_process: Box::new(k)},
     "nil" => RSprocess::Nill,
     <identifier: Literal> =>
-	RSprocess::ConstantIdentifier{ identifier: identifier }
+	RSprocess::ConstantIdentifier{ identifier }
 };
 
 // ----- EnvironmentParser -----
