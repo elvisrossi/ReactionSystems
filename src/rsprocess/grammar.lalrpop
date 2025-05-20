@@ -1,3 +1,4 @@
+use std::rc::Rc;
 use std::str::FromStr;
 use lalrpop_util::ParseError;
 use crate::rsprocess::structure::{RSset, RSprocess, RSenvironment, RSassert, RSassertOp, RSBHML};
@@ -39,23 +40,27 @@ Set_of_entities: RSset<'input> = {
 pub Context: Box<RSprocess<'input>> = {
     "[" "]" => Box::new(RSprocess::Nill),
     "[" <t: CTX_process>  "]" => Box::new(t),
-    "[" <t: Separeted<CTX_process, ",">> "]" =>
+    "[" <t: Separeted<Boxed_CTX_process, ",">> "]" =>
 	Box::new(RSprocess::NondeterministicChoice{ children: t })
 };
 
+Boxed_CTX_process: Rc<RSprocess<'input>> = {
+    <t: CTX_process> => Rc::new(t)
+}
+
 CTX_process: RSprocess<'input> = {
     <c: Set_of_entities> "." <k: CTX_process> =>
-	RSprocess::EntitySet{ entities: c, next_process: Box::new(k) },
+	RSprocess::EntitySet{ entities: c, next_process: Rc::new(k) },
     "(" <k: CTX_process>  ")" => k,
     "(" <k: Separeted<CTX_process, "+">> ")" =>
 	RSprocess::Summation{ children: k },
     "<" <n: Num> <k1: CTX_process> ">" "." <k: CTX_process> =>
 	RSprocess::WaitEntity{ repeat: n,
-			       repeated_process: Box::new(k1),
-			       next_process: Box::new(k)},
+			       repeated_process: Rc::new(k1),
+			       next_process: Rc::new(k)},
     "nil" => RSprocess::Nill,
     <identifier: Literal> =>
-	RSprocess::ConstantIdentifier{ identifier }
+	RSprocess::RecursiveIdentifier{ identifier }
 };
 
 // ----- EnvironmentParser -----
@@ -64,8 +69,8 @@ pub Environment: Box<RSenvironment<'input>> = {
     "[" <t: Separeted<Env_term, ",">> "]" => Box::new(RSenvironment::from(t))
 };
 
-Env_term: (&'input str, Box<RSprocess<'input>>) = {
-    <identifier: Literal> "=" <k: CTX_process> => (identifier, Box::new(k))
+Env_term: (&'input str, RSprocess<'input>) = {
+    <identifier: Literal> "=" <k: CTX_process> => (identifier, k)
 };
 
 // ----- AssertParser -----

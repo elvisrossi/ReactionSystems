@@ -4,6 +4,7 @@
 //! Reaction System (RS) Framework.
 //! The data is held in RSset or RSreaction, in the latter the reagents,
 //! inhibitors and products are held.
+#![allow(dead_code)]
 
 use super::structure::{RSset, RSreaction};
 
