@@ -67,8 +67,32 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // println!("all_transitions: {:?}", rsprocess::transitions::all_transitions(&sys));
     // -------------------------------------------------------------------------
     // parse_ctx("[({a}.nil + {b}.nil)]",Ks) , allTransitions(sys([],[],Ks,[react([a],[c],[a]),react([b],[d],[b])]),Moves).
+    // let env = grammar::EnvironmentParser::new().parse("[]").unwrap();
+    // let process = grammar::ContextParser::new().parse("[({a}.nil + {b}.nil)]").unwrap();
+
+    // let sys = rsprocess::structure::RSsystem::from(*env,
+    //						   rsprocess::structure::RSset::from(vec![]),
+    //						   *process,
+    //						   vec![
+    //						       rsprocess::structure::RSreaction::from(
+    //							   rsprocess::structure::RSset::from(vec!["a"]),
+    //							   rsprocess::structure::RSset::from(vec!["c"]),
+    //							   rsprocess::structure::RSset::from(vec!["a"])
+    //						       ),
+    //						       rsprocess::structure::RSreaction::from(
+    //							   rsprocess::structure::RSset::from(vec!["b"]),
+    //							   rsprocess::structure::RSset::from(vec!["d"]),
+    //							   rsprocess::structure::RSset::from(vec!["b"])
+    //						       )
+    //						   ]);
+
+
+    // println!("all_transitions: {:?}", rsprocess::transitions::all_transitions(&sys));
+
+    // -------------------------------------------------------------------------
+    // parse_ctx("[({a}.nil + {b}.nil),({c}.nil + {d}.nil)]",Ks) , allTransitions(sys([],[],Ks,[react([a],[c],[a]),react([b],[d],[b])]),Moves).
     let env = grammar::EnvironmentParser::new().parse("[]").unwrap();
-    let process = grammar::ContextParser::new().parse("[({a}.nil + {b}.nil)]").unwrap();
+    let process = grammar::ContextParser::new().parse("[({a}.nil + {b}.nil),({c}.nil + {d}.nil)]").unwrap();
 
     let sys = rsprocess::structure::RSsystem::from(*env,
 						   rsprocess::structure::RSset::from(vec![]),
@@ -86,24 +110,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 						       )
 						   ]);
 
+    let it = rsprocess::transitions::iterator_transitions(&sys)?;
 
-    println!("all_transitions: {:?}", rsprocess::transitions::all_transitions(&sys));
+    for (n, i) in it.into_iter().enumerate() {
+	println!("next i - {n}:  {:?}", i);
+	println!("--------------------");
+    }
 
-    // -------------------------------------------------------------------------
-    // use std::rc::Rc;
-    // let mut a = rsprocess::structure::RSChoices::from(vec![
-    //	(Rc::new(rsprocess::structure::RSset::from(vec!["a"])),
-    //	 Rc::new(rsprocess::structure::RSprocess::Nill)),
-    // ]);
-
-    // let b = rsprocess::structure::RSChoices::from(vec![
-    //	(Rc::new(rsprocess::structure::RSset::from(vec!["b"])),
-    //	 Rc::new(rsprocess::structure::RSprocess::Nill)),
-    // ]);
-
-    // a.shuffle(b);
-    // println!("shuffle: {:?}", a);
-
-    println!("--------------------");
     Ok(())
 }
