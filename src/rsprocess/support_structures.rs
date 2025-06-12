@@ -27,11 +27,19 @@ impl<'a> Iterator for TransitionsIterator<'a> {
     type Item = (RSlabel<'a>, RSsystem<'a>);
 
     fn next(&mut self) -> Option<(RSlabel<'a>, RSsystem<'a>)> {
-	let choice = self.choices_iterator.next()?;
-	let t = self.system.get_available_entities().union(choice.0.as_ref());
-	let (reactants, reactantsi, inihibitors, ireactants, products)
-	    = self.system.get_reaction_rules().iter()
-	    .fold((RSset::new(), RSset::new(), RSset::new(), RSset::new(), RSset::new()),
+	let (c, k) = self.choices_iterator.next()?;
+	let t = self.system.get_available_entities().union(c.as_ref());
+	let (reactants,
+	     reactantsi,
+	     inihibitors,
+	     ireactants,
+	     products) =
+	    self.system.get_reaction_rules().iter()
+	    .fold((RSset::new(), // reactants
+		   RSset::new(), // reactantsi
+		   RSset::new(), // inihibitors
+		   RSset::new(), // ireactants
+		   RSset::new()), // products
 		  |acc, reaction| if reaction.enabled(&t) {
 		      (acc.0.union(reaction.reactants()),
 		       acc.1,
@@ -49,17 +57,19 @@ impl<'a> Iterator for TransitionsIterator<'a> {
 	    );
 
 	let label = RSlabel::from(self.system.get_available_entities().clone(),
-				  (*choice.0).clone(),
+				  (*c).clone(),
 				  t,
 				  reactants,
 				  reactantsi,
 				  inihibitors,
 				  ireactants,
-				  products.clone());
+				  products.clone()
+	);
 	let new_system = RSsystem::from(self.system.get_delta().clone(),
 					products,
-					(*choice.1).clone(),
-					self.system.get_reaction_rules().clone());
+					(*k).clone(),
+					self.system.get_reaction_rules().clone()
+	);
 	Some((label, new_system))
     }
 }
