@@ -38,8 +38,13 @@ Set_of_entities: RSset<'input> = {
 
 // ----- ContextParser -----
 pub Context: Box<RSprocess<'input>> = {
-    "[" "]" => Box::new(RSprocess::Nill),
-    "[" <t: CTX_process>  "]" => Box::new(t),
+    // "[" "]" => Box::new(RSprocess::Nill),
+    // "[" <t: CTX_process>  "]" => Box::new(t),
+    // "[" <t: Separeted<Boxed_CTX_process, ",">> "]" =>
+    //	Box::new(RSprocess::NondeterministicChoice{ children: t })
+
+    "[" "]" => Box::new(RSprocess::NondeterministicChoice{ children: vec![] }),
+    "[" <t: CTX_process>  "]" => Box::new(RSprocess::NondeterministicChoice{ children: vec![Rc::new(t)] }),
     "[" <t: Separeted<Boxed_CTX_process, ",">> "]" =>
 	Box::new(RSprocess::NondeterministicChoice{ children: t })
 };

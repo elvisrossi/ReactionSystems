@@ -43,7 +43,7 @@ impl<'a> RSset<'a> {
     }
 
     pub fn union(&self, b: &RSset<'a>) -> RSset<'a> {
-	// TODO maybe find more efficient way
+	// TODO maybe find more efficient way without copy/clone
 	let mut ret: RSset = b.clone();
 	ret.identifiers.extend(self.identifiers.iter());
 	ret
@@ -51,13 +51,26 @@ impl<'a> RSset<'a> {
 
     pub fn union_option(&self, b: Option<&RSset<'a>>) -> RSset<'a> {
 	if let Some(b) = b {
-	    // TODO maybe find more efficient way
-	    let mut ret: RSset = b.clone();
-	    ret.identifiers.extend(self.identifiers.iter());
-	    ret
+	    self.union(b)
 	} else {
 	    self.clone()
 	}
+    }
+
+    pub fn intersection(&self, b: &RSset<'a>) -> RSset<'a> {
+	// TODO maybe find more efficient way without copy/clone
+	let res: HashSet<_> = b.identifiers.intersection(&self.identifiers)
+					   .copied()
+					   .collect();
+	RSset { identifiers: res }
+    }
+
+    pub fn subtraction(&self, b: &RSset<'a>) -> RSset<'a> {
+	// TODO maybe find more efficient way without copy/clone
+	let res: HashSet<_> = self.identifiers.difference(&b.identifiers)
+					      .copied()
+					      .collect();
+	RSset { identifiers: res }
     }
 }
 
@@ -92,6 +105,14 @@ impl<'a> RSreaction<'a> {
 
     pub fn products_clone(&self) -> RSset<'a> {
 	self.products.clone()
+    }
+
+    pub fn reactants(&self) -> &RSset<'a> {
+	&self.reactants
+    }
+
+    pub fn inihibitors(&self) -> &RSset<'a> {
+	&self.inihibitors
     }
 
     pub fn products(&self) -> &RSset<'a> {
@@ -144,6 +165,10 @@ impl<'a> RSChoices<'a> {
 	RSChoices{ context_moves: vec![] }
     }
 
+    pub fn new_not_empty() -> Self {
+	RSChoices{ context_moves: vec![(Rc::new(RSset::new()), Rc::new(RSprocess::Nill))] }
+    }
+
     pub fn append(&mut self, a: &mut RSChoices<'a>) {
 	self.context_moves.append(&mut a.context_moves);
     }
@@ -156,18 +181,30 @@ impl<'a> RSChoices<'a> {
     }
 
     pub fn shuffle(&mut self, choices: RSChoices<'a>) {
-	if self.context_moves.is_empty() || choices.context_moves.is_empty() {
-	    self.context_moves = vec![];
-	} else {
-	    let mut new_self = vec![];
-	    for item_self in &self.context_moves {
-		for item_choices in &choices.context_moves {
-		    new_self.push((Rc::new(item_self.0.union(&item_choices.0)),
-				   Rc::new(item_self.1.concat(&item_choices.1))));
+	match (self.context_moves.is_empty(), choices.context_moves.is_empty()) {
+	    (true, true) => {}
+	    (true, false) => { self.context_moves = choices.context_moves }
+	    (false, true) => {}
+	    (false, false) => {
+		let mut new_self = vec![];
+		for item_self in &self.context_moves {
+		    for item_choices in &choices.context_moves {
+			new_self.push((Rc::new(item_self.0.union(&item_choices.0)),
+				       Rc::new(item_self.1.concat(&item_choices.1))));
+		    }
 		}
+		self.context_moves = new_self;
 	    }
-	    self.context_moves = new_self;
 	}
+    }
+}
+
+impl<'a> IntoIterator for RSChoices<'a> {
+    type Item = (Rc<RSset<'a>>, Rc<RSprocess<'a>>);
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+	self.context_moves.into_iter()
     }
 }
 
@@ -224,6 +261,99 @@ impl<'a> From<Vec<(&'a str, RSprocess<'a>)>> for RSenvironment<'a> {
 	RSenvironment{definitions: HashMap::from_iter(arr)}
     }
 }
+
+// -----------------------------------------------------------------------------
+// RSsystem
+// -----------------------------------------------------------------------------
+#[derive(Clone, Debug)]
+pub struct RSsystem<'a> {
+    delta: RSenvironment<'a>,
+    available_entities: RSset<'a>,
+    context_process: RSprocess<'a>,
+    reaction_rules: Vec<RSreaction<'a>>,
+}
+
+impl<'a> RSsystem<'a> {
+    pub fn new() -> RSsystem<'a> {
+	RSsystem {
+	    delta: RSenvironment::new(),
+	    available_entities: RSset::new(),
+	    context_process: RSprocess::Nill,
+	    reaction_rules: vec![],
+	}
+    }
+
+    pub fn from(delta: RSenvironment<'a>,
+		available_entities: RSset<'a>,
+		context_process: RSprocess<'a>,
+		reaction_rules: Vec<RSreaction<'a>>) -> RSsystem<'a> {
+	RSsystem { delta, available_entities, context_process, reaction_rules }
+    }
+
+    pub fn get_delta(&self) -> &RSenvironment<'a> {
+	&self.delta
+    }
+
+    pub fn get_available_entities(&self) -> &RSset<'a> {
+	&self.available_entities
+    }
+
+    pub fn get_context_process(&self) -> &RSprocess<'a> {
+	&self.context_process
+    }
+
+    pub fn get_reaction_rules(&self) -> &Vec<RSreaction<'a>> {
+	&self.reaction_rules
+    }
+}
+
+// -----------------------------------------------------------------------------
+// RSsystem
+// -----------------------------------------------------------------------------
+#[derive(Clone, Debug)]
+pub struct RSlabel<'a> {
+    available_entities: RSset<'a>,
+    c: RSset<'a>, /// TODO: what is c? what is t? (c comes from choices, t is
+    t: RSset<'a>, ///       the union of available_entities and c)
+    reactants: RSset<'a>,
+    reactantsi: RSset<'a>,
+    inihibitors: RSset<'a>,
+    ireactants: RSset<'a>,
+    products: RSset<'a>,
+}
+
+impl<'a> RSlabel<'a> {
+    pub fn new() -> Self {
+	RSlabel { available_entities: RSset::new(),
+		  c: RSset::new(),
+		  t: RSset::new(),
+		  reactants: RSset::new(),
+		  reactantsi: RSset::new(),
+		  inihibitors: RSset::new(),
+		  ireactants: RSset::new(),
+		  products: RSset::new() }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn from(available_entities: RSset<'a>,
+		c: RSset<'a>,
+		t: RSset<'a>,
+		reactants: RSset<'a>,
+		reactantsi: RSset<'a>,
+		inihibitors: RSset<'a>,
+		ireactants: RSset<'a>,
+		products: RSset<'a>,) -> Self {
+	RSlabel { available_entities,
+		  c,
+		  t,
+		  reactants,
+		  reactantsi,
+		  inihibitors,
+		  ireactants,
+		  products }
+    }
+}
+
 
 // -----------------------------------------------------------------------------
 // RSassertOp
