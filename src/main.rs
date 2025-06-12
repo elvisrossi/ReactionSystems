@@ -1,5 +1,6 @@
 mod rsprocess;
 use lalrpop_util::lalrpop_mod;
+use std::rc::Rc;
 // use std::io;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -94,10 +95,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let env = grammar::EnvironmentParser::new().parse("[]").unwrap();
     let process = grammar::ContextParser::new().parse("[({a}.nil + {b}.nil),({c}.nil + {d}.nil)]").unwrap();
 
-    let sys = rsprocess::structure::RSsystem::from(*env,
+    let sys = rsprocess::structure::RSsystem::from(Rc::new(*env),
 						   rsprocess::structure::RSset::from(vec![]),
 						   *process,
-						   vec![
+						   Rc::new(vec![
 						       rsprocess::structure::RSreaction::from(
 							   rsprocess::structure::RSset::from(vec!["a"]),
 							   rsprocess::structure::RSset::from(vec!["c"]),
@@ -108,7 +109,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 							   rsprocess::structure::RSset::from(vec!["d"]),
 							   rsprocess::structure::RSset::from(vec!["b"])
 						       )
-						   ]);
+						   ]));
 
     let it = rsprocess::transitions::iterator_transitions(&sys)?;
 

@@ -267,30 +267,33 @@ impl<'a> From<Vec<(&'a str, RSprocess<'a>)>> for RSenvironment<'a> {
 // -----------------------------------------------------------------------------
 #[derive(Clone, Debug)]
 pub struct RSsystem<'a> {
-    delta: RSenvironment<'a>,
+    delta: Rc<RSenvironment<'a>>,
     available_entities: RSset<'a>,
     context_process: RSprocess<'a>,
-    reaction_rules: Vec<RSreaction<'a>>,
+    reaction_rules: Rc<Vec<RSreaction<'a>>>,
 }
 
 impl<'a> RSsystem<'a> {
     pub fn new() -> RSsystem<'a> {
 	RSsystem {
-	    delta: RSenvironment::new(),
+	    delta: Rc::new(RSenvironment::new()),
 	    available_entities: RSset::new(),
 	    context_process: RSprocess::Nill,
-	    reaction_rules: vec![],
+	    reaction_rules: Rc::new(vec![]),
 	}
     }
 
-    pub fn from(delta: RSenvironment<'a>,
+    pub fn from(delta: Rc<RSenvironment<'a>>,
 		available_entities: RSset<'a>,
 		context_process: RSprocess<'a>,
-		reaction_rules: Vec<RSreaction<'a>>) -> RSsystem<'a> {
-	RSsystem { delta, available_entities, context_process, reaction_rules }
+		reaction_rules: Rc<Vec<RSreaction<'a>>>) -> RSsystem<'a> {
+	RSsystem { delta: Rc::clone(&delta),
+		   available_entities,
+		   context_process,
+		   reaction_rules: Rc::clone(&reaction_rules) }
     }
 
-    pub fn get_delta(&self) -> &RSenvironment<'a> {
+    pub fn get_delta(&self) -> &Rc<RSenvironment<'a>> {
 	&self.delta
     }
 
@@ -302,7 +305,7 @@ impl<'a> RSsystem<'a> {
 	&self.context_process
     }
 
-    pub fn get_reaction_rules(&self) -> &Vec<RSreaction<'a>> {
+    pub fn get_reaction_rules(&self) -> &Rc<Vec<RSreaction<'a>>> {
 	&self.reaction_rules
     }
 }

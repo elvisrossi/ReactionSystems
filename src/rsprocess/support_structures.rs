@@ -65,10 +65,10 @@ impl<'a> Iterator for TransitionsIterator<'a> {
 				  ireactants,
 				  products.clone()
 	);
-	let new_system = RSsystem::from(self.system.get_delta().clone(),
+	let new_system = RSsystem::from(Rc::clone(self.system.get_delta()),
 					products,
 					(*k).clone(),
-					self.system.get_reaction_rules().clone()
+					Rc::clone(self.system.get_reaction_rules())
 	);
 	Some((label, new_system))
     }
