@@ -2,8 +2,9 @@ use std::rc::Rc;
 use std::str::FromStr;
 use lalrpop_util::ParseError;
 use crate::rsprocess::structure::{RSset, RSprocess, RSenvironment, RSassert, RSassertOp, RSBHML};
+use crate::rsprocess::translator::{Translator, IdType};
 
-grammar;
+grammar(translator: &mut Translator);
 
 // matches words (letter followed by numbers, letters or _)
 Literal = { r"[[:alpha:]][[:word:]]*" };
@@ -26,64 +27,67 @@ Separeted<T, C>: Vec<T> = {
 };
 
 // ----- SetParser -----
-pub Set: RSset<'input> = {
+pub Set: RSset = {
     <s: Set_of_entities> => s
 };
 
-Set_of_entities: RSset<'input> = {
+Set_of_entities: RSset = {
     "{" "}" => RSset::from(vec![]),
-    "{" <t: Literal> "}" => RSset::from(vec![t]),
-    "{" <t: Separeted<Literal, ",">> "}" => RSset::from(t)
+    "{" <t: Literal> "}" => RSset::from(vec![translator.convert(t)]),
+    "{" <t: Separeted<Literal, ",">> "}" =>
+	RSset::from(t.into_iter().map(|t| translator.convert(t)).collect::<Vec<_>>())
 };
 
 // ----- ContextParser -----
-pub Context: Box<RSprocess<'input>> = {
+pub Context: Box<RSprocess> = {
     // "[" "]" => Box::new(RSprocess::Nill),
     // "[" <t: CTX_process>  "]" => Box::new(t),
     // "[" <t: Separeted<Boxed_CTX_process, ",">> "]" =>
     //	Box::new(RSprocess::NondeterministicChoice{ children: t })
 
     "[" "]" => Box::new(RSprocess::NondeterministicChoice{ children: vec![] }),
-    "[" <t: CTX_process>  "]" => Box::new(RSprocess::NondeterministicChoice{ children: vec![Rc::new(t)] }),
+    "[" <t: CTX_process>  "]" =>
+	Box::new(RSprocess::NondeterministicChoice{children: vec![Rc::new(t)]}),
     "[" <t: Separeted<Boxed_CTX_process, ",">> "]" =>
 	Box::new(RSprocess::NondeterministicChoice{ children: t })
 };
 
-Boxed_CTX_process: Rc<RSprocess<'input>> = {
+Boxed_CTX_process: Rc<RSprocess> = {
     <t: CTX_process> => Rc::new(t)
 }
 
-CTX_process: RSprocess<'input> = {
+CTX_process: RSprocess = {
     <c: Set_of_entities> "." <k: CTX_process> =>
 	RSprocess::EntitySet{ entities: c, next_process: Rc::new(k) },
     "(" <k: CTX_process>  ")" => k,
     "(" <k: Separeted<CTX_process, "+">> ")" =>
-	RSprocess::Summation{ children: k },
+	RSprocess::Summation{ children: k.into_iter().map(|k| Rc::new(k)).collect::<Vec<_>>() },
     "<" <n: Num> <k1: CTX_process> ">" "." <k: CTX_process> =>
 	RSprocess::WaitEntity{ repeat: n,
 			       repeated_process: Rc::new(k1),
 			       next_process: Rc::new(k)},
     "nil" => RSprocess::Nill,
     <identifier: Literal> =>
-	RSprocess::RecursiveIdentifier{ identifier }
+	RSprocess::RecursiveIdentifier{ identifier: translator.convert(identifier) }
 };
 
 // ----- EnvironmentParser -----
-pub Environment: Box<RSenvironment<'input>> = {
+pub Environment: Box<RSenvironment> = {
     "[" "]" => Box::new(RSenvironment::new()),
     "[" <t: Separeted<Env_term, ",">> "]" => Box::new(RSenvironment::from(t))
 };
 
-Env_term: (&'input str, RSprocess<'input>) = {
-    <identifier: Literal> "=" <k: CTX_process> => (identifier, k)
+Env_term: (IdType, RSprocess) = {
+    <identifier: Literal> "=" <k: CTX_process> =>
+	(translator.convert(identifier), k)
 };
 
 // ----- AssertParser -----
-pub Assert: Box<RSassert<'input>> = {
+pub Assert: Box<RSassert> = {
     <f: Formula_Assert> => Box::new(f)
 };
 
-Formula_Assert: RSassert<'input> = {
+Formula_Assert: RSassert = {
     "-" <f: Formula_Assert> => RSassert::Not(Box::new(f)),
     "(" <f1: Formula_Assert> "^" <f2: Formula_Assert> ")" =>
 	RSassert::Xor(Box::new(f1), Box::new(f2)),
@@ -100,11 +104,11 @@ Formula_Assert: RSassert<'input> = {
 };
 
 // ----- BHMLParser -----
-pub BHML: Box<RSBHML<'input>> = {
+pub BHML: Box<RSBHML> = {
     <g: Formula_BHML> => Box::new(g)
 };
 
-Formula_BHML: RSBHML<'input> = {
+Formula_BHML: RSBHML = {
     "true" => RSBHML::True,
     "false" => RSBHML::False,
     "(" <g: Separeted<Formula_BHML, "\\/">> ")" => RSBHML::Or(g),

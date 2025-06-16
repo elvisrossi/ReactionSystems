@@ -1,56 +1,76 @@
 #![allow(dead_code)]
 
+use super::structure::{RSChoices, RSenvironment, RSlabel, RSprocess, RSset, RSsystem};
+use super::support_structures::TransitionsIterator;
 use std::rc::Rc;
-use super::structure::{RSset, RSChoices, RSenvironment, RSprocess, RSsystem, RSlabel};
-use super::support_structures::{TransitionsIterator};
 
-
-pub fn unfold<'a>(environment: &'a RSenvironment<'a>, context_process: &'a RSprocess<'a>) -> Result<RSChoices<'a>, String> {
+pub fn unfold(
+    environment: &RSenvironment,
+    context_process: &RSprocess,
+) -> Result<RSChoices, String> {
     match context_process {
 	RSprocess::Nill => Ok(RSChoices::new()),
-	RSprocess::RecursiveIdentifier{identifier} => {
-	    let newprocess = environment.get(identifier);
+	RSprocess::RecursiveIdentifier { identifier } => {
+	    let newprocess = environment.get(*identifier);
 	    if let Some(newprocess) = newprocess {
 		unfold(environment, newprocess)
 	    } else {
 		Err(format!("Recursive call to missing symbol: {identifier}"))
 	    }
-	},
-	RSprocess::EntitySet{entities, next_process} => {
-	    Ok(RSChoices::from(vec![(Rc::new(entities.clone()), Rc::clone(next_process))]))
-	},
-	RSprocess::WaitEntity{repeat, repeated_process: _, next_process} if *repeat <= 0 => {
-	    unfold(environment, next_process)
-	},
-	RSprocess::WaitEntity{repeat, repeated_process, next_process} if *repeat == 1 => {
+	}
+	RSprocess::EntitySet {
+	    entities,
+	    next_process,
+	} => Ok(RSChoices::from(vec![(
+	    Rc::new(entities.clone()),
+	    Rc::clone(next_process),
+	)])),
+	RSprocess::WaitEntity {
+	    repeat,
+	    repeated_process: _,
+	    next_process,
+	} if *repeat <= 0 => unfold(environment, next_process),
+	RSprocess::WaitEntity {
+	    repeat,
+	    repeated_process,
+	    next_process,
+	} if *repeat == 1 => {
 	    let mut choices1 = unfold(environment, repeated_process)?;
 	    choices1.replace(Rc::clone(next_process));
 	    Ok(choices1)
-	},
-	RSprocess::WaitEntity{repeat, repeated_process, next_process} => {
+	}
+	RSprocess::WaitEntity {
+	    repeat,
+	    repeated_process,
+	    next_process,
+	} => {
 	    let mut choices1 = unfold(environment, repeated_process)?;
-	    choices1.replace(
-		Rc::new(
-		    RSprocess::WaitEntity{ repeat: (*repeat - 1),
-					   repeated_process: Rc::clone(repeated_process),
-					   next_process: Rc::clone(next_process) }
-		)
-	    );
+	    choices1.replace(Rc::new(RSprocess::WaitEntity {
+		repeat: (*repeat - 1),
+		repeated_process: Rc::clone(repeated_process),
+		next_process: Rc::clone(next_process),
+	    }));
 	    Ok(choices1)
-	},
-	RSprocess::Summation{children} => {
+	}
+	RSprocess::Summation { children } => {
 	    // short-circuits with try_fold.
 	    children.iter().try_fold(RSChoices::new(), |mut acc, x| {
 		match unfold(environment, x) {
-		    Ok(mut choices) => {acc.append(&mut choices); Ok(acc)},
-		    Err(e) => Err(e)
+		    Ok(mut choices) => {
+			acc.append(&mut choices);
+			Ok(acc)
+		    }
+		    Err(e) => Err(e),
 		}
 	    })
-	},
-	RSprocess::NondeterministicChoice{children} => {
+	}
+	RSprocess::NondeterministicChoice { children } => {
 	    // short-circuits with try_fold.
 	    if children.is_empty() {
-		Ok(RSChoices::from(vec![(Rc::new(RSset::new()), Rc::new(RSprocess::Nill))]))
+		Ok(RSChoices::from(vec![(
+		    Rc::new(RSset::new()),
+		    Rc::new(RSprocess::Nill),
+		)]))
 	    } else {
 		children.iter().try_fold(RSChoices::new(), |mut acc, x| {
 		    acc.shuffle(unfold(environment, x)?);
@@ -61,11 +81,36 @@ pub fn unfold<'a>(environment: &'a RSenvironment<'a>, context_process: &'a RSpro
     }
 }
 
-pub fn iterator_transitions<'a>(system: &'a RSsystem<'a>) -> Result<TransitionsIterator<'a>, String> {
+pub fn iterator_transitions<'a>(
+    system: &'a RSsystem,
+) -> Result<TransitionsIterator<'a>, String> {
     TransitionsIterator::from(system)
 }
 
-pub fn all_transitions<'a>(system: &'a RSsystem<'a>) -> Result<Vec<(RSlabel<'a>, RSsystem<'a>)>, String> {
+pub fn one_transition(
+    system: &RSsystem,
+) -> Result<Option<(RSlabel, RSsystem)>, String> {
+    let mut tr = TransitionsIterator::from(system)?;
+    Ok(tr.next())
+}
+
+pub fn all_transitions(
+    system: &RSsystem,
+) -> Result<Vec<(RSlabel, RSsystem)>, String> {
     let tr = TransitionsIterator::from(system)?;
     Ok(tr.collect::<Vec<_>>())
+}
+
+pub fn one_target(system: &RSsystem) -> Result<(i64, RSset), String> {
+    let current = one_transition(system)?;
+    if current.is_none() {
+	return Ok((0, system.get_available_entities().clone()));
+    }
+    let mut n = 1;
+    let mut current = current.unwrap().1;
+    while let Some((_, next)) = one_transition(&current)? {
+	current = next;
+	n += 1;
+    }
+    Ok((n, current.get_available_entities().clone()))
 }

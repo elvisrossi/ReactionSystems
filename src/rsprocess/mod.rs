@@ -1,3 +1,4 @@
+pub mod translator;
 pub mod structure;
 pub mod support_structures;
 pub mod classical;

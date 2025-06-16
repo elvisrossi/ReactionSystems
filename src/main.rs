@@ -1,39 +1,42 @@
 mod rsprocess;
 use lalrpop_util::lalrpop_mod;
+use rsprocess::transitions;
 use std::rc::Rc;
 // use std::io;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     lalrpop_mod!(grammar, "/rsprocess/grammar.rs");
 
+    let mut translator = rsprocess::translator::Translator::new();
+
     // let mut buffer = String::new();
     // let i = io::stdin();
     // i.read_line(&mut buffer).expect("Can't read stdin");
 
-    // let result = grammar::SetParser::new().parse(&buffer).unwrap();
+    // let result = grammar::SetParser::new().parse(&mut translator, &buffer).unwrap();
 
 
     // -------------------------------------------------------------------------
-    // let reactants = grammar::SetParser::new().parse("{a}").unwrap();
-    // let inihibitors = grammar::SetParser::new().parse("{c}").unwrap();
-    // let products = grammar::SetParser::new().parse("{a,c}").unwrap();
+    // let reactants = grammar::SetParser::new().parse(&mut translator, "{a}").unwrap();
+    // let inihibitors = grammar::SetParser::new().parse(&mut translator, "{c}").unwrap();
+    // let products = grammar::SetParser::new().parse(&mut translator, "{a,c}").unwrap();
 
     // let process1 = rsprocess::structure::RSreaction::from(reactants, inihibitors, products);
 
-    // let reactants = grammar::SetParser::new().parse("{b}").unwrap();
-    // let inihibitors = grammar::SetParser::new().parse("{c}").unwrap();
-    // let products = grammar::SetParser::new().parse("{b,c}").unwrap();
+    // let reactants = grammar::SetParser::new().parse(&mut translator, "{b}").unwrap();
+    // let inihibitors = grammar::SetParser::new().parse(&mut translator, "{c}").unwrap();
+    // let products = grammar::SetParser::new().parse(&mut translator, "{b,c}").unwrap();
 
     // let process2 = rsprocess::structure::RSreaction::from(reactants, inihibitors, products);
 
-    // let current_state = grammar::SetParser::new().parse("{b}").unwrap();
+    // let current_state = grammar::SetParser::new().parse(&mut translator, "{b}").unwrap();
 
     // println!("{:?}", rsprocess::classical::compute_all(&current_state, vec![&process1, &process2]));
 
 
     // -------------------------------------------------------------------------
-    // let env = grammar::EnvironmentParser::new().parse("[x = {a}.{b}.x , y = ({a,c}.y + {b,c}.y)]").unwrap();
-    // let process = grammar::ContextParser::new().parse("[({a}.nil + x + y)]").unwrap();
+    // let env = grammar::EnvironmentParser::new().parse(&mut translator, "[x = {a}.{b}.x , y = ({a,c}.y + {b,c}.y)]").unwrap();
+    // let process = grammar::ContextParser::new().parse(&mut translator, "[({a}.nil + x + y)]").unwrap();
 
     // println!("{:?}", rsprocess::transitions::unfold(&env, &process));
 
@@ -45,69 +48,70 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // -------------------------------------------------------------------------
     // allTransitions(sys([],[a,b],[],[react([a],[c],[a]),react([b],[d],[b])]) , Moves).
 
-    // let env = grammar::EnvironmentParser::new().parse("[]").unwrap();
-    // let process = grammar::ContextParser::new().parse("[]").unwrap();
+    // let env = grammar::EnvironmentParser::new().parse(&mut translator, "[]").unwrap();
+    // let process = grammar::ContextParser::new().parse(&mut translator, "[]").unwrap();
 
-    // let sys = rsprocess::structure::RSsystem::from(*env,
-    //						   rsprocess::structure::RSset::from(vec!["a", "b"]),
+    // let sys = rsprocess::structure::RSsystem::from(Rc::new(*env),
+    //						   rsprocess::structure::RSset::from(vec![translator.convert("a"),
+    //											  translator.convert("b")]),
     //						   *process,
-    //						   vec![
+    //						   Rc::new(vec![
     //						       rsprocess::structure::RSreaction::from(
-    //							   rsprocess::structure::RSset::from(vec!["a"]),
-    //							   rsprocess::structure::RSset::from(vec!["c"]),
-    //							   rsprocess::structure::RSset::from(vec!["a"])
+    //							   rsprocess::structure::RSset::from(vec![translator.convert("a")]),
+    //							   rsprocess::structure::RSset::from(vec![translator.convert("c")]),
+    //							   rsprocess::structure::RSset::from(vec![translator.convert("a")])
     //						       ),
     //						       rsprocess::structure::RSreaction::from(
-    //							   rsprocess::structure::RSset::from(vec!["b"]),
-    //							   rsprocess::structure::RSset::from(vec!["d"]),
-    //							   rsprocess::structure::RSset::from(vec!["b"])
+    //							   rsprocess::structure::RSset::from(vec![translator.convert("b")]),
+    //							   rsprocess::structure::RSset::from(vec![translator.convert("d")]),
+    //							   rsprocess::structure::RSset::from(vec![translator.convert("b")])
     //						       )
-    //						   ]);
+    //						   ]));
 
 
     // println!("all_transitions: {:?}", rsprocess::transitions::all_transitions(&sys));
     // -------------------------------------------------------------------------
     // parse_ctx("[({a}.nil + {b}.nil)]",Ks) , allTransitions(sys([],[],Ks,[react([a],[c],[a]),react([b],[d],[b])]),Moves).
-    // let env = grammar::EnvironmentParser::new().parse("[]").unwrap();
-    // let process = grammar::ContextParser::new().parse("[({a}.nil + {b}.nil)]").unwrap();
+    // let env = grammar::EnvironmentParser::new().parse(&mut translator, "[]").unwrap();
+    // let process = grammar::ContextParser::new().parse(&mut translator, "[({a}.nil + {b}.nil)]").unwrap();
 
-    // let sys = rsprocess::structure::RSsystem::from(*env,
+    // let sys = rsprocess::structure::RSsystem::from(Rc::new(*env),
     //						   rsprocess::structure::RSset::from(vec![]),
     //						   *process,
-    //						   vec![
+    //						   Rc::new(vec![
     //						       rsprocess::structure::RSreaction::from(
-    //							   rsprocess::structure::RSset::from(vec!["a"]),
-    //							   rsprocess::structure::RSset::from(vec!["c"]),
-    //							   rsprocess::structure::RSset::from(vec!["a"])
+    //							   rsprocess::structure::RSset::from(vec![translator.convert("a")]),
+    //							   rsprocess::structure::RSset::from(vec![translator.convert("c")]),
+    //							   rsprocess::structure::RSset::from(vec![translator.convert("a")])
     //						       ),
     //						       rsprocess::structure::RSreaction::from(
-    //							   rsprocess::structure::RSset::from(vec!["b"]),
-    //							   rsprocess::structure::RSset::from(vec!["d"]),
-    //							   rsprocess::structure::RSset::from(vec!["b"])
+    //							   rsprocess::structure::RSset::from(vec![translator.convert("b")]),
+    //							   rsprocess::structure::RSset::from(vec![translator.convert("d")]),
+    //							   rsprocess::structure::RSset::from(vec![translator.convert("b")])
     //						       )
-    //						   ]);
+    //						   ]));
 
 
     // println!("all_transitions: {:?}", rsprocess::transitions::all_transitions(&sys));
 
     // -------------------------------------------------------------------------
     // parse_ctx("[({a}.nil + {b}.nil),({c}.nil + {d}.nil)]",Ks) , allTransitions(sys([],[],Ks,[react([a],[c],[a]),react([b],[d],[b])]),Moves).
-    let env = grammar::EnvironmentParser::new().parse("[]").unwrap();
-    let process = grammar::ContextParser::new().parse("[({a}.nil + {b}.nil),({c}.nil + {d}.nil)]").unwrap();
+    let env = grammar::EnvironmentParser::new().parse(&mut translator, "[]").unwrap();
+    let process = grammar::ContextParser::new().parse(&mut translator, "[({a}.nil + {b}.nil),({c}.nil + {d}.nil)]").unwrap();
 
     let sys = rsprocess::structure::RSsystem::from(Rc::new(*env),
 						   rsprocess::structure::RSset::from(vec![]),
 						   *process,
 						   Rc::new(vec![
 						       rsprocess::structure::RSreaction::from(
-							   rsprocess::structure::RSset::from(vec!["a"]),
-							   rsprocess::structure::RSset::from(vec!["c"]),
-							   rsprocess::structure::RSset::from(vec!["a"])
+							   rsprocess::structure::RSset::from(vec![translator.convert("a")]),
+							   rsprocess::structure::RSset::from(vec![translator.convert("c")]),
+							   rsprocess::structure::RSset::from(vec![translator.convert("a")])
 						       ),
 						       rsprocess::structure::RSreaction::from(
-							   rsprocess::structure::RSset::from(vec!["b"]),
-							   rsprocess::structure::RSset::from(vec!["d"]),
-							   rsprocess::structure::RSset::from(vec!["b"])
+							   rsprocess::structure::RSset::from(vec![translator.convert("b")]),
+							   rsprocess::structure::RSset::from(vec![translator.convert("d")]),
+							   rsprocess::structure::RSset::from(vec![translator.convert("b")])
 						       )
 						   ]));
 
