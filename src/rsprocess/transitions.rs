@@ -87,6 +87,7 @@ pub fn iterator_transitions<'a>(
     TransitionsIterator::from(system)
 }
 
+// see oneTransition, transition, smartTransition, smartOneTransition
 pub fn one_transition(
     system: &RSsystem,
 ) -> Result<Option<(RSlabel, RSsystem)>, String> {
@@ -94,6 +95,7 @@ pub fn one_transition(
     Ok(tr.next())
 }
 
+// see allTransitions, smartAllTransitions
 pub fn all_transitions(
     system: &RSsystem,
 ) -> Result<Vec<(RSlabel, RSsystem)>, String> {
@@ -101,6 +103,7 @@ pub fn all_transitions(
     Ok(tr.collect::<Vec<_>>())
 }
 
+// see oneTarget, smartOneTarget, target, smartTarget
 pub fn one_target(system: &RSsystem) -> Result<(i64, RSset), String> {
     let current = one_transition(system)?;
     if current.is_none() {
@@ -113,4 +116,13 @@ pub fn one_target(system: &RSsystem) -> Result<(i64, RSset), String> {
 	n += 1;
     }
     Ok((n, current.get_available_entities().clone()))
+}
+
+// see oneRun, run, smartOneRunEK, smartRunEK
+pub fn one_run(system: RSsystem) -> Result<Vec<Rc<RSsystem>>, String> {
+    let mut res = vec![Rc::new(system)];
+    while let Some((_, next_sys)) = one_transition(res.last().unwrap())? {
+	res.push(Rc::new(next_sys));
+    }
+    Ok(res)
 }

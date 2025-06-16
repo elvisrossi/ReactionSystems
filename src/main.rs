@@ -1,6 +1,5 @@
 mod rsprocess;
 use lalrpop_util::lalrpop_mod;
-use rsprocess::transitions;
 use std::rc::Rc;
 // use std::io;
 
@@ -96,6 +95,33 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // -------------------------------------------------------------------------
     // parse_ctx("[({a}.nil + {b}.nil),({c}.nil + {d}.nil)]",Ks) , allTransitions(sys([],[],Ks,[react([a],[c],[a]),react([b],[d],[b])]),Moves).
+    // let env = grammar::EnvironmentParser::new().parse(&mut translator, "[]").unwrap();
+    // let process = grammar::ContextParser::new().parse(&mut translator, "[({a}.nil + {b}.nil),({c}.nil + {d}.nil)]").unwrap();
+
+    // let sys = rsprocess::structure::RSsystem::from(Rc::new(*env),
+    //						   rsprocess::structure::RSset::from(vec![]),
+    //						   *process,
+    //						   Rc::new(vec![
+    //						       rsprocess::structure::RSreaction::from(
+    //							   rsprocess::structure::RSset::from(vec![translator.convert("a")]),
+    //							   rsprocess::structure::RSset::from(vec![translator.convert("c")]),
+    //							   rsprocess::structure::RSset::from(vec![translator.convert("a")])
+    //						       ),
+    //						       rsprocess::structure::RSreaction::from(
+    //							   rsprocess::structure::RSset::from(vec![translator.convert("b")]),
+    //							   rsprocess::structure::RSset::from(vec![translator.convert("d")]),
+    //							   rsprocess::structure::RSset::from(vec![translator.convert("b")])
+    //						       )
+    //						   ]));
+
+    // let it = rsprocess::transitions::iterator_transitions(&sys)?;
+
+    // for (n, i) in it.into_iter().enumerate() {
+    //	println!("next i - {n}:  {:?}", i);
+    //	println!("--------------------");
+    // }
+
+    // -------------------------------------------------------------------------
     let env = grammar::EnvironmentParser::new().parse(&mut translator, "[]").unwrap();
     let process = grammar::ContextParser::new().parse(&mut translator, "[({a}.nil + {b}.nil),({c}.nil + {d}.nil)]").unwrap();
 
@@ -114,13 +140,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 							   rsprocess::structure::RSset::from(vec![translator.convert("b")])
 						       )
 						   ]));
-
-    let it = rsprocess::transitions::iterator_transitions(&sys)?;
-
-    for (n, i) in it.into_iter().enumerate() {
-	println!("next i - {n}:  {:?}", i);
-	println!("--------------------");
-    }
-
+    println!("{:?}", rsprocess::transitions::one_run(sys));
     Ok(())
 }
