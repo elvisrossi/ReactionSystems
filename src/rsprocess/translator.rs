@@ -19,7 +19,11 @@ impl Translator {
 }
 
 impl Translator {
-    pub fn convert<S: AsRef<str>>(&mut self, s: S) -> IdType {
-	*(self.strings.entry(s.as_ref().to_string()).or_insert({self.last_id += 1; self.last_id}))
+    pub fn convert(&mut self, s: impl Into<String>) -> IdType {
+	*(self.strings.entry(s.into()).or_insert(
+	    {self.last_id += 1;
+	     self.last_id
+	    }
+	))
     }
 }
