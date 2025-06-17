@@ -140,6 +140,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 							   rsprocess::structure::RSset::from(vec![translator.convert("b")])
 						       )
 						   ]));
-    println!("{:?}", rsprocess::transitions::one_run(sys));
+    println!("{:?}", rsprocess::transitions::run_separated(&sys));
     Ok(())
 }

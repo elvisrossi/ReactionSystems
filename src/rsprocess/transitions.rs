@@ -104,7 +104,7 @@ pub fn all_transitions(
 }
 
 // see oneTarget, smartOneTarget, target, smartTarget
-pub fn one_target(system: &RSsystem) -> Result<(i64, RSset), String> {
+pub fn target(system: &RSsystem) -> Result<(i64, RSset), String> {
     let current = one_transition(system)?;
     if current.is_none() {
 	return Ok((0, system.get_available_entities().clone()));
@@ -119,10 +119,27 @@ pub fn one_target(system: &RSsystem) -> Result<(i64, RSset), String> {
 }
 
 // see oneRun, run, smartOneRunEK, smartRunEK
-pub fn one_run(system: RSsystem) -> Result<Vec<Rc<RSsystem>>, String> {
+pub fn run(system: RSsystem) -> Result<Vec<Rc<RSsystem>>, String> {
     let mut res = vec![Rc::new(system)];
     while let Some((_, next_sys)) = one_transition(res.last().unwrap())? {
 	res.push(Rc::new(next_sys));
+    }
+    Ok(res)
+}
+
+// see smartOneRunECT, smartRunECT
+pub fn run_separated(system: &RSsystem) -> Result<Vec<(RSset, RSset, RSset)>, String> {
+    let mut res = vec![];
+    let current = one_transition(system)?;
+    if current.is_none() {
+	return Ok(res);
+    }
+    let current = current.unwrap();
+    res.push(current.0.get_context());
+    let mut current = current.1;
+    while let Some((label, next)) = one_transition(&current)? {
+	current = next;
+	res.push(label.get_context());
     }
     Ok(res)
 }

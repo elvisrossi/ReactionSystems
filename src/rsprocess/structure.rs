@@ -330,8 +330,8 @@ impl RSsystem {
 #[derive(Clone, Debug)]
 pub struct RSlabel {
     available_entities: RSset,
-    c: RSset, /// TODO: what is c? what is t? (c comes from choices, t is
-    t: RSset, ///       the union of available_entities and c)
+    context: RSset,
+    t: RSset, ///      union of available_entities and context
     reactants: RSset,
     reactantsi: RSset,
     inihibitors: RSset,
@@ -342,7 +342,7 @@ pub struct RSlabel {
 impl RSlabel {
     pub fn new() -> Self {
 	RSlabel { available_entities: RSset::new(),
-		  c: RSset::new(),
+		  context: RSset::new(),
 		  t: RSset::new(),
 		  reactants: RSset::new(),
 		  reactantsi: RSset::new(),
@@ -353,7 +353,7 @@ impl RSlabel {
 
     #[allow(clippy::too_many_arguments)]
     pub fn from(available_entities: RSset,
-		c: RSset,
+		context: RSset,
 		t: RSset,
 		reactants: RSset,
 		reactantsi: RSset,
@@ -361,13 +361,18 @@ impl RSlabel {
 		ireactants: RSset,
 		products: RSset,) -> Self {
 	RSlabel { available_entities,
-		  c,
+		  context,
 		  t,
 		  reactants,
 		  reactantsi,
 		  inihibitors,
 		  ireactants,
 		  products }
+    }
+
+    pub fn get_context(&self) -> (RSset, RSset, RSset) {
+	// FIXME clone?
+	(self.available_entities.clone(), self.context.clone(), self.t.clone())
     }
 }
 
