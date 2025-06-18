@@ -73,6 +73,10 @@ impl RSset {
 					      .collect();
 	RSset { identifiers: res }
     }
+
+    pub fn hashset(&self) -> &HashSet<IdType> {
+	&self.identifiers
+    }
 }
 
 
@@ -167,21 +171,21 @@ impl RSprocess {
 }
 
 #[derive(Clone, Debug)]
-pub struct RSChoices {
+pub struct RSchoices {
     context_moves: Vec<(Rc<RSset>, Rc<RSprocess>)>
 }
 
-impl RSChoices {
+impl RSchoices {
     pub fn new() -> Self {
-	RSChoices{ context_moves: vec![] }
+	RSchoices{ context_moves: vec![] }
     }
 
     pub fn new_not_empty() -> Self {
-	RSChoices{ context_moves: vec![(Rc::new(RSset::new()),
+	RSchoices{ context_moves: vec![(Rc::new(RSset::new()),
 					Rc::new(RSprocess::Nill))] }
     }
 
-    pub fn append(&mut self, a: &mut RSChoices) {
+    pub fn append(&mut self, a: &mut RSchoices) {
 	self.context_moves.append(&mut a.context_moves);
     }
 
@@ -192,7 +196,7 @@ impl RSChoices {
 	    .map(|(c1, _)| (Rc::clone(c1), Rc::clone(&a))).collect::<Vec<_>>();
     }
 
-    pub fn shuffle(&mut self, choices: RSChoices) {
+    pub fn shuffle(&mut self, choices: RSchoices) {
 	match (self.context_moves.is_empty(), choices.context_moves.is_empty()){
 	    (true, true) => {}
 	    (true, false) => { self.context_moves = choices.context_moves }
@@ -211,9 +215,13 @@ impl RSChoices {
 	    }
 	}
     }
+
+    pub fn iter(&self) -> std::slice::Iter<'_, (Rc<RSset>, Rc<RSprocess>)> {
+	self.context_moves.iter()
+    }
 }
 
-impl IntoIterator for RSChoices {
+impl IntoIterator for RSchoices {
     type Item = (Rc<RSset>, Rc<RSprocess>);
     type IntoIter = std::vec::IntoIter<Self::Item>;
 
@@ -222,21 +230,22 @@ impl IntoIterator for RSChoices {
     }
 }
 
-impl<const N: usize> From<[(Rc<RSset>, Rc<RSprocess>); N]> for RSChoices {
+
+impl<const N: usize> From<[(Rc<RSset>, Rc<RSprocess>); N]> for RSchoices {
     fn from(arr: [(Rc<RSset>, Rc<RSprocess>); N]) -> Self {
-	RSChoices{context_moves: arr.to_vec()}
+	RSchoices{context_moves: arr.to_vec()}
     }
 }
 
-impl From<&[(Rc<RSset>, Rc<RSprocess>)]> for RSChoices {
+impl From<&[(Rc<RSset>, Rc<RSprocess>)]> for RSchoices {
     fn from(arr: &[(Rc<RSset>, Rc<RSprocess>)]) -> Self {
-	RSChoices{context_moves: arr.to_vec()}
+	RSchoices{context_moves: arr.to_vec()}
     }
 }
 
-impl From<Vec<(Rc<RSset>, Rc<RSprocess>)>> for RSChoices {
+impl From<Vec<(Rc<RSset>, Rc<RSprocess>)>> for RSchoices {
     fn from(arr: Vec<(Rc<RSset>, Rc<RSprocess>)>) -> Self {
-	RSChoices{context_moves: arr}
+	RSchoices{context_moves: arr}
     }
 }
 
@@ -255,6 +264,10 @@ impl RSenvironment {
 
     pub fn get(&self, k: IdType) -> Option<&RSprocess> {
 	self.definitions.get(&k)
+    }
+
+    pub fn iter(&self) -> std::collections::hash_map::Iter<'_, u32, RSprocess> {
+	self.definitions.iter()
     }
 }
 
@@ -329,14 +342,14 @@ impl RSsystem {
 // -----------------------------------------------------------------------------
 #[derive(Clone, Debug)]
 pub struct RSlabel {
-    available_entities: RSset,
-    context: RSset,
-    t: RSset, ///      union of available_entities and context
-    reactants: RSset,
-    reactantsi: RSset,
-    inihibitors: RSset,
-    ireactants: RSset,
-    products: RSset,
+    pub available_entities: RSset,
+    pub context: RSset,
+    pub t: RSset, ///      union of available_entities and context
+    pub reactants: RSset,
+    pub reactantsi: RSset,
+    pub inihibitors: RSset,
+    pub ireactants: RSset,
+    pub products: RSset,
 }
 
 impl RSlabel {

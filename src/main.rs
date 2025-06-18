@@ -1,6 +1,7 @@
 mod rsprocess;
 use lalrpop_util::lalrpop_mod;
-use std::rc::Rc;
+use rsprocess::translator::WithTranslator;
+// use std::rc::Rc;
 // use std::io;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -51,19 +52,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // let process = grammar::ContextParser::new().parse(&mut translator, "[]").unwrap();
 
     // let sys = rsprocess::structure::RSsystem::from(Rc::new(*env),
-    //						   rsprocess::structure::RSset::from(vec![translator.convert("a"),
-    //											  translator.convert("b")]),
+    //						   rsprocess::structure::RSset::from(vec![translator.encode("a"),
+    //											  translator.encode("b")]),
     //						   *process,
     //						   Rc::new(vec![
     //						       rsprocess::structure::RSreaction::from(
-    //							   rsprocess::structure::RSset::from(vec![translator.convert("a")]),
-    //							   rsprocess::structure::RSset::from(vec![translator.convert("c")]),
-    //							   rsprocess::structure::RSset::from(vec![translator.convert("a")])
+    //							   rsprocess::structure::RSset::from(vec![translator.encode("a")]),
+    //							   rsprocess::structure::RSset::from(vec![translator.encode("c")]),
+    //							   rsprocess::structure::RSset::from(vec![translator.encode("a")])
     //						       ),
     //						       rsprocess::structure::RSreaction::from(
-    //							   rsprocess::structure::RSset::from(vec![translator.convert("b")]),
-    //							   rsprocess::structure::RSset::from(vec![translator.convert("d")]),
-    //							   rsprocess::structure::RSset::from(vec![translator.convert("b")])
+    //							   rsprocess::structure::RSset::from(vec![translator.encode("b")]),
+    //							   rsprocess::structure::RSset::from(vec![translator.encode("d")]),
+    //							   rsprocess::structure::RSset::from(vec![translator.encode("b")])
     //						       )
     //						   ]));
 
@@ -79,14 +80,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     //						   *process,
     //						   Rc::new(vec![
     //						       rsprocess::structure::RSreaction::from(
-    //							   rsprocess::structure::RSset::from(vec![translator.convert("a")]),
-    //							   rsprocess::structure::RSset::from(vec![translator.convert("c")]),
-    //							   rsprocess::structure::RSset::from(vec![translator.convert("a")])
+    //							   rsprocess::structure::RSset::from(vec![translator.encode("a")]),
+    //							   rsprocess::structure::RSset::from(vec![translator.encode("c")]),
+    //							   rsprocess::structure::RSset::from(vec![translator.encode("a")])
     //						       ),
     //						       rsprocess::structure::RSreaction::from(
-    //							   rsprocess::structure::RSset::from(vec![translator.convert("b")]),
-    //							   rsprocess::structure::RSset::from(vec![translator.convert("d")]),
-    //							   rsprocess::structure::RSset::from(vec![translator.convert("b")])
+    //							   rsprocess::structure::RSset::from(vec![translator.encode("b")]),
+    //							   rsprocess::structure::RSset::from(vec![translator.encode("d")]),
+    //							   rsprocess::structure::RSset::from(vec![translator.encode("b")])
     //						       )
     //						   ]));
 
@@ -103,14 +104,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     //						   *process,
     //						   Rc::new(vec![
     //						       rsprocess::structure::RSreaction::from(
-    //							   rsprocess::structure::RSset::from(vec![translator.convert("a")]),
-    //							   rsprocess::structure::RSset::from(vec![translator.convert("c")]),
-    //							   rsprocess::structure::RSset::from(vec![translator.convert("a")])
+    //							   rsprocess::structure::RSset::from(vec![translator.encode("a")]),
+    //							   rsprocess::structure::RSset::from(vec![translator.encode("c")]),
+    //							   rsprocess::structure::RSset::from(vec![translator.encode("a")])
     //						       ),
     //						       rsprocess::structure::RSreaction::from(
-    //							   rsprocess::structure::RSset::from(vec![translator.convert("b")]),
-    //							   rsprocess::structure::RSset::from(vec![translator.convert("d")]),
-    //							   rsprocess::structure::RSset::from(vec![translator.convert("b")])
+    //							   rsprocess::structure::RSset::from(vec![translator.encode("b")]),
+    //							   rsprocess::structure::RSset::from(vec![translator.encode("d")]),
+    //							   rsprocess::structure::RSset::from(vec![translator.encode("b")])
     //						       )
     //						   ]));
 
@@ -122,24 +123,33 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // }
 
     // -------------------------------------------------------------------------
-    let env = grammar::EnvironmentParser::new().parse(&mut translator, "[]").unwrap();
-    let process = grammar::ContextParser::new().parse(&mut translator, "[({a}.nil + {b}.nil),({c}.nil + {d}.nil)]").unwrap();
+    // let env = grammar::EnvironmentParser::new().parse(&mut translator, "[]").unwrap();
+    // let process = grammar::ContextParser::new().parse(&mut translator, "[({a}.nil + {b}.nil),({c}.nil + {d}.nil)]").unwrap();
 
-    let sys = rsprocess::structure::RSsystem::from(Rc::new(*env),
-						   rsprocess::structure::RSset::from(vec![]),
-						   *process,
-						   Rc::new(vec![
-						       rsprocess::structure::RSreaction::from(
-							   rsprocess::structure::RSset::from(vec![translator.convert("a")]),
-							   rsprocess::structure::RSset::from(vec![translator.convert("c")]),
-							   rsprocess::structure::RSset::from(vec![translator.convert("a")])
-						       ),
-						       rsprocess::structure::RSreaction::from(
-							   rsprocess::structure::RSset::from(vec![translator.convert("b")]),
-							   rsprocess::structure::RSset::from(vec![translator.convert("d")]),
-							   rsprocess::structure::RSset::from(vec![translator.convert("b")])
-						       )
-						   ]));
-    println!("{:?}", rsprocess::transitions::run_separated(&sys));
+    // let sys = rsprocess::structure::RSsystem::from(Rc::new(*env),
+    //						   rsprocess::structure::RSset::from(vec![]),
+    //						   *process,
+    //						   Rc::new(vec![
+    //						       rsprocess::structure::RSreaction::from(
+    //							   rsprocess::structure::RSset::from(vec![translator.encode("a")]),
+    //							   rsprocess::structure::RSset::from(vec![translator.encode("c")]),
+    //							   rsprocess::structure::RSset::from(vec![translator.encode("a")])
+    //						       ),
+    //						       rsprocess::structure::RSreaction::from(
+    //							   rsprocess::structure::RSset::from(vec![translator.encode("b")]),
+    //							   rsprocess::structure::RSset::from(vec![translator.encode("d")]),
+    //							   rsprocess::structure::RSset::from(vec![translator.encode("b")])
+    //						       )
+    //						   ]));
+    // println!("{:?}", rsprocess::transitions::run_separated(&sys));
+
+    // -------------------------------------------------------------------------
+
+    let tmp = rsprocess::structure::RSreaction::from(
+	rsprocess::structure::RSset::from(vec![translator.encode("a"), translator.encode("c")]),
+	rsprocess::structure::RSset::from(vec![translator.encode("c")]),
+	rsprocess::structure::RSset::from(vec![translator.encode("a")])
+    );
+    println!("{}", WithTranslator::from_RSreaction(&translator, &tmp));
     Ok(())
 }

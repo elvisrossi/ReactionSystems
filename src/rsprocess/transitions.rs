@@ -1,15 +1,15 @@
 #![allow(dead_code)]
 
-use super::structure::{RSChoices, RSenvironment, RSlabel, RSprocess, RSset, RSsystem};
+use super::structure::{RSchoices, RSenvironment, RSlabel, RSprocess, RSset, RSsystem};
 use super::support_structures::TransitionsIterator;
 use std::rc::Rc;
 
 pub fn unfold(
     environment: &RSenvironment,
     context_process: &RSprocess,
-) -> Result<RSChoices, String> {
+) -> Result<RSchoices, String> {
     match context_process {
-	RSprocess::Nill => Ok(RSChoices::new()),
+	RSprocess::Nill => Ok(RSchoices::new()),
 	RSprocess::RecursiveIdentifier { identifier } => {
 	    let newprocess = environment.get(*identifier);
 	    if let Some(newprocess) = newprocess {
@@ -21,7 +21,7 @@ pub fn unfold(
 	RSprocess::EntitySet {
 	    entities,
 	    next_process,
-	} => Ok(RSChoices::from(vec![(
+	} => Ok(RSchoices::from(vec![(
 	    Rc::new(entities.clone()),
 	    Rc::clone(next_process),
 	)])),
@@ -54,7 +54,7 @@ pub fn unfold(
 	}
 	RSprocess::Summation { children } => {
 	    // short-circuits with try_fold.
-	    children.iter().try_fold(RSChoices::new(), |mut acc, x| {
+	    children.iter().try_fold(RSchoices::new(), |mut acc, x| {
 		match unfold(environment, x) {
 		    Ok(mut choices) => {
 			acc.append(&mut choices);
@@ -67,12 +67,12 @@ pub fn unfold(
 	RSprocess::NondeterministicChoice { children } => {
 	    // short-circuits with try_fold.
 	    if children.is_empty() {
-		Ok(RSChoices::from(vec![(
+		Ok(RSchoices::from(vec![(
 		    Rc::new(RSset::new()),
 		    Rc::new(RSprocess::Nill),
 		)]))
 	    } else {
-		children.iter().try_fold(RSChoices::new(), |mut acc, x| {
+		children.iter().try_fold(RSchoices::new(), |mut acc, x| {
 		    acc.shuffle(unfold(environment, x)?);
 		    Ok(acc)
 		})

@@ -33,9 +33,9 @@ pub Set: RSset = {
 
 Set_of_entities: RSset = {
     "{" "}" => RSset::from(vec![]),
-    "{" <t: Literal> "}" => RSset::from(vec![translator.convert(t)]),
+    "{" <t: Literal> "}" => RSset::from(vec![translator.encode(t)]),
     "{" <t: Separeted<Literal, ",">> "}" =>
-	RSset::from(t.into_iter().map(|t| translator.convert(t)).collect::<Vec<_>>())
+	RSset::from(t.into_iter().map(|t| translator.encode(t)).collect::<Vec<_>>())
 };
 
 // ----- ContextParser -----
@@ -61,14 +61,14 @@ CTX_process: RSprocess = {
 	RSprocess::EntitySet{ entities: c, next_process: Rc::new(k) },
     "(" <k: CTX_process>  ")" => k,
     "(" <k: Separeted<CTX_process, "+">> ")" =>
-	RSprocess::Summation{ children: k.into_iter().map(|k| Rc::new(k)).collect::<Vec<_>>() },
+	RSprocess::Summation{ children: k.into_iter().map(Rc::new).collect::<Vec<_>>() },
     "<" <n: Num> <k1: CTX_process> ">" "." <k: CTX_process> =>
 	RSprocess::WaitEntity{ repeat: n,
 			       repeated_process: Rc::new(k1),
 			       next_process: Rc::new(k)},
     "nil" => RSprocess::Nill,
     <identifier: Literal> =>
-	RSprocess::RecursiveIdentifier{ identifier: translator.convert(identifier) }
+	RSprocess::RecursiveIdentifier{ identifier: translator.encode(identifier) }
 };
 
 // ----- EnvironmentParser -----
@@ -79,7 +79,7 @@ pub Environment: Box<RSenvironment> = {
 
 Env_term: (IdType, RSprocess) = {
     <identifier: Literal> "=" <k: CTX_process> =>
-	(translator.convert(identifier), k)
+	(translator.encode(identifier), k)
 };
 
 // ----- AssertParser -----
