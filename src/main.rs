@@ -1,7 +1,8 @@
+#![allow(unused_imports)]
 mod rsprocess;
 use lalrpop_util::lalrpop_mod;
+use std::rc::Rc;
 use rsprocess::translator::WithTranslator;
-// use std::rc::Rc;
 // use std::io;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -144,12 +145,44 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // println!("{:?}", rsprocess::transitions::run_separated(&sys));
 
     // -------------------------------------------------------------------------
+    // list_to_assoc([x-pre([a, b], rec(x)), y-pre([d, e], rec(y))], Ass),
+    // lollipop(sys(Ass, [a, b, c, d], [], [react([a], [c], [a]), react([d], [f], [d])]), Prefix, Loop).
 
-    let tmp = rsprocess::structure::RSreaction::from(
-	rsprocess::structure::RSset::from(vec![translator.encode("a"), translator.encode("c")]),
-	rsprocess::structure::RSset::from(vec![translator.encode("c")]),
-	rsprocess::structure::RSset::from(vec![translator.encode("a")])
-    );
-    println!("{}", WithTranslator::from_RSreaction(&translator, &tmp));
+    let env = grammar::EnvironmentParser::new().parse(&mut translator, "[x = {a,b}.x]").unwrap();
+    let process = grammar::ContextParser::new().parse(&mut translator, "[]").unwrap();
+
+    let sys = rsprocess::structure::RSsystem::from(Rc::new(*env),
+						   rsprocess::structure::RSset::from(vec![translator.encode("a"),
+											  translator.encode("b"),
+											  translator.encode("c"),
+											  translator.encode("d")]),
+						   *process,
+						   Rc::new(vec![
+						       rsprocess::structure::RSreaction::from(
+							   rsprocess::structure::RSset::from(vec![translator.encode("a")]),
+							   rsprocess::structure::RSset::from(vec![translator.encode("c")]),
+							   rsprocess::structure::RSset::from(vec![translator.encode("a")])
+						       ),
+						       rsprocess::structure::RSreaction::from(
+							   rsprocess::structure::RSset::from(vec![translator.encode("d")]),
+							   rsprocess::structure::RSset::from(vec![translator.encode("f")]),
+							   rsprocess::structure::RSset::from(vec![translator.encode("d")])
+						       )
+						   ]));
+
+    let res = rsprocess::perpetual::lollipops(sys);
+
+    println!("res:");
+    for (prefix, hoop) in res {
+	print!("prefix: ");
+	for p in prefix {
+	    print!("{}, ", WithTranslator::from_RSset(&translator, &p));
+	}
+	print!("\nhoop: ");
+	for l in hoop {
+	    print!("{}, ", WithTranslator::from_RSset(&translator, &l));
+	}
+	println!();
+    }
     Ok(())
 }

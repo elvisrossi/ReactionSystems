@@ -1,9 +1,12 @@
 #![allow(dead_code)]
 
-use super::structure::{RSchoices, RSenvironment, RSlabel, RSprocess, RSset, RSsystem};
+use super::structure::{
+    RSchoices, RSenvironment, RSlabel, RSprocess, RSset, RSsystem
+};
 use super::support_structures::TransitionsIterator;
 use std::rc::Rc;
 
+// see unfold
 pub fn unfold(
     environment: &RSenvironment,
     context_process: &RSprocess,
@@ -128,7 +131,9 @@ pub fn run(system: RSsystem) -> Result<Vec<Rc<RSsystem>>, String> {
 }
 
 // see smartOneRunECT, smartRunECT
-pub fn run_separated(system: &RSsystem) -> Result<Vec<(RSset, RSset, RSset)>, String> {
+pub fn run_separated(
+    system: &RSsystem
+) -> Result<Vec<(RSset, RSset, RSset)>, String> {
     let mut res = vec![];
     let current = one_transition(system)?;
     if current.is_none() {

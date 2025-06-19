@@ -7,7 +7,7 @@ use super::translator::{IdType};
 // -----------------------------------------------------------------------------
 // RSset
 // -----------------------------------------------------------------------------
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RSset {
     identifiers: HashSet<IdType>
 }
@@ -103,6 +103,7 @@ impl RSreaction {
 		    products }
     }
 
+    // see enable
     pub fn enabled(&self, current_state: &RSset) -> bool {
 	self.reactants.is_subset(current_state)
 	    && self.inihibitors.is_disjoint(current_state)

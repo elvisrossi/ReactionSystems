@@ -74,6 +74,7 @@ CTX_process: RSprocess = {
 // ----- EnvironmentParser -----
 pub Environment: Box<RSenvironment> = {
     "[" "]" => Box::new(RSenvironment::new()),
+    "[" <t:Env_term> "]" => Box::new(RSenvironment::from(vec![t])),
     "[" <t: Separeted<Env_term, ",">> "]" => Box::new(RSenvironment::from(t))
 };
 
