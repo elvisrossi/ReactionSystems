@@ -170,7 +170,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 						       )
 						   ]));
 
-    let res = rsprocess::perpetual::lollipops(sys);
+    let res = rsprocess::perpetual::lollipops(sys.clone());
 
     println!("res:");
     for (prefix, hoop) in res {
@@ -179,6 +179,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 	    print!("{}, ", WithTranslator::from_RSset(&translator, &p));
 	}
 	print!("\nhoop: ");
+	for l in hoop {
+	    print!("{}, ", WithTranslator::from_RSset(&translator, &l));
+	}
+	println!();
+    }
+
+    let res = rsprocess::perpetual::lollipops_only_loop(sys);
+
+    println!("res:");
+    for hoop in res {
+	print!("hoop: ");
 	for l in hoop {
 	    print!("{}, ", WithTranslator::from_RSset(&translator, &l));
 	}
