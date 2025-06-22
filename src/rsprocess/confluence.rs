@@ -34,8 +34,7 @@ pub fn confluent(
         // FIXME we take just the first? do we compare all?
         let (prefix_len, new_hoop) = all_loops.first()?;
 
-        if new_hoop.len() != dimension
-	    || !hoop.contains(new_hoop.first().unwrap()) {
+        if new_hoop.len() != dimension || !hoop.contains(new_hoop.first()?) {
             return None;
         }
         max_distance = cmp::max(max_distance, *prefix_len);
@@ -67,11 +66,40 @@ pub fn confluent_named(
 						       available_entities,
 						       symb)?;
 
-        if new_hoop.len() != dimension
-	    || !hoop.contains(new_hoop.first().unwrap()) {
+        if new_hoop.len() != dimension || !hoop.contains(new_hoop.first()?) {
             return None;
         }
         max_distance = cmp::max(max_distance, prefix_len);
     }
     Some((max_distance, dimension, hoop))
+}
+
+// -----------------------------------------------------------------------------
+
+pub fn invariant_named(
+    delta: &RSenvironment,
+    reaction_rules: &[RSreaction],
+    entities: &[RSset],
+    symb: IdType
+) -> Option<(Vec<RSset>, Vec<RSset>)> {
+    let (prefix, hoop) = lollipops_decomposed_named(delta,
+					  reaction_rules,
+					  entities.first()?,
+					  symb)?;
+    let mut invariant = vec![];
+    invariant.append(&mut prefix.clone());
+    invariant.append(&mut hoop.clone());
+    let dimension = hoop.len();
+
+    for available_entities in entities {
+	let (new_prefix, new_hoop) = lollipops_decomposed_named(delta,
+							reaction_rules,
+							available_entities,
+							symb)?;
+	if new_hoop.len() != dimension || !hoop.contains(new_hoop.first()?) {
+	    return None
+	}
+	invariant.append(&mut new_prefix.clone());
+    }
+    Some((invariant, hoop))
 }
