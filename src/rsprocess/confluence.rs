@@ -1,14 +1,13 @@
 #![allow(dead_code)]
 
 use super::perpetual::{
-    lollipops_only_loop_decomposed,
-    lollipops_only_loop_decomposed_named,
-    lollipops_prefix_len_loop_decomposed,
-    lollipops_prefix_len_loop_decomposed_named};
+    lollipops_decomposed_named, lollipops_named, lollipops_only_loop_decomposed, lollipops_only_loop_decomposed_named, lollipops_prefix_len_loop_decomposed, lollipops_prefix_len_loop_decomposed_named};
 use super::structure::{RSenvironment, RSreaction, RSset};
 use super::translator::IdType;
 use std::cmp;
 
+
+// see confluent, confluents
 pub fn confluent(
     delta: &RSenvironment,
     reaction_rules: &[RSreaction],
@@ -19,7 +18,10 @@ pub fn confluent(
     let mut hoop = vec![];
 
     if let Some(el) = entities.first() {
-        if let Some(new_hoop) = lollipops_only_loop_decomposed(delta, reaction_rules, el).first() {
+        if let Some(new_hoop) = lollipops_only_loop_decomposed(delta,
+							       reaction_rules,
+							       el).first()
+	{
             dimension = new_hoop.len();
             hoop = new_hoop.clone();
         }
@@ -28,9 +30,14 @@ pub fn confluent(
     for available_entities in entities.iter().skip(1) {
         // FIXME we take just the first? do we compare all?
         if let Some((prefix_len, new_hoop)) =
-            lollipops_prefix_len_loop_decomposed(delta, reaction_rules, available_entities).first()
+            lollipops_prefix_len_loop_decomposed(delta,
+						 reaction_rules,
+						 available_entities).first()
         {
-            if hoop.len() != dimension || hoop != *new_hoop {
+            if new_hoop.len() != dimension || !hoop.contains(new_hoop
+							     .first()
+							     .unwrap())
+	    {
                 return None;
             }
             max_distance = cmp::max(max_distance, *prefix_len);
@@ -42,6 +49,7 @@ pub fn confluent(
 }
 
 
+// see confluent, confluents
 pub fn confluent_named(
     delta: &RSenvironment,
     reaction_rules: &[RSreaction],
@@ -53,18 +61,31 @@ pub fn confluent_named(
     let mut hoop = vec![];
 
     if let Some(el) = entities.first() {
-        if let Some(new_hoop) = lollipops_only_loop_decomposed_named(delta, reaction_rules, el, symb) {
+        if let Some(new_hoop) =
+	    lollipops_only_loop_decomposed_named(delta,
+						 reaction_rules,
+						 el,
+						 symb)
+	{
             dimension = new_hoop.len();
             hoop = new_hoop.clone();
-        }
+        } else {
+	    return None
+	}
     }
 
     for available_entities in entities.iter().skip(1) {
         // FIXME we take just the first? do we compare all?
         if let Some((prefix_len, new_hoop)) =
-            lollipops_prefix_len_loop_decomposed_named(delta, reaction_rules, available_entities, symb)
+            lollipops_prefix_len_loop_decomposed_named(delta,
+						       reaction_rules,
+						       available_entities,
+						       symb)
         {
-            if hoop.len() != dimension || hoop != *new_hoop {
+            if new_hoop.len() != dimension || !hoop.contains(new_hoop
+							     .first()
+							     .unwrap())
+	    {
                 return None;
             }
             max_distance = cmp::max(max_distance, prefix_len);
