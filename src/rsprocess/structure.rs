@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 use std::collections::{HashMap, HashSet};
+use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 use super::translator::{IdType};
 
@@ -79,6 +80,16 @@ impl RSset {
     }
 }
 
+impl Hash for RSset {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+	let mut a: Vec<&_> = self.identifiers.iter().collect();
+	a.sort();
+	for s in a.iter() {
+	    s.hash(state);
+	}
+    }
+
+}
 
 // -----------------------------------------------------------------------------
 // RSreaction

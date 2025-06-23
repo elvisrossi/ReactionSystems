@@ -11,6 +11,7 @@ use super::perpetual::{
 use super::structure::{RSenvironment, RSreaction, RSset};
 use super::translator::IdType;
 use std::cmp;
+use std::collections::HashSet;
 
 
 // see confluent, confluents
@@ -101,5 +102,46 @@ pub fn invariant_named(
 	}
 	invariant.append(&mut new_prefix.clone());
     }
+    // remove duplicates, maybe better with sorting?
+    invariant =
+	invariant
+	.iter()
+	.cloned()
+	.collect::<HashSet<_>>()
+	.iter()
+	.cloned()
+	.collect::<Vec<_>>();
     Some((invariant, hoop))
+}
+
+// -----------------------------------------------------------------------------
+
+pub fn loop_confluent_named(
+    deltas: &[RSenvironment],
+    reaction_rules: &[RSreaction],
+    entities: &[RSset],
+    symb: IdType
+) -> Option<Vec<(usize, usize, Vec<RSset>)>> {
+    deltas.iter()
+	.map(|q| confluent_named(q, reaction_rules, entities, symb))
+	.collect::<Option<Vec<_>>>()
+}
+
+#[allow(clippy::type_complexity)]
+pub fn strong_confluent_named(
+    deltas: &[RSenvironment],
+    reaction_rules: &[RSreaction],
+    entities: &[RSset],
+    symb: IdType
+) -> Option<Vec<(Vec<RSset>, usize, Vec<RSset>)>> {
+    deltas.iter()
+        .map(|q| {
+	    let (invariant, hoop) = invariant_named(q,
+						    reaction_rules,
+						    entities,
+						    symb)?;
+	    let length = invariant.len();
+	    Some((invariant, length, hoop)) }
+	)
+        .collect::<Option<Vec<_>>>()
 }
