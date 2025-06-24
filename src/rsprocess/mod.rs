@@ -5,3 +5,4 @@ pub mod classical;
 pub mod transitions;
 pub mod perpetual;
 pub mod confluence;
+pub mod frequency;

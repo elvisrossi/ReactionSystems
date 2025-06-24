@@ -41,10 +41,10 @@ impl Translator {
 }
 
 // -----------------------------------------------------------------------------
-use super::structure::{
+use super::{frequency::{self, Frequency}, structure::{
     RSassert, RSassertOp, RSchoices, RSenvironment, RSlabel, RSprocess,
     RSreaction, RSset, RSsystem, RSBHML,
-};
+}};
 use std::fmt;
 
 #[allow(clippy::large_enum_variant)]
@@ -91,6 +91,10 @@ pub enum WithTranslator<'a> {
         translator: &'a Translator,
         bhml: &'a RSBHML,
     },
+    Frequency {
+	translator: &'a Translator,
+	frequency: &'a Frequency,
+    }
 }
 
 macro_rules! from_RS {
@@ -126,6 +130,8 @@ impl<'a> WithTranslator<'a> {
     from_RS!(from_RSassert, RSassert, assert, RSassert);
 
     from_RS!(from_RSBHML, RSBHML, bhml, RSBHML);
+
+    from_RS!(from_Frequency, Frequency, frequency, Frequency);
 }
 
 // -----------------------------------------------------------------------------
@@ -367,6 +373,28 @@ fn print_bhml(
     todo!()
 }
 
+fn print_frequency(
+    f: &mut fmt::Formatter,
+    translator: &Translator,
+    frequency: &Frequency,
+) -> fmt::Result {
+    write!(f, "[")?;
+    let mut it = frequency.frequency_map.iter().peekable();
+
+    while let Some((e, freq)) = it.next() {
+	if it.peek().is_none() {
+	    write!(f, "{} -> {:.2}",
+		   translator.decode(*e),
+		   (*freq as f32 * frequency.weight as f32 * 100.)/(frequency.total_runs as f32))?;
+	} else {
+	    write!(f, "{} -> {:.2}, ",
+		   translator.decode(*e),
+		   (*freq as f32 * frequency.weight as f32 * 100.)/(frequency.total_runs as f32))?;
+	}
+    }
+    write!(f, "]")
+}
+
 impl<'a> fmt::Display for WithTranslator<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
@@ -390,6 +418,8 @@ impl<'a> fmt::Display for WithTranslator<'a> {
 		print_assert(f, translator, assert),
             WithTranslator::RSBHML        { translator, bhml, } =>
 		print_bhml(f, translator, bhml),
+	    WithTranslator::Frequency     { translator, frequency } =>
+		print_frequency(f, translator, frequency),
         }
     }
 }

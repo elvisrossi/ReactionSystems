@@ -80,17 +80,15 @@ fn find_prefix_len_loop(
 fn filter_delta<'a>(x: (&IdType, &'a RSprocess)) -> Option<&'a RSset> {
     use super::structure::RSprocess::*;
     let (id, rest) = x;
-    match rest {
-	EntitySet{ entities, next_process} => {
-	    match &**next_process {
-		RecursiveIdentifier{ identifier } if identifier == id => {
-		    Some(entities)
-		},
-		_ => None
+
+    if let EntitySet{ entities, next_process} = rest {
+	if let RecursiveIdentifier{ identifier } = &**next_process {
+	    if identifier == id {
+		return Some(entities);
 	    }
-	},
-	_ => None
+	}
     }
+    None
 }
 
 
@@ -180,17 +178,15 @@ fn filter_delta_named<'a>(
     if id != symb {
 	return None;
     }
-    match rest {
-	EntitySet{ entities, next_process} => {
-	    match &**next_process {
-		RecursiveIdentifier{ identifier } if identifier == id => {
-		    Some(entities)
-		},
-		_ => None
+
+    if let EntitySet{ entities, next_process} = rest {
+	if let RecursiveIdentifier{ identifier } = &**next_process {
+	    if identifier == id {
+		return Some(entities);
 	    }
-	},
-	_ => None
+	}
     }
+    None
 }
 
 // see lollipop
@@ -200,8 +196,6 @@ pub fn lollipops_decomposed_named(
     available_entities: &RSset,
     symb: IdType
 ) -> Option<(Vec<RSset>, Vec<RSset>)> {
-    // FIXME: i think we are only interested in "x", not all symbols that
-    // satisfy X = pre(Q, rec(X))
     let filtered = delta.iter().filter_map(|x| filter_delta_named(x, &symb)).next();
 
     let find_loop_fn = |q| find_loop(reaction_rules,
@@ -227,8 +221,6 @@ pub fn lollipops_only_loop_named(
     system: RSsystem,
     symb: IdType
 ) -> Option<Vec<RSset>> {
-    // FIXME: i think we are only interested in "x", not all symbols that
-    // satisfy X = pre(Q, rec(X))
     let filtered = system.get_delta().iter()
 	.filter_map(|x| filter_delta_named(x, &symb)).next();
 
@@ -246,8 +238,6 @@ pub fn lollipops_prefix_len_loop_decomposed_named(
     available_entities: &RSset,
     symb: IdType
 ) -> Option<(usize, Vec<RSset>)> {
-    // FIXME: i think we are only interested in "x", not all symbols that
-    // satisfy X = pre(Q, rec(X))
     let filtered = delta.iter()
 	.filter_map(|x| filter_delta_named(x, &symb)).next();
 
@@ -265,8 +255,6 @@ pub fn lollipops_only_loop_decomposed_named(
     available_entities: &RSset,
     symb: IdType
 ) -> Option<Vec<RSset>> {
-    // FIXME: i think we are only interested in "x", not all symbols that
-    // satisfy X = pre(Q, rec(X))
     let filtered = delta.iter()
 	.filter_map(|x| filter_delta_named(x, &symb)).next();
 
@@ -275,4 +263,17 @@ pub fn lollipops_only_loop_decomposed_named(
 					  q);
 
     filtered.map(find_loop_fn)
+}
+
+// see loop/5
+pub fn lollipops_only_loop_decomposed_q(
+    q: &RSset,
+    reaction_rules: &[RSreaction],
+    available_entities: &RSset,
+) -> Vec<RSset> {
+    let find_loop_fn = |q| find_only_loop(reaction_rules,
+					  available_entities.clone(),
+					  q);
+
+    find_loop_fn(q)
 }

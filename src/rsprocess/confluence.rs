@@ -77,6 +77,7 @@ pub fn confluent_named(
 
 // -----------------------------------------------------------------------------
 
+// see invariant
 pub fn invariant_named(
     delta: &RSenvironment,
     reaction_rules: &[RSreaction],
@@ -116,6 +117,7 @@ pub fn invariant_named(
 
 // -----------------------------------------------------------------------------
 
+// see loop_confluent
 pub fn loop_confluent_named(
     deltas: &[RSenvironment],
     reaction_rules: &[RSreaction],
@@ -127,6 +129,7 @@ pub fn loop_confluent_named(
 	.collect::<Option<Vec<_>>>()
 }
 
+// see strong_confluent
 #[allow(clippy::type_complexity)]
 pub fn strong_confluent_named(
     deltas: &[RSenvironment],

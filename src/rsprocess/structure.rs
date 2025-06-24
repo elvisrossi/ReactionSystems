@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 use super::translator::{IdType};
@@ -8,32 +8,32 @@ use super::translator::{IdType};
 // -----------------------------------------------------------------------------
 // RSset
 // -----------------------------------------------------------------------------
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct RSset {
-    identifiers: HashSet<IdType>
+    identifiers: BTreeSet<IdType>
 }
 
 impl<const N: usize> From<[IdType; N]> for RSset {
     fn from(arr: [IdType; N]) -> Self {
-	RSset{identifiers: HashSet::from(arr)}
+	RSset{identifiers: BTreeSet::from(arr)}
     }
 }
 
 impl From<&[IdType]> for RSset {
     fn from(arr: &[IdType]) -> Self {
-	RSset{identifiers: HashSet::from_iter(arr.to_vec())}
+	RSset{identifiers: BTreeSet::from_iter(arr.to_vec())}
     }
 }
 
 impl From<Vec<IdType>> for RSset {
     fn from(arr: Vec<IdType>) -> Self {
-	RSset{identifiers: HashSet::from_iter(arr)}
+	RSset{identifiers: BTreeSet::from_iter(arr)}
     }
 }
 
 impl RSset {
     pub fn new() -> Self {
-	RSset{identifiers: HashSet::new()}
+	RSset{identifiers: BTreeSet::new()}
     }
 
     pub fn is_subset(&self, b: &RSset) -> bool {
@@ -61,7 +61,7 @@ impl RSset {
 
     pub fn intersection(&self, b: &RSset) -> RSset {
 	// TODO maybe find more efficient way without copy/clone
-	let res: HashSet<_> = b.identifiers.intersection(&self.identifiers)
+	let res: BTreeSet<_> = b.identifiers.intersection(&self.identifiers)
 					   .copied()
 					   .collect();
 	RSset { identifiers: res }
@@ -69,27 +69,30 @@ impl RSset {
 
     pub fn subtraction(&self, b: &RSset) -> RSset {
 	// TODO maybe find more efficient way without copy/clone
-	let res: HashSet<_> = self.identifiers.difference(&b.identifiers)
+	let res: BTreeSet<_> = self.identifiers.difference(&b.identifiers)
 					      .copied()
 					      .collect();
 	RSset { identifiers: res }
     }
 
-    pub fn hashset(&self) -> &HashSet<IdType> {
+    pub fn hashset(&self) -> &BTreeSet<IdType> {
 	&self.identifiers
     }
-}
 
-impl Hash for RSset {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-	let mut a: Vec<&_> = self.identifiers.iter().collect();
-	a.sort();
-	for s in a.iter() {
-	    s.hash(state);
-	}
+    pub fn iter(&self) -> std::collections::btree_set::Iter<'_, IdType> {
+	self.identifiers.iter()
     }
-
 }
+
+impl IntoIterator for RSset {
+    type Item = IdType;
+    type IntoIter = std::collections::btree_set::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+	self.identifiers.into_iter()
+    }
+}
+
 
 // -----------------------------------------------------------------------------
 // RSreaction

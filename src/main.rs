@@ -1,7 +1,7 @@
 #![allow(unused_imports)]
 mod rsprocess;
 use lalrpop_util::lalrpop_mod;
-use std::rc::Rc;
+use std::{hash::Hash, rc::Rc};
 use rsprocess::translator::WithTranslator;
 // use std::io;
 
@@ -195,5 +195,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 	}
 	println!();
     }
+
+    // -------------------------------------------------------------------------
     Ok(())
 }
