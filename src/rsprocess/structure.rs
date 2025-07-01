@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet, VecDeque};
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 use super::translator::{IdType};
@@ -75,12 +75,30 @@ impl RSset {
 	RSset { identifiers: res }
     }
 
-    pub fn hashset(&self) -> &BTreeSet<IdType> {
+    pub fn set(&self) -> &BTreeSet<IdType> {
 	&self.identifiers
     }
 
     pub fn iter(&self) -> std::collections::btree_set::Iter<'_, IdType> {
 	self.identifiers.iter()
+    }
+
+    pub fn len(&self) -> usize {
+	self.identifiers.len()
+    }
+
+    pub fn insert(&mut self, el: IdType) -> bool {
+	self.identifiers.insert(el)
+    }
+
+    pub fn push(&mut self, b: &RSset) {
+	self.identifiers.extend(b.iter())
+    }
+}
+
+impl Default for RSset {
+    fn default() -> Self {
+	RSset::new()
     }
 }
 
@@ -140,6 +158,12 @@ impl RSreaction {
     }
 }
 
+impl Default for RSreaction {
+    fn default() -> Self {
+	RSreaction::new()
+    }
+}
+
 
 
 // -----------------------------------------------------------------------------
@@ -183,8 +207,42 @@ impl RSprocess {
 	    }
 	}
     }
+
+    pub fn all_elements(&self) -> RSset {
+	let mut queue = VecDeque::from([self]);
+	let mut elements = RSset::new();
+
+	while let Some(el) = queue.pop_front() {
+	    match el {
+		Self::Nill => {}
+		Self::RecursiveIdentifier { identifier: _ } => {}
+		Self::EntitySet { entities, next_process } => {
+		    elements.push(entities);
+		    queue.push_back(next_process);
+		}
+		Self::WaitEntity { repeat: _, repeated_process, next_process } => {
+		    queue.push_back(repeated_process);
+		    queue.push_back(next_process);
+		}
+		Self::Summation { children } => {
+		    for c in children {
+			queue.push_back(c);
+		    }
+		}
+		Self::NondeterministicChoice { children } => {
+		    for c in children {
+			queue.push_back(c);
+		    }
+		}
+	    }
+	}
+	elements
+    }
 }
 
+// -----------------------------------------------------------------------------
+// RSchoices
+// -----------------------------------------------------------------------------
 #[derive(Clone, Debug)]
 pub struct RSchoices {
     context_moves: Vec<(Rc<RSset>, Rc<RSprocess>)>
@@ -284,6 +342,20 @@ impl RSenvironment {
     pub fn iter(&self) -> std::collections::hash_map::Iter<'_, u32, RSprocess> {
 	self.definitions.iter()
     }
+
+    pub fn all_elements(&self) -> RSset {
+	let mut acc = RSset::new();
+	for (_, process) in self.definitions.iter() {
+	    acc.push(&process.all_elements());
+	}
+	acc
+    }
+}
+
+impl Default for RSenvironment {
+    fn default() -> Self {
+	RSenvironment::new()
+    }
 }
 
 impl<const N: usize> From<[(IdType, RSprocess); N]> for RSenvironment {
@@ -352,6 +424,12 @@ impl RSsystem {
     }
 }
 
+impl Default for RSsystem {
+    fn default() -> Self {
+	RSsystem::new()
+    }
+}
+
 // -----------------------------------------------------------------------------
 // RSsystem
 // -----------------------------------------------------------------------------
@@ -361,9 +439,9 @@ pub struct RSlabel {
     pub context: RSset,
     pub t: RSset, ///      union of available_entities and context
     pub reactants: RSset,
-    pub reactantsi: RSset,
+    pub reactantsi: RSset, // reactants absent
     pub inihibitors: RSset,
-    pub ireactants: RSset,
+    pub ireactants: RSset, // inhibitors present
     pub products: RSset,
 }
 
@@ -399,7 +477,7 @@ impl RSlabel {
     }
 
     pub fn get_context(&self) -> (RSset, RSset, RSset) {
-	// FIXME clone?
+	// TODO remove clone?
 	(self.available_entities.clone(), self.context.clone(), self.t.clone())
     }
 }

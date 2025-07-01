@@ -1,10 +1,21 @@
 use std::rc::Rc;
 use std::str::FromStr;
 use lalrpop_util::ParseError;
-use crate::rsprocess::structure::{RSset, RSprocess, RSenvironment, RSassert, RSassertOp, RSBHML};
+use crate::rsprocess::structure::{RSset,
+				  RSprocess,
+				  RSenvironment,
+				  RSassert,
+				  RSassertOp,
+				  RSBHML,
+				  RSsystem,
+				  RSreaction};
 use crate::rsprocess::translator::{Translator, IdType};
 
 grammar(translator: &mut Translator);
+
+// -----------------------------------------------------------------------------
+//                                  Helpers
+// -----------------------------------------------------------------------------
 
 // matches words (letter followed by numbers, letters or _)
 Literal = { r"[[:alpha:]][[:word:]]*" };
@@ -26,7 +37,9 @@ Separeted<T, C>: Vec<T> = {
     }
 };
 
-// ----- SetParser -----
+// -----------------------------------------------------------------------------
+//                                 SetParser
+// -----------------------------------------------------------------------------
 pub Set: RSset = {
     <s: Set_of_entities> => s
 };
@@ -38,18 +51,31 @@ Set_of_entities: RSset = {
 	RSset::from(t.into_iter().map(|t| translator.encode(t)).collect::<Vec<_>>())
 };
 
-// ----- ContextParser -----
-pub Context: Box<RSprocess> = {
-    // "[" "]" => Box::new(RSprocess::Nill),
-    // "[" <t: CTX_process>  "]" => Box::new(t),
-    // "[" <t: Separeted<Boxed_CTX_process, ",">> "]" =>
-    //	Box::new(RSprocess::NondeterministicChoice{ children: t })
 
-    "[" "]" => Box::new(RSprocess::NondeterministicChoice{ children: vec![] }),
+// -----------------------------------------------------------------------------
+//                               ReactionParser
+// -----------------------------------------------------------------------------
+
+pub Reactions: Vec<RSreaction> = {
+    "(" ")" => vec![],
+    "(" <r: Reaction> ")" => vec![r],
+    "(" <s: Separeted<Reaction, ";">> ")" => s
+}
+
+Reaction: RSreaction = {
+    "[" <r: Set> "," <i: Set> "," <p: Set> "]" => RSreaction::from(r, i, p),
+    "[" "r:" <r: Set> "," "i:" <i: Set> "," "p:" <p: Set> "]" => RSreaction::from(r, i, p),
+}
+
+// -----------------------------------------------------------------------------
+//                               ContextParser
+// -----------------------------------------------------------------------------
+pub Context: RSprocess = {
+    "[" "]" => RSprocess::NondeterministicChoice{ children: vec![] },
     "[" <t: CTX_process>  "]" =>
-	Box::new(RSprocess::NondeterministicChoice{children: vec![Rc::new(t)]}),
+	RSprocess::NondeterministicChoice{children: vec![Rc::new(t)]},
     "[" <t: Separeted<Boxed_CTX_process, ",">> "]" =>
-	Box::new(RSprocess::NondeterministicChoice{ children: t })
+	RSprocess::NondeterministicChoice{ children: t }
 };
 
 Boxed_CTX_process: Rc<RSprocess> = {
@@ -71,7 +97,9 @@ CTX_process: RSprocess = {
 	RSprocess::RecursiveIdentifier{ identifier: translator.encode(identifier) }
 };
 
-// ----- EnvironmentParser -----
+// -----------------------------------------------------------------------------
+//                             EnvironmentParser
+// -----------------------------------------------------------------------------
 pub Environment: Box<RSenvironment> = {
     "[" "]" => Box::new(RSenvironment::new()),
     "[" <t:Env_term> "]" => Box::new(RSenvironment::from(vec![t])),
@@ -83,7 +111,9 @@ Env_term: (IdType, RSprocess) = {
 	(translator.encode(identifier), k)
 };
 
-// ----- AssertParser -----
+// -----------------------------------------------------------------------------
+//                                AssertParser
+// -----------------------------------------------------------------------------
 pub Assert: Box<RSassert> = {
     <f: Formula_Assert> => Box::new(f)
 };
@@ -104,7 +134,9 @@ Formula_Assert: RSassert = {
     "?" "inP" => RSassert::NonEmpty(RSassertOp::InP),
 };
 
-// ----- BHMLParser -----
+// -----------------------------------------------------------------------------
+//                                 BHMLParser
+// -----------------------------------------------------------------------------
 pub BHML: Box<RSBHML> = {
     <g: Formula_BHML> => Box::new(g)
 };
@@ -119,3 +151,19 @@ Formula_BHML: RSBHML = {
     "[" <f: Formula_Assert> "]" <g: Formula_BHML> =>
 	RSBHML::Box(Box::new(f), Box::new(g)),
 };
+
+
+// -----------------------------------------------------------------------------
+//                                File Parsing
+// -----------------------------------------------------------------------------
+// system
+// a system is an environment, a set of entities as initial state, a context and
+// a set of reaction rules.
+
+pub System: RSsystem = {
+    "Environment:" <delta: Environment>
+    "Initial Entities:" <available_entities: Set>
+    "Context:" <context_process: Context>
+    "Reactions:" <reaction_rules: Reactions>
+	=> RSsystem::from(delta.into(), available_entities, context_process, Rc::new(reaction_rules))
+}

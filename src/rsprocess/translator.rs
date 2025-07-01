@@ -20,6 +20,12 @@ impl Translator {
     }
 }
 
+impl Default for Translator {
+    fn default() -> Self {
+	Translator::new()
+    }
+}
+
 impl Translator {
     pub fn encode(&mut self, s: impl Into<String>) -> IdType {
         let s = s.into();
@@ -144,7 +150,7 @@ fn print_set(
     set: &RSset
 ) -> fmt::Result {
     write!(f, "{{")?;
-    let mut it = set.hashset().iter().peekable();
+    let mut it = set.iter().peekable();
     while let Some(el) = it.next() {
         if it.peek().is_none() {
             write!(f, "{}", translator.decode(*el))?;
