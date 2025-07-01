@@ -1,6 +1,5 @@
 #![allow(dead_code)]
 
-use std::rc::Rc;
 use super::classical::compute_all_owned;
 use super::translator::IdType;
 use super::structure::{RSenvironment, RSprocess, RSreaction, RSset, RSsystem};

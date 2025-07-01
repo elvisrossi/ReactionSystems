@@ -1,19 +1,18 @@
-use crate::rsprocess::statistics;
+use crate::rsprocess::{frequency,
+		       statistics,
+		       transitions,
+		       perpetual};
 use crate::rsprocess::structure::RSsystem;
-use crate::rsprocess::transitions;
-use crate::rsprocess::translator::Translator;
-use crate::rsprocess::translator::WithTranslator;
-use crate::rsprocess::perpetual;
+use crate::rsprocess::translator::{Translator, WithTranslator};
 
-use std::fs;
-use std::io;
-use std::io::prelude::*;
 use std::env;
+use std::fs;
+use std::io::prelude::*;
+use std::io;
 
 // grammar is defined in main.rs, calling lalrpop_mod! twice, generates twice
 // the code
 use super::grammar;
-
 
 fn read_system(
     translator: &mut Translator,
@@ -118,6 +117,24 @@ pub fn hoop() -> std::io::Result<()> {
     for e in res {
 	println!("{}", WithTranslator::from_RSset(&translator, &e));
     }
+
+    Ok(())
+}
+
+pub fn freq() -> std::io::Result<()> {
+    let mut translator = Translator::new();
+
+    let mut path = env::current_dir()?;
+    // file to read is inside testing/
+    path = path.join("testing/first.system");
+    let system = read_system(&mut translator, path)?;
+
+    let res = match frequency::naive_frequency(&system) {
+	Ok(f) => f,
+	Err(e) => {println!("Error computing target: {e}"); return Ok(());}
+    };
+
+    println!("Frequency of encountered symbols:\n{}", WithTranslator::from_Frequency(&translator, &res));
 
     Ok(())
 }

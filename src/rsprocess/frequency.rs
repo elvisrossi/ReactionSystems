@@ -3,90 +3,83 @@
 use std::collections::HashMap;
 use crate::rsprocess::perpetual::lollipops_only_loop_decomposed_q;
 
-use super::perpetual::{lollipops_decomposed_named, lollipops_only_loop_decomposed_named, lollipops_only_loop_named};
-use super::structure::{RSenvironment, RSreaction, RSset, RSsystem};
+use super::perpetual::lollipops_only_loop_named;
+use super::structure::{RSreaction, RSset, RSsystem};
 use super::transitions::run_separated;
 use super::translator::IdType;
 
 #[derive(Debug, Clone)]
 pub struct Frequency {
-    pub frequency_map: HashMap<IdType, u32>,
-    pub total_runs: usize,
-    pub weight: u32
+    pub frequency_map: HashMap<IdType, Vec<u32>>,
+    pub totals: Vec<usize>,
+    pub weights: Vec<u32>
 }
 
 impl Frequency {
-    pub fn new(weight: u32) -> Self {
-	Frequency { frequency_map: HashMap::new(), total_runs: 0, weight }
+    pub fn new() -> Self {
+	Frequency { frequency_map: HashMap::new(), totals: vec![], weights: vec![] }
     }
 
-    pub fn add(&mut self, e: &RSset) {
+    pub fn add(&mut self, e: &RSset, run: usize) {
 	for &el in e.iter() {
-	    *self.frequency_map.entry(el).or_default() += 1
+	    self.frequency_map.entry(el).or_insert(vec![0; run+1])[run] += 1
 	}
-	self.total_runs += 1
+	self.totals[run] += 1
     }
 
-    pub fn merge(&mut self, other: Frequency) {
-	let mut count = 0;
-	other.frequency_map.iter().for_each(
-	    |(&k, &v)| {
-		*self.frequency_map.entry(k)
-		    .or_insert_with(|| {count+=1; 0}) += v;
-	    }
-	);
-	self.total_runs += count;
-	// FIXME: ???
-	self.weight += other.weight;
+    pub fn append_weight(&mut self, new_weight: u32) {
+	self.weights.push(new_weight)
+    }
+
+    pub fn total_weights(&self) -> u32 {
+	self.weights.iter().sum()
+    }
+}
+
+impl Default for Frequency {
+    fn default() -> Self {
+	Frequency::new()
     }
 }
 
 
 // -----------------------------------------------------------------------------
 
-// see naiveFreq
+// see naiveFreq, assume the system is finite, calculate the frequency of
+// each symbol in all traversed states
 pub fn naive_frequency(system: &RSsystem) -> Result<Frequency, String> {
     let ect = run_separated(system)?;
     let es = ect.iter().map(|(e, _, _)| e).collect::<Vec<_>>();
 
-    let mut freq = Frequency::new(1);
+    let mut freq = Frequency::new();
+    freq.append_weight(1);
 
-    es.iter().for_each(|e| freq.add(e));
-
-    Ok(freq)
-}
-
-// see naiveFreq
-pub fn naive_frequency_weighted(system: &RSsystem, weight: u32) -> Result<Frequency, String> {
-    let ect = run_separated(system)?;
-    let es = ect.iter().map(|(e, _, _)| e).collect::<Vec<_>>();
-
-    let mut freq = Frequency::new(weight);
-
-    es.iter().for_each(|e| freq.add(e));
+    es.iter().for_each(|e| freq.add(e, 0));
 
     Ok(freq)
 }
 
-// see loopFreq
-pub fn loop_frequency(system: &RSsystem, symb: IdType, weight: u32) -> Frequency {
-    // FIXME: we return the empty frequency or do we not return anything?
-    let mut freq = Frequency::new(weight);
+// see loopFreq, assume the system stabilizes in a loop, calculate the frequency
+// of each symbol in all states of the loop
+pub fn loop_frequency(system: &RSsystem, symb: IdType) -> Frequency {
+    let mut freq = Frequency::new();
+    freq.append_weight(1);
 
     if let Some(hoop) = lollipops_only_loop_named(system.clone(), symb) {
-	hoop.iter().for_each(|e| freq.add(e));
+	hoop.iter().for_each(|e| freq.add(e, 0));
     }
     freq
 }
 
-// see limitFreq
+// see limitFreq, q[i] is given enough times such that the stabilizes in a loop,
+// calculate the frequency of the symbols in any state in the last loop
 pub fn limit_frequency(
     q: &[RSset],
     reaction_rules: &[RSreaction],
-    available_entities: &RSset,
-    weight: u32
+    available_entities: &RSset
 ) -> Option<Frequency> {
     let mut available_entities = available_entities.clone();
+
     for q in q.iter().rev().skip(1).rev() {
 	let res = lollipops_only_loop_decomposed_q(q,
 						   reaction_rules,
@@ -94,19 +87,21 @@ pub fn limit_frequency(
 	available_entities = res.into_iter().next()?;
     }
 
-    let mut freq = Frequency::new(weight);
+    let mut freq = Frequency::new();
+    freq.append_weight(1);
 
     lollipops_only_loop_decomposed_q(q.last().unwrap(),
 				     reaction_rules,
 				     &available_entities)
-	.iter().for_each(|e| freq.add(e));
+	.iter().for_each(|e| freq.add(e, 0));
     Some(freq)
 }
 
 
-// see fastFreq
+// see fastFreq, q[i] is given enough times such that the stabilizes in a loop,
+// calculate the frequency of the symbols in any state in any loop, weighted.
 pub fn fast_frequency(
-    q: &[&[RSset]],
+    q: &[RSset],
     reaction_rules: &[RSreaction],
     available_entities: &RSset,
     weights: &[u32]
@@ -114,24 +109,15 @@ pub fn fast_frequency(
     // FIXME: we return the empty frequency or do we not return anything?
     let mut available_entities = available_entities.clone();
 
-    let mut freq = Frequency::new(1);
+    let mut freq = Frequency::new();
 
-    for (&q, &w) in q.iter().zip(weights) {
-	let mut new_freq = Frequency::new(w);
-	for q in q.iter().rev().skip(1).rev() {
-	    let hoop = lollipops_only_loop_decomposed_q(q,
-							reaction_rules,
-							&available_entities);
-	    hoop.iter().for_each(|e| freq.add(e));
-	    available_entities = hoop.into_iter().next()?;
-	}
-
-	lollipops_only_loop_decomposed_q(q.last().unwrap(),
-					 reaction_rules,
-					 &available_entities)
-	    .iter().for_each(|e| new_freq.add(e));
-
-	freq.merge(new_freq);
+    for (pos, (q, &w)) in q.iter().zip(weights).enumerate() {
+	freq.append_weight(w);
+	let hoop = lollipops_only_loop_decomposed_q(q,
+						    reaction_rules,
+						    &available_entities);
+	hoop.iter().for_each(|e| freq.add(e, pos));
+	available_entities = hoop.into_iter().next()?;
     }
     Some(freq)
 }

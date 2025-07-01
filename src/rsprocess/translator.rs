@@ -47,7 +47,7 @@ impl Translator {
 }
 
 // -----------------------------------------------------------------------------
-use super::{frequency::{self, Frequency}, structure::{
+use super::{frequency::Frequency, structure::{
     RSassert, RSassertOp, RSchoices, RSenvironment, RSlabel, RSprocess,
     RSreaction, RSset, RSsystem, RSBHML,
 }};
@@ -385,17 +385,35 @@ fn print_frequency(
     frequency: &Frequency,
 ) -> fmt::Result {
     write!(f, "[")?;
-    let mut it = frequency.frequency_map.iter().peekable();
+    let mut freq_it = frequency.frequency_map.iter().peekable();
 
-    while let Some((e, freq)) = it.next() {
-	if it.peek().is_none() {
-	    write!(f, "{} -> {:.2}",
-		   translator.decode(*e),
-		   (*freq as f32 * frequency.weight as f32 * 100.)/(frequency.total_runs as f32))?;
-	} else {
-	    write!(f, "{} -> {:.2}, ",
-		   translator.decode(*e),
-		   (*freq as f32 * frequency.weight as f32 * 100.)/(frequency.total_runs as f32))?;
+    while let Some((e, freq)) = freq_it.next() {
+	write!(f, "{} -> ", translator.decode(*e))?;
+
+	let mut iter = freq.iter()
+	    .zip(frequency.totals.iter()
+		 .zip(frequency.weights.iter()))
+	    .peekable();
+
+	let mut total_freq = 0.;
+
+	while let Some((freq_e, (total, weight))) = iter.next() {
+	    let weighted_freq = (*freq_e as f32 * *weight as f32 * 100.)/(*total as f32);
+	    
+	    if iter.peek().is_none() {
+		write!(f, "{weighted_freq:.2}")?;
+	    } else {
+		write!(f, "{weighted_freq:.2}, ")?;
+	    }
+	    total_freq += weighted_freq;
+	}
+
+	total_freq /= frequency.total_weights() as f32;
+
+	write!(f, "(total: {total_freq:.2})")?;
+
+	if freq_it.peek().is_some() {
+	    writeln!(f, ",")?;
 	}
     }
     write!(f, "]")

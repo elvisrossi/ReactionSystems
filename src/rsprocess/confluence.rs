@@ -2,9 +2,6 @@
 
 use super::perpetual::{
     lollipops_decomposed_named,
-    lollipops_named,
-    lollipops_only_loop_decomposed,
-    lollipops_only_loop_decomposed_named,
     lollipops_prefix_len_loop_decomposed,
     lollipops_prefix_len_loop_decomposed_named
 };
@@ -85,19 +82,20 @@ pub fn invariant_named(
     symb: IdType
 ) -> Option<(Vec<RSset>, Vec<RSset>)> {
     let (prefix, hoop) = lollipops_decomposed_named(delta,
-					  reaction_rules,
-					  entities.first()?,
-					  symb)?;
+						    reaction_rules,
+						    entities.first()?,
+						    symb)?;
     let mut invariant = vec![];
     invariant.append(&mut prefix.clone());
     invariant.append(&mut hoop.clone());
     let dimension = hoop.len();
 
     for available_entities in entities {
-	let (new_prefix, new_hoop) = lollipops_decomposed_named(delta,
-							reaction_rules,
-							available_entities,
-							symb)?;
+	let (new_prefix, new_hoop) =
+	    lollipops_decomposed_named(delta,
+				       reaction_rules,
+				       available_entities,
+				       symb)?;
 	if new_hoop.len() != dimension || !hoop.contains(new_hoop.first()?) {
 	    return None
 	}

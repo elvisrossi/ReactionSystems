@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
-use std::collections::{BTreeSet, HashMap, HashSet, VecDeque};
-use std::hash::{Hash, Hasher};
+use std::collections::{BTreeSet, HashMap, VecDeque};
+use std::hash::Hash;
 use std::rc::Rc;
 use super::translator::{IdType};
 
