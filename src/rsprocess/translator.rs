@@ -22,7 +22,7 @@ impl Translator {
 
 impl Default for Translator {
     fn default() -> Self {
-	Translator::new()
+        Translator::new()
     }
 }
 
@@ -47,10 +47,13 @@ impl Translator {
 }
 
 // -----------------------------------------------------------------------------
-use super::{frequency::Frequency, structure::{
-    RSassert, RSassertOp, RSchoices, RSenvironment, RSlabel, RSprocess,
-    RSreaction, RSset, RSsystem, RSBHML,
-}};
+use super::{
+    frequency::Frequency,
+    structure::{
+        RSBHML, RSassert, RSassertOp, RSchoices, RSenvironment, RSlabel,
+	RSprocess, RSreaction, RSset, RSsystem,
+    },
+};
 use std::fmt;
 
 #[allow(clippy::large_enum_variant)]
@@ -98,9 +101,9 @@ pub enum WithTranslator<'a> {
         bhml: &'a RSBHML,
     },
     Frequency {
-	translator: &'a Translator,
-	frequency: &'a Frequency,
-    }
+        translator: &'a Translator,
+        frequency: &'a Frequency,
+    },
 }
 
 macro_rules! from_RS {
@@ -125,7 +128,12 @@ impl<'a> WithTranslator<'a> {
 
     from_RS!(from_RSchoices, RSchoices, choices, RSchoices);
 
-    from_RS!(from_RSenvironment, RSenvironment, environment, RSenvironment);
+    from_RS!(
+        from_RSenvironment,
+        RSenvironment,
+        environment,
+        RSenvironment
+    );
 
     from_RS!(from_RSsystem, RSsystem, system, RSsystem);
 
@@ -216,8 +224,11 @@ fn print_process(
             let mut it = children.iter().peekable();
             while let Some(child) = it.next() {
                 if it.peek().is_none() {
-                    write!(f, "{}",
-			   WithTranslator::from_RSprocess(translator, child))?;
+                    write!(
+			f,
+			"{}",
+			WithTranslator::from_RSprocess(translator, child)
+		    )?;
                 } else {
                     write!(
                         f,
@@ -233,11 +244,17 @@ fn print_process(
             let mut it = children.iter().peekable();
             while let Some(child) = it.next() {
                 if it.peek().is_none() {
-                    write!(f, "{}",
-			   WithTranslator::from_RSprocess(translator, child))?;
+                    write!(
+			f,
+			"{}",
+			WithTranslator::from_RSprocess(translator, child)
+		    )?;
                 } else {
-                    write!(f, "{}, ",
-			   WithTranslator::from_RSprocess(translator, child))?;
+                    write!(
+			f,
+			"{}, ",
+			WithTranslator::from_RSprocess(translator, child)
+		    )?;
                 }
             }
             write!(f, "]")
@@ -327,15 +344,17 @@ fn print_label(
     translator: &Translator,
     label: &RSlabel
 ) -> fmt::Result {
-    write!(f, "{{available_entities: {}, context: {}, t: {}, reactants: {}, reactantsi: {}, inihibitors: {}, ireactants: {}, products: {}}}",
-	   WithTranslator::from_RSset(translator, &label.available_entities),
-	   WithTranslator::from_RSset(translator, &label.context),
-	   WithTranslator::from_RSset(translator, &label.t),
-	   WithTranslator::from_RSset(translator, &label.reactants),
-	   WithTranslator::from_RSset(translator, &label.reactantsi),
-	   WithTranslator::from_RSset(translator, &label.inihibitors),
-	   WithTranslator::from_RSset(translator, &label.ireactants),
-	   WithTranslator::from_RSset(translator, &label.products),
+    write!(
+        f,
+        "{{available_entities: {}, context: {}, t: {}, reactants: {}, reactantsi: {}, inihibitors: {}, ireactants: {}, products: {}}}",
+        WithTranslator::from_RSset(translator, &label.available_entities),
+        WithTranslator::from_RSset(translator, &label.context),
+        WithTranslator::from_RSset(translator, &label.t),
+        WithTranslator::from_RSset(translator, &label.reactants),
+        WithTranslator::from_RSset(translator, &label.reactantsi),
+        WithTranslator::from_RSset(translator, &label.inihibitors),
+        WithTranslator::from_RSset(translator, &label.ireactants),
+        WithTranslator::from_RSset(translator, &label.products),
     )
 }
 
@@ -388,33 +407,33 @@ fn print_frequency(
     let mut freq_it = frequency.frequency_map.iter().peekable();
 
     while let Some((e, freq)) = freq_it.next() {
-	write!(f, "{} -> ", translator.decode(*e))?;
+        write!(f, "{} -> ", translator.decode(*e))?;
 
-	let mut iter = freq.iter()
-	    .zip(frequency.totals.iter()
-		 .zip(frequency.weights.iter()))
-	    .peekable();
+        let mut iter = freq
+            .iter()
+            .zip(frequency.totals.iter().zip(frequency.weights.iter()))
+            .peekable();
 
-	let mut total_freq = 0.;
+        let mut total_freq = 0.;
 
-	while let Some((freq_e, (total, weight))) = iter.next() {
-	    let weighted_freq = (*freq_e as f32 * *weight as f32 * 100.)/(*total as f32);
-	    
-	    if iter.peek().is_none() {
-		write!(f, "{weighted_freq:.2}")?;
-	    } else {
-		write!(f, "{weighted_freq:.2}, ")?;
-	    }
-	    total_freq += weighted_freq;
-	}
+        while let Some((freq_e, (total, weight))) = iter.next() {
+            let weighted_freq = (*freq_e as f32 * *weight as f32 * 100.) / (*total as f32);
 
-	total_freq /= frequency.total_weights() as f32;
+            if iter.peek().is_none() {
+                write!(f, "{weighted_freq:.2}")?;
+            } else {
+                write!(f, "{weighted_freq:.2}, ")?;
+            }
+            total_freq += weighted_freq;
+        }
 
-	write!(f, "(total: {total_freq:.2})")?;
+        total_freq /= frequency.total_weights() as f32;
 
-	if freq_it.peek().is_some() {
-	    writeln!(f, ",")?;
-	}
+        write!(f, "(total: {total_freq:.2})")?;
+
+        if freq_it.peek().is_some() {
+            writeln!(f, ",")?;
+        }
     }
     write!(f, "]")
 }
@@ -422,28 +441,50 @@ fn print_frequency(
 impl<'a> fmt::Display for WithTranslator<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            WithTranslator::RSset         { translator, set, } =>
-		print_set(f, translator, set),
-            WithTranslator::RSreaction    { translator, reaction, } =>
-		print_reaction(f, translator, reaction),
-            WithTranslator::RSprocess     { translator, process, } =>
-		print_process(f, translator, process),
-            WithTranslator::RSchoices     { translator, choices, } =>
-		print_choices(f, translator, choices),
-            WithTranslator::RSenvironment { translator, environment, } =>
-		print_environment(f, translator, environment),
-            WithTranslator::RSsystem      { translator, system, } =>
-		print_system(f, translator, system),
-            WithTranslator::RSlabel       { translator, label, } =>
-		print_label(f, translator, label),
-            WithTranslator::RSassertOp    { translator, assert_op, } =>
-		print_assert_op(f, translator, assert_op),
-            WithTranslator::RSassert      { translator, assert, } =>
-		print_assert(f, translator, assert),
-            WithTranslator::RSBHML        { translator, bhml, } =>
-		print_bhml(f, translator, bhml),
-	    WithTranslator::Frequency     { translator, frequency } =>
-		print_frequency(f, translator, frequency),
+            WithTranslator::RSset {
+		translator,
+		set
+	    } => print_set(f, translator, set),
+            WithTranslator::RSreaction {
+                translator,
+                reaction,
+            } => print_reaction(f, translator, reaction),
+            WithTranslator::RSprocess {
+                translator,
+                process,
+            } => print_process(f, translator, process),
+            WithTranslator::RSchoices {
+                translator,
+                choices,
+            } => print_choices(f, translator, choices),
+            WithTranslator::RSenvironment {
+                translator,
+                environment,
+            } => print_environment(f, translator, environment),
+            WithTranslator::RSsystem {
+		translator,
+		system
+	    } => print_system(f, translator, system),
+            WithTranslator::RSlabel {
+		translator,
+		label
+	    } => print_label(f, translator, label),
+            WithTranslator::RSassertOp {
+                translator,
+                assert_op,
+            } => print_assert_op(f, translator, assert_op),
+            WithTranslator::RSassert {
+		translator,
+		assert
+	    } => print_assert(f, translator, assert),
+            WithTranslator::RSBHML {
+		translator,
+		bhml
+	    } => print_bhml(f, translator, bhml),
+            WithTranslator::Frequency {
+                translator,
+                frequency,
+            } => print_frequency(f, translator, frequency),
         }
     }
 }

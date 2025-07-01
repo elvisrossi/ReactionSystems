@@ -1,23 +1,19 @@
-use crate::rsprocess::{frequency,
-		       statistics,
-		       transitions,
-		       perpetual};
+#![allow(dead_code)]
+
 use crate::rsprocess::structure::RSsystem;
 use crate::rsprocess::translator::{Translator, WithTranslator};
+use crate::rsprocess::{frequency, perpetual, statistics, transitions};
 
 use std::env;
 use std::fs;
-use std::io::prelude::*;
 use std::io;
+use std::io::prelude::*;
 
 // grammar is defined in main.rs, calling lalrpop_mod! twice, generates twice
 // the code
 use super::grammar;
 
-fn read_system(
-    translator: &mut Translator,
-    path: std::path::PathBuf
-) -> std::io::Result<RSsystem> {
+fn read_system(translator: &mut Translator, path: std::path::PathBuf) -> std::io::Result<RSsystem> {
     // we read the file with a buffer
     let f = fs::File::open(path.clone())?;
     let mut buf_reader = io::BufReader::new(f);
@@ -25,7 +21,9 @@ fn read_system(
     buf_reader.read_to_string(&mut contents)?;
 
     // parse
-    let result = grammar::SystemParser::new().parse(translator, &contents).unwrap();
+    let result = grammar::SystemParser::new()
+        .parse(translator, &contents)
+        .unwrap();
 
     Ok(result)
 }
@@ -38,7 +36,6 @@ pub fn stats() -> std::io::Result<()> {
     // file to read is inside testing/
     path = path.join("testing/first.system");
     let system = read_system(&mut translator, path)?;
-
 
     // print statistics to screan
     println!("{}", statistics::of_RSsystem(&translator, &system));
@@ -62,13 +59,18 @@ pub fn target() -> std::io::Result<()> {
 
     // the system needs to terminate to return
     let res = match transitions::target(&system) {
-	Ok(o) => o,
-	Err(e) => {println!("Error computing target: {e}"); return Ok(());}
+        Ok(o) => o,
+        Err(e) => {
+            println!("Error computing target: {e}");
+            return Ok(());
+        }
     };
 
-    println!("After {} steps we arrive at state:\n{}",
-	     res.0,
-	     WithTranslator::from_RSset(&translator, &res.1));
+    println!(
+        "After {} steps we arrive at state:\n{}",
+        res.0,
+        WithTranslator::from_RSset(&translator, &res.1)
+    );
 
     Ok(())
 }
@@ -84,14 +86,17 @@ pub fn run() -> std::io::Result<()> {
 
     // the system needs to terminate to return
     let res = match transitions::run_separated(&system) {
-	Ok(o) => o,
-	Err(e) => {println!("Error computing target: {e}"); return Ok(());}
+        Ok(o) => o,
+        Err(e) => {
+            println!("Error computing target: {e}");
+            return Ok(());
+        }
     };
 
     println!("The trace is composed of the entities:");
 
     for (e, _c, _t) in res {
-	println!("{}", WithTranslator::from_RSset(&translator, &e));
+        println!("{}", WithTranslator::from_RSset(&translator, &e));
     }
 
     Ok(())
@@ -108,14 +113,17 @@ pub fn hoop() -> std::io::Result<()> {
 
     // we retrieve the id for "x" and use it to find the corresponding loop
     let res = match perpetual::lollipops_only_loop_named(system, translator.encode("x")) {
-	Some(o) => o,
-	None => {println!("No loop found."); return Ok(());}
+        Some(o) => o,
+        None => {
+            println!("No loop found.");
+            return Ok(());
+        }
     };
 
     println!("The loop is composed by the sets:");
 
     for e in res {
-	println!("{}", WithTranslator::from_RSset(&translator, &e));
+        println!("{}", WithTranslator::from_RSset(&translator, &e));
     }
 
     Ok(())
@@ -130,11 +138,17 @@ pub fn freq() -> std::io::Result<()> {
     let system = read_system(&mut translator, path)?;
 
     let res = match frequency::naive_frequency(&system) {
-	Ok(f) => f,
-	Err(e) => {println!("Error computing target: {e}"); return Ok(());}
+        Ok(f) => f,
+        Err(e) => {
+            println!("Error computing target: {e}");
+            return Ok(());
+        }
     };
 
-    println!("Frequency of encountered symbols:\n{}", WithTranslator::from_Frequency(&translator, &res));
+    println!(
+        "Frequency of encountered symbols:\n{}",
+        WithTranslator::from_Frequency(&translator, &res)
+    );
 
     Ok(())
 }

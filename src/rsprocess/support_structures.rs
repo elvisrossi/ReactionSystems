@@ -10,7 +10,9 @@ pub struct TransitionsIterator<'a> {
 }
 
 impl<'a> TransitionsIterator<'a> {
-    pub fn from(system: &'a RSsystem) -> Result<TransitionsIterator<'a>, String> {
+    pub fn from(
+	system: &'a RSsystem
+    ) -> Result<TransitionsIterator<'a>, String> {
         match unfold(system.get_delta(), system.get_context_process()) {
             Ok(o) => Ok(TransitionsIterator {
                 choices_iterator: o.into_iter(),
@@ -38,13 +40,13 @@ impl<'a> Iterator for TransitionsIterator<'a> {
                 ),
                 |acc, reaction| {
                     if reaction.enabled(&t) {
-                        (
+			(
                             acc.0.union(reaction.reactants()),
                             acc.1,
                             acc.2.union(reaction.inihibitors()),
                             acc.3,
                             acc.4.union(reaction.products()),
-                        )
+			)
                     } else {
                         (
                             acc.0,

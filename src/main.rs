@@ -1,5 +1,5 @@
-mod rsprocess;
 mod examples;
+mod rsprocess;
 
 lalrpop_util::lalrpop_mod!(
     #[allow(clippy::uninlined_format_args)] pub grammar, // name of module
@@ -11,15 +11,15 @@ fn main() -> std::io::Result<()> {
     // std::thread::sleep(std::time::Duration::new(2, 0));
     // println!("{}", now.elapsed().as_micros());
 
-    examples::stats()?;
+    // examples::stats()?;
 
     examples::freq()?;
 
-    examples::hoop()?;
+    // examples::hoop()?;
 
-    examples::target()?;
+    // examples::target()?;
 
-    examples::run()?;
+    // examples::run()?;
 
     Ok(())
 }

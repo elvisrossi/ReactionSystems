@@ -10,122 +10,119 @@ pub fn of_RSsystem<'a>(translator: &'a Translator, system: &'a RSsystem) -> Stri
     result.push_str(
 	"=============================================================\n"
     );
-    result.push_str(
-	&format!("the initial state has {} entities:\n",
-		 system.get_available_entities().len())
-    );
-    result.push_str(
-	&format!("{}\n",
-		 WithTranslator::from_RSset(translator,
-					    system.get_available_entities()))
-    );
+    result.push_str(&format!(
+        "the initial state has {} entities:\n",
+        system.get_available_entities().len()
+    ));
+    result.push_str(&format!(
+        "{}\n",
+        WithTranslator::from_RSset(translator, system.get_available_entities())
+    ));
 
-    let reactants =
-	system
-	.get_reaction_rules()
-	.iter()
-	.fold(RSset::new(), |acc, new| acc.union(new.reactants()));
-    result.push_str(
-	&format!("The reactants are {}:\n{}\n",
-		 reactants.len(),
-		 WithTranslator::from_RSset(translator, &reactants))
-    );
+    let reactants = system
+        .get_reaction_rules()
+        .iter()
+        .fold(RSset::new(), |acc, new| acc.union(new.reactants()));
+    result.push_str(&format!(
+        "The reactants are {}:\n{}\n",
+        reactants.len(),
+        WithTranslator::from_RSset(translator, &reactants)
+    ));
 
-    let inhibitors =
-	system
-	.get_reaction_rules()
-	.iter()
-	.fold(RSset::new(), |acc, new| acc.union(new.inihibitors()));
-    result.push_str(
-	&format!("The inhibitors are {}:\n{}\n",
-		 inhibitors.len(),
-		 WithTranslator::from_RSset(translator, &inhibitors))
-    );
+    let inhibitors = system
+        .get_reaction_rules()
+        .iter()
+        .fold(RSset::new(), |acc, new| acc.union(new.inihibitors()));
+    result.push_str(&format!(
+        "The inhibitors are {}:\n{}\n",
+        inhibitors.len(),
+        WithTranslator::from_RSset(translator, &inhibitors)
+    ));
 
-    let products =
-	system
-	.get_reaction_rules()
-	.iter()
-	.fold(RSset::new(), |acc, new| acc.union(new.products()));
-    result.push_str(
-	&format!("The products are {}:\n{}\n",
-		 products.len(),
-		 WithTranslator::from_RSset(translator, &products))
-    );
-
+    let products = system
+        .get_reaction_rules()
+        .iter()
+        .fold(RSset::new(), |acc, new| acc.union(new.products()));
+    result.push_str(&format!(
+        "The products are {}:\n{}\n",
+        products.len(),
+        WithTranslator::from_RSset(translator, &products)
+    ));
 
     let total = reactants.union(&inhibitors.union(&products));
-    result.push_str(
-	&format!("The reactions involve {} entities:\n{}\n",
-		 total.len(),
-		 WithTranslator::from_RSset(translator, &total))
-    );
+    result.push_str(&format!(
+        "The reactions involve {} entities:\n{}\n",
+        total.len(),
+        WithTranslator::from_RSset(translator, &total)
+    ));
 
     let entities_env = system.get_delta().all_elements();
-    result.push_str(
-	&format!("The environment involves {} entities:\n{}\n",
-		 entities_env.len(),
-		 WithTranslator::from_RSset(translator, &entities_env))
-    );
+    result.push_str(&format!(
+        "The environment involves {} entities:\n{}\n",
+        entities_env.len(),
+        WithTranslator::from_RSset(translator, &entities_env)
+    ));
 
     let entities_context = system.get_context_process().all_elements();
-    result.push_str(
-	&format!("The context involves {} entities:\n{}\n",
-		 entities_context.len(),
-		 WithTranslator::from_RSset(translator, &entities_context))
-    );
+    result.push_str(&format!(
+        "The context involves {} entities:\n{}\n",
+        entities_context.len(),
+        WithTranslator::from_RSset(translator, &entities_context)
+    ));
 
-    let entities_all = total.union(&entities_env)
-	.union(&entities_context)
-	.union(system.get_available_entities());
+    let entities_all = total
+        .union(&entities_env)
+        .union(&entities_context)
+        .union(system.get_available_entities());
 
-    result.push_str(
-	&format!("The whole RS involves {} entities:\n{}\n",
-		 entities_all.len(),
-		 WithTranslator::from_RSset(translator, &entities_all))
-    );
+    result.push_str(&format!(
+        "The whole RS involves {} entities:\n{}\n",
+        entities_all.len(),
+        WithTranslator::from_RSset(translator, &entities_all)
+    ));
 
-    let possible_e = products.union(system.get_available_entities())
-	.union(&entities_context);
+    let possible_e = products
+        .union(system.get_available_entities())
+        .union(&entities_context);
     let missing_e = reactants.subtraction(&possible_e);
-    result.push_str(
-	&format!("There are {} reactants that will never be available:\n{}\n",
-		 missing_e.len(),
-		 WithTranslator::from_RSset(translator, &missing_e))
-    );
+    result.push_str(&format!(
+        "There are {} reactants that will never be available:\n{}\n",
+        missing_e.len(),
+        WithTranslator::from_RSset(translator, &missing_e)
+    ));
 
     let entities_not_needed = entities_context.subtraction(&total);
-    result.push_str(
-	&format!("The context can provide {} entities that will never be used:\n{}\n",
-		 entities_not_needed.len(),
-		 WithTranslator::from_RSset(translator, &entities_not_needed))
-    );
+    result.push_str(&format!(
+        "The context can provide {} entities that will never be used:\n{}\n",
+        entities_not_needed.len(),
+        WithTranslator::from_RSset(translator, &entities_not_needed)
+    ));
 
-    result.push_str(
-	&format!("There are {} reactions in total.\n",
-		 system.get_reaction_rules().len())
-    );
+    result.push_str(&format!(
+        "There are {} reactions in total.\n",
+        system.get_reaction_rules().len()
+    ));
 
     let mut admissible_reactions = vec![];
     let mut nonadmissible_reactions = vec![];
 
     for reaction in system.get_reaction_rules().iter() {
-	if reaction.reactants().is_disjoint(&missing_e) {
-	    admissible_reactions.push(reaction);
-	} else {
-	    nonadmissible_reactions.push(reaction);
-	}
+        if reaction.reactants().is_disjoint(&missing_e) {
+            admissible_reactions.push(reaction);
+        } else {
+            nonadmissible_reactions.push(reaction);
+        }
     }
 
-    result.push_str(
-	&format!("- the applicable reactions are {}.\n",
-		 admissible_reactions.len())
-    );
+    result.push_str(&format!(
+        "- the applicable reactions are {}.\n",
+        admissible_reactions.len()
+    ));
 
-    result.push_str(
-	&format!("- there are {} reactions that will never be enabled.\n",
-		 nonadmissible_reactions.len())
-    );
+    result.push_str(&format!(
+        "- there are {} reactions that will never be enabled.\n",
+        nonadmissible_reactions.len()
+    ));
     result.push_str(
 	"============================================================="
     );

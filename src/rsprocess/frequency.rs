@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
-use std::collections::HashMap;
 use crate::rsprocess::perpetual::lollipops_only_loop_decomposed_q;
+use std::collections::HashMap;
 
 use super::perpetual::lollipops_only_loop_named;
 use super::structure::{RSreaction, RSset, RSsystem};
@@ -12,36 +12,39 @@ use super::translator::IdType;
 pub struct Frequency {
     pub frequency_map: HashMap<IdType, Vec<u32>>,
     pub totals: Vec<usize>,
-    pub weights: Vec<u32>
+    pub weights: Vec<u32>,
 }
 
 impl Frequency {
     pub fn new() -> Self {
-	Frequency { frequency_map: HashMap::new(), totals: vec![], weights: vec![] }
+        Frequency {
+            frequency_map: HashMap::new(),
+            totals: vec![],
+            weights: vec![],
+        }
     }
 
     pub fn add(&mut self, e: &RSset, run: usize) {
-	for &el in e.iter() {
-	    self.frequency_map.entry(el).or_insert(vec![0; run+1])[run] += 1
-	}
-	self.totals[run] += 1
+        for &el in e.iter() {
+            self.frequency_map.entry(el).or_insert(vec![0; run + 1])[run] += 1
+        }
+        self.totals[run] += 1
     }
 
     pub fn append_weight(&mut self, new_weight: u32) {
-	self.weights.push(new_weight)
+        self.weights.push(new_weight)
     }
 
     pub fn total_weights(&self) -> u32 {
-	self.weights.iter().sum()
+        self.weights.iter().sum()
     }
 }
 
 impl Default for Frequency {
     fn default() -> Self {
-	Frequency::new()
+        Frequency::new()
     }
 }
-
 
 // -----------------------------------------------------------------------------
 
@@ -66,7 +69,7 @@ pub fn loop_frequency(system: &RSsystem, symb: IdType) -> Frequency {
     freq.append_weight(1);
 
     if let Some(hoop) = lollipops_only_loop_named(system.clone(), symb) {
-	hoop.iter().for_each(|e| freq.add(e, 0));
+        hoop.iter().for_each(|e| freq.add(e, 0));
     }
     freq
 }
@@ -76,15 +79,15 @@ pub fn loop_frequency(system: &RSsystem, symb: IdType) -> Frequency {
 pub fn limit_frequency(
     q: &[RSset],
     reaction_rules: &[RSreaction],
-    available_entities: &RSset
+    available_entities: &RSset,
 ) -> Option<Frequency> {
     let mut available_entities = available_entities.clone();
 
     for q in q.iter().rev().skip(1).rev() {
-	let res = lollipops_only_loop_decomposed_q(q,
+        let res = lollipops_only_loop_decomposed_q(q,
 						   reaction_rules,
 						   &available_entities);
-	available_entities = res.into_iter().next()?;
+        available_entities = res.into_iter().next()?;
     }
 
     let mut freq = Frequency::new();
@@ -93,10 +96,10 @@ pub fn limit_frequency(
     lollipops_only_loop_decomposed_q(q.last().unwrap(),
 				     reaction_rules,
 				     &available_entities)
-	.iter().for_each(|e| freq.add(e, 0));
+        .iter()
+        .for_each(|e| freq.add(e, 0));
     Some(freq)
 }
-
 
 // see fastFreq, q[i] is given enough times such that the stabilizes in a loop,
 // calculate the frequency of the symbols in any state in any loop, weighted.
@@ -104,7 +107,7 @@ pub fn fast_frequency(
     q: &[RSset],
     reaction_rules: &[RSreaction],
     available_entities: &RSset,
-    weights: &[u32]
+    weights: &[u32],
 ) -> Option<Frequency> {
     // FIXME: we return the empty frequency or do we not return anything?
     let mut available_entities = available_entities.clone();
@@ -112,12 +115,12 @@ pub fn fast_frequency(
     let mut freq = Frequency::new();
 
     for (pos, (q, &w)) in q.iter().zip(weights).enumerate() {
-	freq.append_weight(w);
-	let hoop = lollipops_only_loop_decomposed_q(q,
+        freq.append_weight(w);
+        let hoop = lollipops_only_loop_decomposed_q(q,
 						    reaction_rules,
 						    &available_entities);
-	hoop.iter().for_each(|e| freq.add(e, pos));
-	available_entities = hoop.into_iter().next()?;
+        hoop.iter().for_each(|e| freq.add(e, pos));
+        available_entities = hoop.into_iter().next()?;
     }
     Some(freq)
 }

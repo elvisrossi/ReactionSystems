@@ -6,7 +6,7 @@
 //! inhibitors and products are held.
 #![allow(dead_code)]
 
-use super::structure::{RSset, RSreaction};
+use super::structure::{RSreaction, RSset};
 
 /// Computes the result of a single reaction (if enabled returns the products)
 /// otherwise returns None.
@@ -16,9 +16,9 @@ pub fn compute_step<'a>(
     reaction: &'a RSreaction
 ) -> Option<&'a RSset> {
     if reaction.enabled(current_state) {
-	Some(reaction.products())
+        Some(reaction.products())
     } else {
-	None
+        None
     }
 }
 
@@ -29,18 +29,16 @@ pub fn compute_all<'a>(
     current_state: &'a RSset,
     reactions: Vec<&'a RSreaction>
 ) -> RSset {
-    reactions.iter().fold(
-	RSset::new(),
-	|acc, r| acc.union_option(compute_step(current_state, r))
-    )
+    reactions.iter().fold(RSset::new(), |acc, r| {
+        acc.union_option(compute_step(current_state, r))
+    })
 }
 
 pub fn compute_all_owned<'a>(
     current_state: &'a RSset,
     reactions: &'a [RSreaction]
 ) -> RSset {
-    reactions.iter().fold(
-	RSset::new(),
-	|acc, r| acc.union_option(compute_step(current_state, r))
-    )
+    reactions.iter().fold(RSset::new(), |acc, r| {
+        acc.union_option(compute_step(current_state, r))
+    })
 }
