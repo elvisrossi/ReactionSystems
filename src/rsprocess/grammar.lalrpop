@@ -27,7 +27,7 @@ Num: i64 = {
 };
 
 // macro for matching sequence of patterns with C as separator
-Separeted<T, C>: Vec<T> = {
+Separated<T, C>: Vec<T> = {
     <mut v:(<T> C)+> <e:T?> => match e {
 	None => v,
 	Some(e) => {
@@ -47,7 +47,7 @@ pub Set: RSset = {
 Set_of_entities: RSset = {
     "{" "}" => RSset::from(vec![]),
     "{" <t: Literal> "}" => RSset::from(vec![translator.encode(t)]),
-    "{" <t: Separeted<Literal, ",">> "}" =>
+    "{" <t: Separated<Literal, ",">> "}" =>
 	RSset::from(t.into_iter().map(|t| translator.encode(t)).collect::<Vec<_>>())
 };
 
@@ -59,7 +59,7 @@ Set_of_entities: RSset = {
 pub Reactions: Vec<RSreaction> = {
     "(" ")" => vec![],
     "(" <r: Reaction> ")" => vec![r],
-    "(" <s: Separeted<Reaction, ";">> ")" => s
+    "(" <s: Separated<Reaction, ";">> ")" => s
 }
 
 Reaction: RSreaction = {
@@ -75,7 +75,7 @@ pub Context: RSprocess = {
     "[" "]" => RSprocess::NondeterministicChoice{ children: vec![] },
     "[" <t: CTX_process>  "]" =>
 	RSprocess::NondeterministicChoice{children: vec![Rc::new(t)]},
-    "[" <t: Separeted<Boxed_CTX_process, ",">> "]" =>
+    "[" <t: Separated<Boxed_CTX_process, ",">> "]" =>
 	RSprocess::NondeterministicChoice{ children: t }
 };
 
@@ -87,7 +87,7 @@ CTX_process: RSprocess = {
     <c: Set_of_entities> "." <k: CTX_process> =>
 	RSprocess::EntitySet{ entities: c, next_process: Rc::new(k) },
     "(" <k: CTX_process>  ")" => k,
-    "(" <k: Separeted<CTX_process, "+">> ")" =>
+    "(" <k: Separated<CTX_process, "+">> ")" =>
 	RSprocess::Summation{
 		children: k.into_iter().map(Rc::new).collect::<Vec<_>>()
 	},
@@ -108,7 +108,7 @@ CTX_process: RSprocess = {
 pub Environment: Box<RSenvironment> = {
     "[" "]" => Box::new(RSenvironment::new()),
     "[" <t:Env_term> "]" => Box::new(RSenvironment::from(vec![t])),
-    "[" <t: Separeted<Env_term, ",">> "]" => Box::new(RSenvironment::from(t))
+    "[" <t: Separated<Env_term, ",">> "]" => Box::new(RSenvironment::from(t))
 };
 
 Env_term: (IdType, RSprocess) = {
@@ -127,8 +127,8 @@ Formula_Assert: RSassert = {
     "-" <f: Formula_Assert> => RSassert::Not(Box::new(f)),
     "(" <f1: Formula_Assert> "^" <f2: Formula_Assert> ")" =>
 	RSassert::Xor(Box::new(f1), Box::new(f2)),
-    "(" <f: Separeted<Formula_Assert, "\\/">> ")" => RSassert::Or(f),
-    "(" <f: Separeted<Formula_Assert, "/\\">> ")" => RSassert::And(f),
+    "(" <f: Separated<Formula_Assert, "\\/">> ")" => RSassert::Or(f),
+    "(" <f: Separated<Formula_Assert, "/\\">> ")" => RSassert::And(f),
     <c: Set_of_entities> "inW" => RSassert::Sub(c, RSassertOp::InW),
     <c: Set_of_entities> "inR" => RSassert::Sub(c, RSassertOp::InR),
     <c: Set_of_entities> "inI" => RSassert::Sub(c, RSassertOp::InI),
@@ -149,8 +149,8 @@ pub BHML: Box<RSBHML> = {
 Formula_BHML: RSBHML = {
     "true" => RSBHML::True,
     "false" => RSBHML::False,
-    "(" <g: Separeted<Formula_BHML, "\\/">> ")" => RSBHML::Or(g),
-    "(" <g: Separeted<Formula_BHML, "/\\">> ")" => RSBHML::And(g),
+    "(" <g: Separated<Formula_BHML, "\\/">> ")" => RSBHML::Or(g),
+    "(" <g: Separated<Formula_BHML, "/\\">> ")" => RSBHML::And(g),
     "<" <f: Formula_Assert> ">" <g: Formula_BHML> =>
 	RSBHML::Diamond(Box::new(f), Box::new(g)),
     "[" <f: Formula_Assert> "]" <g: Formula_BHML> =>
@@ -174,4 +174,14 @@ pub System: RSsystem = {
 			  available_entities,
 			  context_process,
 			  Rc::new(reaction_rules))
+}
+
+// experiment
+// an experiment is composed by a sequence of weights and a sequence of sets of
+// entities of equal length.
+
+pub Experiment: (Vec<u32>, Vec<RSset>) = {
+    "Weights:" <w: Separated<Num, ",">>
+    "Sets:" <s: Separated<Set_of_entities, ",">>
+	=> (w.into_iter().map(|x| x as u32).collect::<Vec<_>>(), s)
 }

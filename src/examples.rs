@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use crate::rsprocess::structure::RSsystem;
+use crate::rsprocess::structure::{RSset, RSsystem};
 use crate::rsprocess::translator;
 use crate::rsprocess::translator::Translator;
 use crate::rsprocess::{frequency, perpetual, statistics, transitions};
@@ -14,7 +14,11 @@ use std::io::prelude::*;
 // the code
 use super::grammar;
 
-fn read_system(translator: &mut Translator, path: std::path::PathBuf) -> std::io::Result<RSsystem> {
+fn read_file<T, F>(
+    translator: &mut Translator,
+    path: std::path::PathBuf,
+    parser: F
+)  -> std::io::Result<T> where F: Fn(&mut Translator, String) -> T {
     // we read the file with a buffer
     let f = fs::File::open(path.clone())?;
     let mut buf_reader = io::BufReader::new(f);
@@ -22,12 +26,24 @@ fn read_system(translator: &mut Translator, path: std::path::PathBuf) -> std::io
     buf_reader.read_to_string(&mut contents)?;
 
     // parse
-    let result = grammar::SystemParser::new()
-        .parse(translator, &contents)
-        .unwrap();
+    let result = parser(translator, contents);
 
     Ok(result)
 }
+
+fn parser_system(translator: &mut Translator, contents: String) -> RSsystem {
+    grammar::SystemParser::new()
+        .parse(translator, &contents)
+        .unwrap()
+}
+
+fn parser_experiment(translator: &mut Translator, contents: String) -> (Vec<u32>, Vec<RSset>) {
+    grammar::ExperimentParser::new()
+        .parse(translator, &contents)
+        .unwrap()
+}
+
+
 
 // equivalent main_do(stat) or main_do(stat, MissingE)
 pub fn stats() -> std::io::Result<()> {
@@ -36,7 +52,7 @@ pub fn stats() -> std::io::Result<()> {
     let mut path = env::current_dir()?;
     // file to read is inside testing/
     path = path.join("testing/first.system");
-    let system = read_system(&mut translator, path)?;
+    let system = read_file(&mut translator, path, parser_system)?;
 
     // print statistics to screan
     println!("{}", statistics::of_RSsystem(&translator, &system));
@@ -56,7 +72,7 @@ pub fn target() -> std::io::Result<()> {
     let mut path = env::current_dir()?;
     // file to read is inside testing/
     path = path.join("testing/first.system");
-    let system = read_system(&mut translator, path)?;
+    let system = read_file(&mut translator, path, parser_system)?;
 
     // the system needs to terminate to return
     let res = match transitions::target(&system) {
@@ -83,7 +99,7 @@ pub fn run() -> std::io::Result<()> {
     let mut path = env::current_dir()?;
     // file to read is inside testing/
     path = path.join("testing/first.system");
-    let system = read_system(&mut translator, path)?;
+    let system = read_file(&mut translator, path, parser_system)?;
 
     // the system needs to terminate to return
     let res = match transitions::run_separated(&system) {
@@ -110,10 +126,12 @@ pub fn hoop() -> std::io::Result<()> {
     let mut path = env::current_dir()?;
     // file to read is inside testing/
     path = path.join("testing/first.system");
-    let system = read_system(&mut translator, path)?;
+    let system = read_file(&mut translator, path, parser_system)?;
 
     // we retrieve the id for "x" and use it to find the corresponding loop
-    let res = match perpetual::lollipops_only_loop_named(system, translator.encode("x")) {
+    let res =
+	match perpetual::lollipops_only_loop_named(system,
+						   translator.encode("x")) {
         Some(o) => o,
         None => {
             println!("No loop found.");
@@ -130,13 +148,14 @@ pub fn hoop() -> std::io::Result<()> {
     Ok(())
 }
 
+// equivalent to main_do(freq, PairList)
 pub fn freq() -> std::io::Result<()> {
     let mut translator = Translator::new();
 
     let mut path = env::current_dir()?;
     // file to read is inside testing/
     path = path.join("testing/first.system");
-    let system = read_system(&mut translator, path)?;
+    let system = read_file(&mut translator, path, parser_system)?;
 
     let res = match frequency::naive_frequency(&system) {
         Ok(f) => f,
@@ -144,6 +163,63 @@ pub fn freq() -> std::io::Result<()> {
             println!("Error computing target: {e}");
             return Ok(());
         }
+    };
+
+    println!(
+        "Frequency of encountered symbols:\n{}",
+        translator::FrequencyDisplay::from(&translator, &res)
+    );
+
+    Ok(())
+}
+
+// equivalent to main_do(limitfreq, PairList)
+pub fn limit_freq() -> std::io::Result<()> {
+    let mut translator = Translator::new();
+
+    let mut path = env::current_dir()?;
+    // file to read is inside testing/
+    path = path.join("testing/first.system");
+    let system = read_file(&mut translator, path, parser_system)?;
+
+    path = env::current_dir()?;
+    path = path.join("testing/first.experiment");
+    let (_, sets) = read_file(&mut translator, path, parser_experiment)?;
+
+    let res = match frequency::limit_frequency(&sets,
+					       system.get_reaction_rules(),
+					       system.get_available_entities()) {
+	Some(e) => e,
+	None => {return Ok(());}
+    };
+
+    println!(
+        "Frequency of encountered symbols:\n{}",
+        translator::FrequencyDisplay::from(&translator, &res)
+    );
+
+    Ok(())
+}
+
+// equivalent to main_do(fastfreq, PairList)
+pub fn fast_freq() -> std::io::Result<()> {
+    let mut translator = Translator::new();
+
+    let mut path = env::current_dir()?;
+    // file to read is inside testing/
+    path = path.join("testing/first.system");
+    let system = read_file(&mut translator, path, parser_system)?;
+
+    path = env::current_dir()?;
+    path = path.join("testing/first.experiment");
+    let (weights, sets) = read_file(&mut translator, path, parser_experiment)?;
+
+    let res = match frequency::fast_frequency(&sets,
+					      system.get_reaction_rules(),
+					      system.get_available_entities(),
+					      &weights) {
+	Some(e) => e,
+	None => {return Ok(());}
     };
 
     println!(

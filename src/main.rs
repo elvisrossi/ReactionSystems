@@ -13,13 +13,17 @@ fn main() -> std::io::Result<()> {
 
     // examples::stats()?;
 
-    examples::freq()?;
+    // examples::freq()?;
 
-    examples::hoop()?;
+    // examples::hoop()?;
 
-    examples::target()?;
+    // examples::target()?;
 
-    examples::run()?;
+    // examples::run()?;
+
+    examples::limit_freq()?;
+
+    examples::fast_freq()?;
 
     Ok(())
 }
