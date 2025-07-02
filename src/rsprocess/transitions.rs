@@ -147,7 +147,6 @@ pub fn run_separated(
     let current = current.unwrap();
     res.push(current.0.get_context());
     let mut current = current.1;
-
     while let Some((label, next)) = one_transition(&current)? {
         current = next;
         res.push(label.get_context());

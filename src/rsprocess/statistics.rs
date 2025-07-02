@@ -2,7 +2,8 @@
 
 use super::structure::RSset;
 use super::structure::RSsystem;
-use super::translator::{Translator, WithTranslator};
+use super::translator;
+use super::translator::Translator;
 
 #[allow(non_snake_case)]
 pub fn of_RSsystem<'a>(translator: &'a Translator, system: &'a RSsystem) -> String {
@@ -16,7 +17,7 @@ pub fn of_RSsystem<'a>(translator: &'a Translator, system: &'a RSsystem) -> Stri
     ));
     result.push_str(&format!(
         "{}\n",
-        WithTranslator::from_RSset(translator, system.get_available_entities())
+        translator::RSsetDisplay::from(translator, system.get_available_entities())
     ));
 
     let reactants = system
@@ -26,7 +27,7 @@ pub fn of_RSsystem<'a>(translator: &'a Translator, system: &'a RSsystem) -> Stri
     result.push_str(&format!(
         "The reactants are {}:\n{}\n",
         reactants.len(),
-        WithTranslator::from_RSset(translator, &reactants)
+        translator::RSsetDisplay::from(translator, &reactants)
     ));
 
     let inhibitors = system
@@ -36,7 +37,7 @@ pub fn of_RSsystem<'a>(translator: &'a Translator, system: &'a RSsystem) -> Stri
     result.push_str(&format!(
         "The inhibitors are {}:\n{}\n",
         inhibitors.len(),
-        WithTranslator::from_RSset(translator, &inhibitors)
+        translator::RSsetDisplay::from(translator, &inhibitors)
     ));
 
     let products = system
@@ -46,28 +47,28 @@ pub fn of_RSsystem<'a>(translator: &'a Translator, system: &'a RSsystem) -> Stri
     result.push_str(&format!(
         "The products are {}:\n{}\n",
         products.len(),
-        WithTranslator::from_RSset(translator, &products)
+        translator::RSsetDisplay::from(translator, &products)
     ));
 
     let total = reactants.union(&inhibitors.union(&products));
     result.push_str(&format!(
         "The reactions involve {} entities:\n{}\n",
         total.len(),
-        WithTranslator::from_RSset(translator, &total)
+        translator::RSsetDisplay::from(translator, &total)
     ));
 
     let entities_env = system.get_delta().all_elements();
     result.push_str(&format!(
         "The environment involves {} entities:\n{}\n",
         entities_env.len(),
-        WithTranslator::from_RSset(translator, &entities_env)
+        translator::RSsetDisplay::from(translator, &entities_env)
     ));
 
     let entities_context = system.get_context_process().all_elements();
     result.push_str(&format!(
         "The context involves {} entities:\n{}\n",
         entities_context.len(),
-        WithTranslator::from_RSset(translator, &entities_context)
+        translator::RSsetDisplay::from(translator, &entities_context)
     ));
 
     let entities_all = total
@@ -78,7 +79,7 @@ pub fn of_RSsystem<'a>(translator: &'a Translator, system: &'a RSsystem) -> Stri
     result.push_str(&format!(
         "The whole RS involves {} entities:\n{}\n",
         entities_all.len(),
-        WithTranslator::from_RSset(translator, &entities_all)
+        translator::RSsetDisplay::from(translator, &entities_all)
     ));
 
     let possible_e = products
@@ -88,14 +89,14 @@ pub fn of_RSsystem<'a>(translator: &'a Translator, system: &'a RSsystem) -> Stri
     result.push_str(&format!(
         "There are {} reactants that will never be available:\n{}\n",
         missing_e.len(),
-        WithTranslator::from_RSset(translator, &missing_e)
+        translator::RSsetDisplay::from(translator, &missing_e)
     ));
 
     let entities_not_needed = entities_context.subtraction(&total);
     result.push_str(&format!(
         "The context can provide {} entities that will never be used:\n{}\n",
         entities_not_needed.len(),
-        WithTranslator::from_RSset(translator, &entities_not_needed)
+        translator::RSsetDisplay::from(translator, &entities_not_needed)
     ));
 
     result.push_str(&format!(

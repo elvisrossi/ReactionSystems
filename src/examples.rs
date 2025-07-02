@@ -1,7 +1,8 @@
 #![allow(dead_code)]
 
 use crate::rsprocess::structure::RSsystem;
-use crate::rsprocess::translator::{Translator, WithTranslator};
+use crate::rsprocess::translator;
+use crate::rsprocess::translator::Translator;
 use crate::rsprocess::{frequency, perpetual, statistics, transitions};
 
 use std::env;
@@ -69,7 +70,7 @@ pub fn target() -> std::io::Result<()> {
     println!(
         "After {} steps we arrive at state:\n{}",
         res.0,
-        WithTranslator::from_RSset(&translator, &res.1)
+        translator::RSsetDisplay::from(&translator, &res.1)
     );
 
     Ok(())
@@ -93,10 +94,10 @@ pub fn run() -> std::io::Result<()> {
         }
     };
 
-    println!("The trace is composed of the entities:");
+    println!("The trace is composed by the set of entities:");
 
     for (e, _c, _t) in res {
-        println!("{}", WithTranslator::from_RSset(&translator, &e));
+        println!("{}", translator::RSsetDisplay::from(&translator, &e));
     }
 
     Ok(())
@@ -123,7 +124,7 @@ pub fn hoop() -> std::io::Result<()> {
     println!("The loop is composed by the sets:");
 
     for e in res {
-        println!("{}", WithTranslator::from_RSset(&translator, &e));
+        println!("{}", translator::RSsetDisplay::from(&translator, &e));
     }
 
     Ok(())
@@ -147,7 +148,7 @@ pub fn freq() -> std::io::Result<()> {
 
     println!(
         "Frequency of encountered symbols:\n{}",
-        WithTranslator::from_Frequency(&translator, &res)
+        translator::FrequencyDisplay::from(&translator, &res)
     );
 
     Ok(())

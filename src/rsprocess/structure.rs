@@ -186,7 +186,7 @@ impl Default for RSreaction {
 pub enum RSprocess {
     Nill,
     RecursiveIdentifier {
-	identifier: IdType,
+        identifier: IdType,
     },
     EntitySet {
         entities: RSset,
@@ -482,7 +482,7 @@ impl Default for RSsystem {
 }
 
 // -----------------------------------------------------------------------------
-// RSsystem
+// RSlabel
 // -----------------------------------------------------------------------------
 #[derive(Clone, Debug)]
 pub struct RSlabel {

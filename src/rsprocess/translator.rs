@@ -45,6 +45,8 @@ impl Translator {
 }
 
 // -----------------------------------------------------------------------------
+//                              print structures
+// -----------------------------------------------------------------------------
 use super::{
     frequency::Frequency,
     structure::{
@@ -54,101 +56,33 @@ use super::{
 };
 use std::fmt;
 
-#[allow(clippy::large_enum_variant)]
-#[allow(clippy::upper_case_acronyms)]
-#[derive(Clone, Debug)]
-pub enum WithTranslator<'a> {
-    RSset {
-        translator: &'a Translator,
-        set: &'a RSset,
-    },
-    RSreaction {
-        translator: &'a Translator,
-        reaction: &'a RSreaction,
-    },
-    RSprocess {
-        translator: &'a Translator,
-        process: &'a RSprocess,
-    },
-    RSchoices {
-        translator: &'a Translator,
-        choices: &'a RSchoices,
-    },
-    RSenvironment {
-        translator: &'a Translator,
-        environment: &'a RSenvironment,
-    },
-    RSsystem {
-        translator: &'a Translator,
-        system: &'a RSsystem,
-    },
-    RSlabel {
-        translator: &'a Translator,
-        label: &'a RSlabel,
-    },
-    RSassertOp {
-        translator: &'a Translator,
-        assert_op: &'a RSassertOp,
-    },
-    RSassert {
-        translator: &'a Translator,
-        assert: &'a RSassert,
-    },
-    RSBHML {
-        translator: &'a Translator,
-        bhml: &'a RSBHML,
-    },
-    Frequency {
-        translator: &'a Translator,
-        frequency: &'a Frequency,
-    },
-}
-
-macro_rules! from_RS {
-    ($name:ident, $type:ty, $dataname:ident, $type2: ident) => {
-        pub fn $name(translator: &'a Translator, $dataname: &'a $type) -> Self {
-            WithTranslator::$type2 {
-                translator,
-                $dataname,
-            }
+macro_rules! translator_structure {
+    ($name:ident, $type:ty, $dataname:ident, $print_func:ident) => {
+	#[derive(Clone, Debug)]
+	#[allow(dead_code)]
+        pub struct $name<'a> {
+            translator: &'a Translator,
+	    $dataname: &'a $type,
         }
+
+	#[allow(dead_code)]
+	impl <'a>$name<'a> {
+	    pub fn from(translator: &'a Translator, $dataname: &'a $type) -> Self {
+		$name { translator, $dataname }
+	    }
+	}
+
+	impl<'a> fmt::Display for $name<'a> {
+	    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		$print_func(f, self.translator, self.$dataname)
+	    }
+	}
     };
 }
 
-#[allow(non_snake_case)]
-#[allow(dead_code)]
-impl<'a> WithTranslator<'a> {
-    from_RS!(from_RSset, RSset, set, RSset);
 
-    from_RS!(from_RSreaction, RSreaction, reaction, RSreaction);
 
-    from_RS!(from_RSprocess, RSprocess, process, RSprocess);
-
-    from_RS!(from_RSchoices, RSchoices, choices, RSchoices);
-
-    from_RS!(
-        from_RSenvironment,
-        RSenvironment,
-        environment,
-        RSenvironment
-    );
-
-    from_RS!(from_RSsystem, RSsystem, system, RSsystem);
-
-    from_RS!(from_RSlabel, RSlabel, label, RSlabel);
-
-    from_RS!(from_RSassertOp, RSassertOp, assert_op, RSassertOp);
-
-    from_RS!(from_RSassert, RSassert, assert, RSassert);
-
-    from_RS!(from_RSBHML, RSBHML, bhml, RSBHML);
-
-    from_RS!(from_Frequency, Frequency, frequency, Frequency);
-}
-
-// -----------------------------------------------------------------------------
-// Printing functions
-// -----------------------------------------------------------------------------
+// RSset
 
 fn print_set(
     f: &mut fmt::Formatter,
@@ -171,6 +105,12 @@ fn print_set(
     write!(f, "}}")
 }
 
+translator_structure!(RSsetDisplay, RSset, set, print_set);
+
+
+
+// RSreaction
+
 fn print_reaction(
     f: &mut fmt::Formatter,
     translator: &Translator,
@@ -179,11 +119,17 @@ fn print_reaction(
     write!(
         f,
         "(r: {}, i: {}, p: {})",
-        WithTranslator::from_RSset(translator, reaction.reactants()),
-        WithTranslator::from_RSset(translator, reaction.inihibitors()),
-        WithTranslator::from_RSset(translator, reaction.products())
+        RSsetDisplay::from(translator, reaction.reactants()),
+        RSsetDisplay::from(translator, reaction.inihibitors()),
+        RSsetDisplay::from(translator, reaction.products())
     )
 }
+
+translator_structure!(RSreactionDisplay, RSreaction, reaction, print_reaction);
+
+
+
+// RSprocess
 
 fn print_process(
     f: &mut fmt::Formatter,
@@ -207,8 +153,8 @@ fn print_process(
             write!(
                 f,
                 "[entities: {}, next_process: {}]",
-                WithTranslator::from_RSset(translator, entities),
-                WithTranslator::from_RSprocess(translator, next_process)
+                RSsetDisplay::from(translator, entities),
+                RSprocessDisplay::from(translator, next_process)
             )
         }
         WaitEntity {
@@ -219,8 +165,8 @@ fn print_process(
             write!(
                 f,
                 "[repeat: {repeat}, repeated_process: {}, next_process: {}]",
-                WithTranslator::from_RSprocess(translator, repeated_process),
-                WithTranslator::from_RSprocess(translator, next_process)
+                RSprocessDisplay::from(translator, repeated_process),
+                RSprocessDisplay::from(translator, next_process)
             )
         }
         Summation { children } => {
@@ -231,13 +177,13 @@ fn print_process(
                     write!(
 			f,
 			"{}",
-			WithTranslator::from_RSprocess(translator, child)
+			RSprocessDisplay::from(translator, child)
 		    )?;
                 } else {
                     write!(
                         f,
                         "{} + ",
-                        WithTranslator::from_RSprocess(translator, child)
+                        RSprocessDisplay::from(translator, child)
                     )?;
                 }
             }
@@ -251,13 +197,13 @@ fn print_process(
                     write!(
 			f,
 			"{}",
-			WithTranslator::from_RSprocess(translator, child)
+			RSprocessDisplay::from(translator, child)
 		    )?;
                 } else {
                     write!(
 			f,
 			"{}, ",
-			WithTranslator::from_RSprocess(translator, child)
+			RSprocessDisplay::from(translator, child)
 		    )?;
                 }
             }
@@ -265,6 +211,12 @@ fn print_process(
         }
     }
 }
+
+translator_structure!(RSprocessDisplay, RSprocess, process, print_process);
+
+
+
+// RSchoices
 
 fn print_choices(
     f: &mut fmt::Formatter,
@@ -278,20 +230,26 @@ fn print_choices(
             write!(
                 f,
                 "[set: {}, process: {}]",
-                WithTranslator::from_RSset(translator, &el.0),
-                WithTranslator::from_RSprocess(translator, &el.1)
+                RSsetDisplay::from(translator, &el.0),
+                RSprocessDisplay::from(translator, &el.1)
             )?;
         } else {
             write!(
                 f,
                 "[set: {}, process: {}], ",
-                WithTranslator::from_RSset(translator, &el.0),
-                WithTranslator::from_RSprocess(translator, &el.1)
+                RSsetDisplay::from(translator, &el.0),
+                RSprocessDisplay::from(translator, &el.1)
             )?;
         }
     }
     write!(f, "]")
 }
+
+translator_structure!(RSchoicesDisplay, RSchoices, choices, print_choices);
+
+
+
+// RSenvironment
 
 fn print_environment(
     f: &mut fmt::Formatter,
@@ -306,19 +264,25 @@ fn print_environment(
                 f,
                 "({} -> {})",
                 translator.decode(*el.0).unwrap_or("Missing".into()),
-                WithTranslator::from_RSprocess(translator, el.1)
+                RSprocessDisplay::from(translator, el.1)
             )?;
         } else {
             write!(
                 f,
                 "({} -> {}), ",
                 translator.decode(*el.0).unwrap_or("Missing".into()),
-                WithTranslator::from_RSprocess(translator, el.1)
+                RSprocessDisplay::from(translator, el.1)
             )?;
         }
     }
     write!(f, "}}")
 }
+
+translator_structure!(RSenvironmentDisplay, RSenvironment, environment, print_environment);
+
+
+
+// RSsystem
 
 fn print_system(
     f: &mut fmt::Formatter,
@@ -328,20 +292,26 @@ fn print_system(
     write!(
         f,
         "[delta: {}, available_entities: {}, context_process: {}, reaction_rules: [",
-        WithTranslator::from_RSenvironment(translator, system.get_delta()),
-        WithTranslator::from_RSset(translator, system.get_available_entities()),
-        WithTranslator::from_RSprocess(translator, system.get_context_process())
+        RSenvironmentDisplay::from(translator, system.get_delta()),
+        RSsetDisplay::from(translator, system.get_available_entities()),
+        RSprocessDisplay::from(translator, system.get_context_process())
     )?;
     let mut it = system.get_reaction_rules().iter().peekable();
     while let Some(el) = it.next() {
         if it.peek().is_none() {
-            write!(f, "{}", WithTranslator::from_RSreaction(translator, el))?;
+            write!(f, "{}", RSreactionDisplay::from(translator, el))?;
         } else {
-            write!(f, "{}, ", WithTranslator::from_RSreaction(translator, el))?;
+            write!(f, "{}, ", RSreactionDisplay::from(translator, el))?;
         }
     }
     write!(f, "] ]")
 }
+
+translator_structure!(RSsystemDisplay, RSsystem, system, print_system);
+
+
+
+// RSlabel
 
 fn print_label(
     f: &mut fmt::Formatter,
@@ -351,16 +321,22 @@ fn print_label(
     write!(
         f,
         "{{available_entities: {}, context: {}, t: {}, reactants: {}, reactantsi: {}, inihibitors: {}, ireactants: {}, products: {}}}",
-        WithTranslator::from_RSset(translator, &label.available_entities),
-        WithTranslator::from_RSset(translator, &label.context),
-        WithTranslator::from_RSset(translator, &label.t),
-        WithTranslator::from_RSset(translator, &label.reactants),
-        WithTranslator::from_RSset(translator, &label.reactantsi),
-        WithTranslator::from_RSset(translator, &label.inihibitors),
-        WithTranslator::from_RSset(translator, &label.ireactants),
-        WithTranslator::from_RSset(translator, &label.products),
+        RSsetDisplay::from(translator, &label.available_entities),
+        RSsetDisplay::from(translator, &label.context),
+        RSsetDisplay::from(translator, &label.t),
+        RSsetDisplay::from(translator, &label.reactants),
+        RSsetDisplay::from(translator, &label.reactantsi),
+        RSsetDisplay::from(translator, &label.inihibitors),
+        RSsetDisplay::from(translator, &label.ireactants),
+        RSsetDisplay::from(translator, &label.products),
     )
 }
+
+translator_structure!(RSlabelDisplay, RSlabel, label, print_label);
+
+
+
+// RSassertOp
 
 fn print_assert_op(
     f: &mut fmt::Formatter,
@@ -384,6 +360,12 @@ fn print_assert_op(
     }
 }
 
+translator_structure!(RSassertOpDisplay, RSassertOp, assert_op, print_assert_op);
+
+
+
+// RSassert
+
 #[allow(unused_variables)]
 fn print_assert(
     f: &mut fmt::Formatter,
@@ -393,6 +375,12 @@ fn print_assert(
     todo!()
 }
 
+translator_structure!(RSassertDisplay, RSassert, assert, print_assert);
+
+
+
+// RSBHML
+
 #[allow(unused_variables)]
 fn print_bhml(
     f: &mut fmt::Formatter,
@@ -401,6 +389,11 @@ fn print_bhml(
 ) -> fmt::Result {
     todo!()
 }
+
+translator_structure!(RSBHMLDisplay, RSBHML, bhml, print_bhml);
+
+
+// Frequency
 
 fn print_frequency(
     f: &mut fmt::Formatter,
@@ -442,53 +435,5 @@ fn print_frequency(
     write!(f, "]")
 }
 
-impl<'a> fmt::Display for WithTranslator<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            WithTranslator::RSset {
-		translator,
-		set
-	    } => print_set(f, translator, set),
-            WithTranslator::RSreaction {
-                translator,
-                reaction,
-            } => print_reaction(f, translator, reaction),
-            WithTranslator::RSprocess {
-                translator,
-                process,
-            } => print_process(f, translator, process),
-            WithTranslator::RSchoices {
-                translator,
-                choices,
-            } => print_choices(f, translator, choices),
-            WithTranslator::RSenvironment {
-                translator,
-                environment,
-            } => print_environment(f, translator, environment),
-            WithTranslator::RSsystem {
-		translator,
-		system
-	    } => print_system(f, translator, system),
-            WithTranslator::RSlabel {
-		translator,
-		label
-	    } => print_label(f, translator, label),
-            WithTranslator::RSassertOp {
-                translator,
-                assert_op,
-            } => print_assert_op(f, translator, assert_op),
-            WithTranslator::RSassert {
-		translator,
-		assert
-	    } => print_assert(f, translator, assert),
-            WithTranslator::RSBHML {
-		translator,
-		bhml
-	    } => print_bhml(f, translator, bhml),
-            WithTranslator::Frequency {
-                translator,
-                frequency,
-            } => print_frequency(f, translator, frequency),
-        }
-    }
-}
+translator_structure!(FrequencyDisplay, Frequency, frequency, print_frequency);
+
