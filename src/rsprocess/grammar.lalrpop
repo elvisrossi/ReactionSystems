@@ -95,7 +95,7 @@ CTX_process: RSprocess = {
 	RSprocess::WaitEntity{ repeat: n,
 			       repeated_process: Rc::new(k1),
 			       next_process: Rc::new(k) },
-    "nil" => RSprocess::Nill,
+    "nill" => RSprocess::Nill,
     <identifier: Literal> =>
 	RSprocess::RecursiveIdentifier{
 		identifier: translator.encode(identifier)

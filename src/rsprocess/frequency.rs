@@ -28,6 +28,10 @@ impl Frequency {
         for &el in e.iter() {
             self.frequency_map.entry(el).or_insert(vec![0; run + 1])[run] += 1
         }
+	// TODO resize clones all prev values, replace with in place method
+	if self.totals.len() < run + 1 {
+	    self.totals.resize(run + 1, 0);
+	}
         self.totals[run] += 1
     }
 

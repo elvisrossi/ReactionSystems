@@ -15,11 +15,11 @@ fn main() -> std::io::Result<()> {
 
     examples::freq()?;
 
-    // examples::hoop()?;
+    examples::hoop()?;
 
-    // examples::target()?;
+    examples::target()?;
 
-    // examples::run()?;
+    examples::run()?;
 
     Ok(())
 }

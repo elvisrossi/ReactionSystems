@@ -37,12 +37,10 @@ impl Translator {
         id
     }
 
-    pub fn decode(&self, el: IdType) -> String {
-        // TODO maybe find more efficient method??
+    pub fn decode(&self, el: IdType) -> Option<String> {
         self.reverse
             .get(&el)
             .map(|x| x.to_string())
-            .unwrap_or(String::from("Not Found"))
     }
 }
 
@@ -161,9 +159,13 @@ fn print_set(
     let mut it = set.iter().peekable();
     while let Some(el) = it.next() {
         if it.peek().is_none() {
-            write!(f, "{}", translator.decode(*el))?;
+            write!(f,
+		   "{}",
+		   translator.decode(*el).unwrap_or("Missing".into()))?;
         } else {
-            write!(f, "{}, ", translator.decode(*el))?;
+            write!(f,
+		   "{}, ",
+		   translator.decode(*el).unwrap_or("Missing".into()))?;
         }
     }
     write!(f, "}}")
@@ -194,7 +196,9 @@ fn print_process(
             write!(f, "[Nill]")
         }
         RecursiveIdentifier { identifier } => {
-            write!(f, "[{}]", translator.decode(*identifier))
+            write!(f,
+		   "[{}]",
+		   translator.decode(*identifier).unwrap_or("Missing".into()))
         }
         EntitySet {
             entities,
@@ -301,14 +305,14 @@ fn print_environment(
             write!(
                 f,
                 "({} -> {})",
-                translator.decode(*el.0),
+                translator.decode(*el.0).unwrap_or("Missing".into()),
                 WithTranslator::from_RSprocess(translator, el.1)
             )?;
         } else {
             write!(
                 f,
                 "({} -> {}), ",
-                translator.decode(*el.0),
+                translator.decode(*el.0).unwrap_or("Missing".into()),
                 WithTranslator::from_RSprocess(translator, el.1)
             )?;
         }
@@ -407,7 +411,7 @@ fn print_frequency(
     let mut freq_it = frequency.frequency_map.iter().peekable();
 
     while let Some((e, freq)) = freq_it.next() {
-        write!(f, "{} -> ", translator.decode(*e))?;
+        write!(f, "{} -> ", translator.decode(*e).unwrap_or("Missing".into()))?;
 
         let mut iter = freq
             .iter()
