@@ -1,4 +1,4 @@
-Environment: [x = {a}.🐶, 🐶 =({a}.nill + {b}.nill)]
+Environment: [x = {a}.ñ, ñ =({a}.nill + {b}.nill)]
 Initial Entities: {a, b}
 Context: [({a,b}.{a}.{a,c}.x + {a,b}.{a}.{a}.nil)]
-Reactions: ([r: {a,b}, i: {c}, p: {b, 😵}])
+Reactions: ([r: {a,b}, i: {c}, p: {b, ñ, 㐀, 豈, a12-3, 🙏}])

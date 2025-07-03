@@ -21,7 +21,8 @@ grammar(translator: &mut Translator);
 match {
     r"[0-9]+" => NUMBER
 } else {
-    r"([[:alpha:]]|\p{Emoji})([[:word:]]|\p{Emoji})*" => WORD
+    // r"([[:alpha:]]|\p{Emoji})([[:word:]]|\p{Emoji})*" => WORD
+    r"(\p{L}|\p{Emoji})(\p{L}|\p{Emoji}|\p{Dash}|\p{N})*" => WORD
 } else {
     _
 }
