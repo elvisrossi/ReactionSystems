@@ -21,7 +21,7 @@ fn main() -> std::io::Result<()> {
 
     // examples::run()?;
 
-    examples::limit_freq()?;
+    // examples::limit_freq()?;
 
     examples::fast_freq()?;
 

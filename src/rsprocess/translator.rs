@@ -1,5 +1,7 @@
 // translate and keeps track of strings
-use std::collections::HashMap;
+use std::{cmp::max, collections::HashMap};
+
+static PRECISION: &usize = &2;
 
 pub type IdType = u32;
 
@@ -403,30 +405,36 @@ fn print_frequency(
     write!(f, "[")?;
     let mut freq_it = frequency.frequency_map.iter().peekable();
 
+    let totals = &frequency.totals;
+    let weights = &frequency.weights;
+
     while let Some((e, freq)) = freq_it.next() {
         write!(f, "{} -> ", translator.decode(*e).unwrap_or("Missing".into()))?;
 
-        let mut iter = freq
-            .iter()
-            .zip(frequency.totals.iter().zip(frequency.weights.iter()))
-            .peekable();
-
         let mut total_freq = 0.;
 
-        while let Some((freq_e, (total, weight))) = iter.next() {
-            let weighted_freq = (*freq_e as f32 * *weight as f32 * 100.) / (*total as f32);
+	let end = max(freq.len(), max(totals.len(), weights.len()));
 
-            if iter.peek().is_none() {
-                write!(f, "{weighted_freq:.2}")?;
-            } else {
-                write!(f, "{weighted_freq:.2}, ")?;
-            }
-            total_freq += weighted_freq;
-        }
+	for pos in 0..end {
+	    let freq_e = freq.get(pos).copied().unwrap_or(0) as f32;
+	    let weight = weights.get(pos).copied().unwrap_or(1) as f32;
+	    let total = totals.get(pos).copied().unwrap_or(1) as f32;
+
+	    let weighted_freq = (freq_e * weight * 100.) / (total);
+	    if pos == end-1 {
+		#[allow(clippy::uninlined_format_args)]
+		write!(f, "{weighted_freq:.*}", PRECISION)?;
+	    } else {
+		#[allow(clippy::uninlined_format_args)]
+		write!(f, "{weighted_freq:.*}, ", PRECISION)?;
+	    }
+	    total_freq += weighted_freq;
+	}
 
         total_freq /= frequency.total_weights() as f32;
 
-        write!(f, "(total: {total_freq:.2})")?;
+	#[allow(clippy::uninlined_format_args)]
+        write!(f, " (total: {total_freq:.*})", PRECISION)?;
 
         if freq_it.peek().is_some() {
             writeln!(f, ",")?;

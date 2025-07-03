@@ -37,6 +37,11 @@ Separated<T, C>: Vec<T> = {
     }
 };
 
+Separated_Or<T, C>: Vec<T> = {
+    <v: T> => vec![v],
+    <v: Separated<T, C>> => v
+}
+
 // -----------------------------------------------------------------------------
 //                                 SetParser
 // -----------------------------------------------------------------------------
@@ -46,8 +51,7 @@ pub Set: RSset = {
 
 Set_of_entities: RSset = {
     "{" "}" => RSset::from(vec![]),
-    "{" <t: Literal> "}" => RSset::from(vec![translator.encode(t)]),
-    "{" <t: Separated<Literal, ",">> "}" =>
+    "{" <t: Separated_Or<Literal, ",">> "}" =>
 	RSset::from(t.into_iter().map(|t| translator.encode(t)).collect::<Vec<_>>())
 };
 
@@ -58,8 +62,7 @@ Set_of_entities: RSset = {
 
 pub Reactions: Vec<RSreaction> = {
     "(" ")" => vec![],
-    "(" <r: Reaction> ")" => vec![r],
-    "(" <s: Separated<Reaction, ";">> ")" => s
+    "(" <s: Separated_Or<Reaction, ";">> ")" => s
 }
 
 Reaction: RSreaction = {
@@ -73,9 +76,7 @@ Reaction: RSreaction = {
 // -----------------------------------------------------------------------------
 pub Context: RSprocess = {
     "[" "]" => RSprocess::NondeterministicChoice{ children: vec![] },
-    "[" <t: CTX_process>  "]" =>
-	RSprocess::NondeterministicChoice{children: vec![Rc::new(t)]},
-    "[" <t: Separated<Boxed_CTX_process, ",">> "]" =>
+    "[" <t: Separated_Or<Boxed_CTX_process, ",">> "]" =>
 	RSprocess::NondeterministicChoice{ children: t }
 };
 
@@ -107,8 +108,7 @@ CTX_process: RSprocess = {
 // -----------------------------------------------------------------------------
 pub Environment: Box<RSenvironment> = {
     "[" "]" => Box::new(RSenvironment::new()),
-    "[" <t:Env_term> "]" => Box::new(RSenvironment::from(vec![t])),
-    "[" <t: Separated<Env_term, ",">> "]" => Box::new(RSenvironment::from(t))
+    "[" <t: Separated_Or<Env_term, ",">> "]" => Box::new(RSenvironment::from(t))
 };
 
 Env_term: (IdType, RSprocess) = {
@@ -181,7 +181,7 @@ pub System: RSsystem = {
 // entities of equal length.
 
 pub Experiment: (Vec<u32>, Vec<RSset>) = {
-    "Weights:" <w: Separated<Num, ",">>
-    "Sets:" <s: Separated<Set_of_entities, ",">>
-	=> (w.into_iter().map(|x| x as u32).collect::<Vec<_>>(), s)
+    "Weights:" <w: Separated_Or<Num, ",">>
+    "Sets:" <s: Separated_Or<Set_of_entities, ",">>
+	=> (w.into_iter().map(|x| x as u32).collect::<Vec<_>>(), s),
 }
