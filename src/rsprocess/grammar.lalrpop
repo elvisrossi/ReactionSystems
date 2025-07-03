@@ -17,13 +17,25 @@ grammar(translator: &mut Translator);
 //                                  Helpers
 // -----------------------------------------------------------------------------
 
+// order
+match {
+    r"[0-9]+" => NUMBER
+} else {
+    r"([[:alpha:]]|\p{Emoji})([[:word:]]|\p{Emoji})*" => WORD
+} else {
+    _
+}
+
+
 // matches words (letter followed by numbers, letters or _)
-Literal = { r"[[:alpha:]][[:word:]]*" };
+Literal: String = {
+    WORD => <>.to_string()
+};
 
 // all numbers are i64
 Num: i64 = {
-    r"[0-9]+" =>? i64::from_str(<>)
-	.map_err(|_| ParseError::User { error: "Number is too big" })
+    NUMBER =>? i64::from_str(<>)
+		  .map_err(|_| ParseError::User { error: "Number is too big" })
 };
 
 // macro for matching sequence of patterns with C as separator
