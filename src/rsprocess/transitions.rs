@@ -21,7 +21,7 @@ pub fn unfold(
             if let Some(newprocess) = newprocess {
                 unfold(environment, newprocess)
             } else {
-                Err(format!("Recursive call to missing symbol: {identifier}"))
+                Err(format!("Missing symbol in context: {identifier}"))
             }
         }
         RSprocess::EntitySet {

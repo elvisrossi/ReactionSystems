@@ -7,5 +7,6 @@ edition = "2024"
 lalrpop = "0.22"
 
 [dependencies]
+petgraph = { version = "0.8" }
 regex = { version = "1.11", features = ["unicode-bool"] }
 lalrpop-util = { version = "0.22", features = ["lexer", "unicode"] }

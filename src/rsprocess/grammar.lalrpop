@@ -19,6 +19,16 @@ grammar(translator: &mut Translator);
 
 // order
 match {
+    "nill",
+    "{", "}",
+    "[", "]",
+    "(", ")",
+    "<", ">",
+    "r:", "i:", "p:",
+    "-", "^",
+    "true", "false",
+    "inW", "inR", "inI", "inP"
+} else {
     r"[0-9]+" => NUMBER
 } else {
     // r"([[:alpha:]]|\p{Emoji})([[:word:]]|\p{Emoji})*" => WORD
@@ -98,6 +108,7 @@ Boxed_CTX_process: Rc<RSprocess> = {
 }
 
 CTX_process: RSprocess = {
+    "nill" => RSprocess::Nill,
     <c: Set_of_entities> "." <k: CTX_process> =>
 	RSprocess::EntitySet{ entities: c, next_process: Rc::new(k) },
     "(" <k: CTX_process>  ")" => k,
@@ -109,7 +120,6 @@ CTX_process: RSprocess = {
 	RSprocess::WaitEntity{ repeat: n,
 			       repeated_process: Rc::new(k1),
 			       next_process: Rc::new(k) },
-    "nill" => RSprocess::Nill,
     <identifier: Literal> =>
 	RSprocess::RecursiveIdentifier{
 		identifier: translator.encode(identifier)

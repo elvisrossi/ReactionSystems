@@ -11,9 +11,9 @@ fn main() -> std::io::Result<()> {
     // std::thread::sleep(std::time::Duration::new(2, 0));
     // println!("{}", now.elapsed().as_micros());
 
-    examples::stats()?;
+    // examples::stats()?;
 
-    // examples::freq()?;
+    examples::freq()?;
 
     // examples::hoop()?;
 
@@ -23,7 +23,7 @@ fn main() -> std::io::Result<()> {
 
     // examples::limit_freq()?;
 
-    examples::fast_freq()?;
+    // examples::fast_freq()?;
 
     Ok(())
 }
