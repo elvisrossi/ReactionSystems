@@ -1,7 +1,9 @@
 #![allow(dead_code)]
 
+use petgraph::dot::Dot;
+
 use crate::rsprocess::structure::{RSset, RSsystem};
-use crate::rsprocess::translator;
+use crate::rsprocess::{graph, translator};
 use crate::rsprocess::translator::Translator;
 use crate::rsprocess::{frequency, perpetual, statistics, transitions};
 
@@ -226,6 +228,36 @@ pub fn fast_freq() -> std::io::Result<()> {
         "Frequency of encountered symbols:\n{}",
         translator::FrequencyDisplay::from(&translator, &res)
     );
+
+    Ok(())
+}
+
+// equivalent to main_do(digraph, Arcs)
+pub fn digraph() -> std::io::Result<()> {
+    let mut translator = Translator::new();
+
+    let mut path = env::current_dir()?;
+    // file to read is inside testing/
+    path = path.join("testing/first.system");
+    let system = read_file(&mut translator, path, parser_system)?;
+
+    // the system needs to terminate to return
+    let res = match graph::digraph(system) {
+        Ok(o) => o,
+        Err(e) => {
+            println!("Error computing target: {e}");
+            return Ok(());
+        }
+    };
+
+    println!("Generated graph in dot notation:\n{:?}\n", Dot::new(&res));
+
+    let res = res.map(|_, node| format!("{}; {}",
+					translator::RSsetDisplay::from(&translator, node.get_available_entities()),
+					translator::RSprocessDisplay::from(&translator, node.get_context_process())),
+		      |_, edge| translator::RSsetDisplay::from(&translator, &edge.context));
+
+    println!("Generated graph in dot notation:\n{}", Dot::new(&res));
 
     Ok(())
 }

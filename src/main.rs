@@ -13,7 +13,7 @@ fn main() -> std::io::Result<()> {
 
     // examples::stats()?;
 
-    examples::freq()?;
+    // examples::freq()?;
 
     // examples::hoop()?;
 
@@ -24,6 +24,8 @@ fn main() -> std::io::Result<()> {
     // examples::limit_freq()?;
 
     // examples::fast_freq()?;
+
+    examples::digraph()?;
 
     Ok(())
 }

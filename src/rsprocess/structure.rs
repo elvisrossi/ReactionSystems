@@ -182,7 +182,7 @@ impl Default for RSreaction {
 // -----------------------------------------------------------------------------
 // RSprocess
 // -----------------------------------------------------------------------------
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum RSprocess {
     Nill,
     RecursiveIdentifier {
@@ -472,6 +472,24 @@ impl RSsystem {
 
     pub fn get_reaction_rules(&self) -> &Rc<Vec<RSreaction>> {
         &self.reaction_rules
+    }
+}
+
+impl PartialEq for RSsystem {
+    // we ignore delta and reaction rules
+    fn eq(&self, other: &RSsystem) -> bool {
+        self.available_entities == other.available_entities &&
+	    self.context_process == other.context_process
+    }
+}
+
+impl Eq for RSsystem {}
+
+impl Hash for RSsystem {
+    // ignores delta and reaction rules
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.available_entities.hash(state);
+        self.context_process.hash(state);
     }
 }
 

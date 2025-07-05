@@ -7,3 +7,4 @@ pub mod structure;
 pub mod support_structures;
 pub mod transitions;
 pub mod translator;
+pub mod graph;

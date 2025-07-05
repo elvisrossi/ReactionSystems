@@ -141,7 +141,7 @@ fn print_process(
     use super::structure::RSprocess::*;
     match process {
         Nill => {
-            write!(f, "[Nill]")
+            write!(f, "Nill")
         }
         RecursiveIdentifier { identifier } => {
             write!(f,
@@ -154,7 +154,7 @@ fn print_process(
         } => {
             write!(
                 f,
-                "[entities: {}, next_process: {}]",
+                "{}.{}",
                 RSsetDisplay::from(translator, entities),
                 RSprocessDisplay::from(translator, next_process)
             )
@@ -166,7 +166,7 @@ fn print_process(
         } => {
             write!(
                 f,
-                "[repeat: {repeat}, repeated_process: {}, next_process: {}]",
+                "({})^{repeat}.{}",
                 RSprocessDisplay::from(translator, repeated_process),
                 RSprocessDisplay::from(translator, next_process)
             )
