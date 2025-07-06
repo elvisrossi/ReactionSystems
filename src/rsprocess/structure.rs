@@ -67,6 +67,7 @@ impl RSset {
         }
     }
 
+    /// returns the new set a \cap b
     pub fn intersection(&self, b: &RSset) -> RSset {
         // TODO maybe find more efficient way without copy/clone
         let res: BTreeSet<_> = b
@@ -77,6 +78,7 @@ impl RSset {
         RSset { identifiers: res }
     }
 
+    /// returns the new set a - b
     pub fn subtraction(&self, b: &RSset) -> RSset {
         // TODO maybe find more efficient way without copy/clone
         let res: BTreeSet<_> = self

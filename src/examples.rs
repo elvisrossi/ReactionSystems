@@ -11,6 +11,7 @@ use std::env;
 use std::fs;
 use std::io;
 use std::io::prelude::*;
+use std::rc::Rc;
 
 // grammar is defined in main.rs, calling lalrpop_mod! twice, generates twice
 // the code
@@ -252,10 +253,17 @@ pub fn digraph() -> std::io::Result<()> {
 
     println!("Generated graph in dot notation:\n{:?}\n", Dot::new(&res));
 
-    let res = res.map(|_, node| format!("{}; {}",
-					translator::RSsetDisplay::from(&translator, node.get_available_entities()),
-					translator::RSprocessDisplay::from(&translator, node.get_context_process())),
-		      |_, edge| translator::RSsetDisplay::from(&translator, &edge.context));
+    let rc_translator = Rc::new(translator);
+
+    let res = res.map(
+	|id, node|
+	graph::GraphMapNodesTy::from(graph::GraphMapNodes::Entities,
+				     Rc::clone(&rc_translator)).get()(id, node)
+	    + "; " +
+	    &graph::GraphMapNodesTy::from(graph::GraphMapNodes::Context,
+					  Rc::clone(&rc_translator)).get()(id, node),
+	graph::GraphMapEdgesTy::from(graph::GraphMapEdges::EntitiesAdded,
+				     Rc::clone(&rc_translator)).get());
 
     println!("Generated graph in dot notation:\n{}", Dot::new(&res));
 
