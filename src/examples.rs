@@ -1,9 +1,7 @@
 #![allow(dead_code)]
 
-use petgraph::dot::Dot;
-
 use crate::rsprocess::structure::{RSset, RSsystem};
-use crate::rsprocess::{graph, translator};
+use crate::rsprocess::{graph, rsdot, translator};
 use crate::rsprocess::translator::Translator;
 use crate::rsprocess::{frequency, perpetual, statistics, transitions};
 
@@ -251,10 +249,11 @@ pub fn digraph() -> std::io::Result<()> {
         }
     };
 
-    println!("Generated graph in dot notation:\n{:?}\n", Dot::new(&res));
-
     let rc_translator = Rc::new(translator);
 
+    let old_res = Rc::new(res.clone());
+
+    // map each value to the corresponding value we want to display
     let res = res.map(
 	|id, node|
 	graph::GraphMapNodesTy::from(graph::GraphMapNodes::Entities,
@@ -263,9 +262,17 @@ pub fn digraph() -> std::io::Result<()> {
 	    &graph::GraphMapNodesTy::from(graph::GraphMapNodes::Context,
 					  Rc::clone(&rc_translator)).get()(id, node),
 	graph::GraphMapEdgesTy::from(graph::GraphMapEdges::EntitiesAdded,
-				     Rc::clone(&rc_translator)).get());
+					 Rc::clone(&rc_translator)).get()
+    );
 
-    println!("Generated graph in dot notation:\n{}", Dot::new(&res));
+    println!("Generated graph in dot notation:\n{}",
+	     rsdot::RSDot::with_attr_getters(
+		 &res,
+		 &[],
+		 &graph::default_edge_formatter(Rc::clone(&old_res)),
+		 &graph::default_node_formatter(Rc::clone(&old_res)),
+	     )
+    );
 
     Ok(())
 }

@@ -108,6 +108,10 @@ impl RSset {
     pub fn push(&mut self, b: &RSset) {
         self.identifiers.extend(b.iter())
     }
+
+    pub fn is_empty(&self) -> bool {
+	self.identifiers.is_empty()
+    }
 }
 
 impl Default for RSset {

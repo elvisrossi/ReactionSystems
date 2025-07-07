@@ -1,16 +1,18 @@
 #![allow(dead_code)]
 
-use petgraph::Graph;
+use petgraph::{Graph, Directed};
 use std::collections::HashMap;
-use super::structure::{RSlabel, RSsystem, RSset};
+use super::structure::{RSlabel, RSsystem, RSset, RSprocess};
 use super::support_structures::TransitionsIterator;
 use super::translator;
 use std::rc::Rc;
 
+type RSgraph = Graph<RSsystem, RSlabel, Directed, u32>;
+
 pub fn digraph(
     system: RSsystem
-) -> Result<Graph<RSsystem, RSlabel>, String> {
-    let mut graph: Graph<RSsystem, RSlabel> = Graph::new();
+) -> Result<RSgraph, String> {
+    let mut graph = Graph::default();
     let node = graph.add_node(system.clone());
 
     let mut association = HashMap::new();
@@ -350,4 +352,57 @@ impl GraphMapEdgesTy {
     pub fn get(&self) -> &GraphMapEdgesFnTy {
 	&self.function
     }
+}
+
+// -----------------------------------------------------------------------------
+//                          Formatting Nodes & Edges
+// -----------------------------------------------------------------------------
+use petgraph::visit::{IntoNodeReferences, IntoEdgeReferences, EdgeRef};
+
+type RSdotGraph = Graph<String, String, Directed, u32>;
+type RSformatNodeTy =
+    dyn Fn(&RSdotGraph, <&RSdotGraph as IntoNodeReferences>::NodeRef) -> String;
+
+type RSformatEdgeTy =
+    dyn Fn(&RSdotGraph, <&RSdotGraph as IntoEdgeReferences>::EdgeRef) -> String;
+
+pub fn default_node_formatter(
+    original_graph: Rc<RSgraph>
+) -> Box<RSformatNodeTy>
+{
+    Box::new(
+	move |_g, n|
+	String::from(
+	    match original_graph.node_weight(n.0).unwrap().get_context_process()
+	    {
+		RSprocess::Nill =>
+		    ", fillcolor=white",
+		RSprocess::RecursiveIdentifier { identifier: _ } =>
+		    ", fillcolor=\"#BBFF99\"",
+		RSprocess::EntitySet { entities: _, next_process: _ } =>
+		    ", fillcolor=\"#AAEEFF\"",
+		RSprocess::NondeterministicChoice { children: _ } =>
+		    ", fillcolor=\"#FFEE99\"",
+		RSprocess::Summation { children: _ } =>
+		    ", fillcolor=\"#CC99FF\"",
+		RSprocess::WaitEntity
+		{ repeat: _, repeated_process: _, next_process: _ } =>
+		    ", fillcolor=\"#FF99AA\"",
+	    }
+	)
+    )
+}
+
+pub fn default_edge_formatter(
+    original_graph: Rc<RSgraph>
+) -> Box<RSformatEdgeTy>
+{
+    Box::new(
+	move |_g, e| String::from(
+	    if original_graph.edge_weight(e.id()).unwrap().products.is_empty() {
+		"color=black, fontcolor=black"
+	    } else {
+		"color=blue, fontcolor=blue"
+	    }
+    ))
 }
