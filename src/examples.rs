@@ -276,3 +276,49 @@ pub fn digraph() -> std::io::Result<()> {
 
     Ok(())
 }
+
+// equivalent to main_do(advdigraph, Arcs)
+pub fn adversarial() -> std::io::Result<()> {
+    let mut translator = Translator::new();
+
+    let mut path = env::current_dir()?;
+    // file to read is inside testing/
+    path = path.join("testing/adversarial.system");
+    let system = read_file(&mut translator, path, parser_system)?;
+
+    // the system needs to terminate to return
+    let res = match graph::digraph(system) {
+        Ok(o) => o,
+        Err(e) => {
+            println!("Error computing target: {e}");
+            return Ok(());
+        }
+    };
+
+    let rc_translator = Rc::new(translator);
+
+    let old_res = Rc::new(res.clone());
+
+    // map each value to the corresponding value we want to display
+    let res = res.map(
+	|id, node|
+	graph::GraphMapNodesTy::from(graph::GraphMapNodes::Entities,
+				     Rc::clone(&rc_translator)).get()(id, node)
+	    + "; " +
+	    &graph::GraphMapNodesTy::from(graph::GraphMapNodes::Context,
+					  Rc::clone(&rc_translator)).get()(id, node),
+	graph::GraphMapEdgesTy::from(graph::GraphMapEdges::EntitiesAdded,
+					 Rc::clone(&rc_translator)).get()
+    );
+
+    println!("Generated graph in dot notation:\n{}",
+	     rsdot::RSDot::with_attr_getters(
+		 &res,
+		 &[],
+		 &graph::default_edge_formatter(Rc::clone(&old_res)),
+		 &graph::default_node_formatter(Rc::clone(&old_res)),
+	     )
+    );
+
+    Ok(())
+}

@@ -27,5 +27,7 @@ fn main() -> std::io::Result<()> {
 
     examples::digraph()?;
 
+    examples::adversarial()?;
+
     Ok(())
 }
