@@ -9,3 +9,4 @@ pub mod transitions;
 pub mod translator;
 pub mod graph;
 pub mod rsdot;
+pub mod serialize;

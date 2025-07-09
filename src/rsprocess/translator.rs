@@ -1,12 +1,13 @@
 //! Module for translation and keeping track of strings.
 use std::{cmp::max, collections::HashMap};
+use serde::{Serialize, Deserialize};
 
 /// precision for printing frequencies
 static PRECISION: &usize = &2;
 
 pub type IdType = u32;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Translator {
     strings: HashMap<String, IdType>,
     reverse: HashMap<IdType, String>,

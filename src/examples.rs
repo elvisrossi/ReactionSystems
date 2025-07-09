@@ -1,12 +1,11 @@
-#![allow(dead_code)]
-
-use crate::rsprocess::structure::{RSset, RSsystem};
-use crate::rsprocess::{graph, rsdot, translator};
-use crate::rsprocess::translator::Translator;
-use crate::rsprocess::{frequency, perpetual, statistics, transitions};
+use super::rsprocess::structure::{RSset, RSsystem};
+use super::rsprocess::{graph, rsdot, translator};
+use super::rsprocess::translator::Translator;
+use super::rsprocess::{frequency, perpetual, statistics, transitions};
+use super::rsprocess::serialize;
 
 use std::env;
-use std::fs;
+use std::fs::{self, File};
 use std::io;
 use std::io::prelude::*;
 use std::rc::Rc;
@@ -314,6 +313,69 @@ pub fn adversarial() -> std::io::Result<()> {
     println!("Generated graph in dot notation:\n{}",
 	     rsdot::RSDot::with_attr_getters(
 		 &res,
+		 &[],
+		 &graph::default_edge_formatter(Rc::clone(&old_res)),
+		 &graph::default_node_formatter(Rc::clone(&old_res)),
+	     )
+    );
+
+    Ok(())
+}
+
+pub fn serialize() -> std::io::Result<()> {
+    let mut translator = Translator::new();
+
+    let mut path = env::current_dir()?;
+    // file to read is inside testing/
+    path = path.join("testing/adversarial.system");
+    let system = read_file(&mut translator, path, parser_system)?;
+
+    // the system needs to terminate to return
+    let graph = match graph::digraph(system) {
+        Ok(o) => o,
+        Err(e) => {
+            println!("Error computing target: {e}");
+            return Ok(());
+        }
+    };
+
+    let mut file = env::current_dir()?;
+    file = file.join("testing/adversarial.cbor");
+
+    let file = File::create(file)?;
+
+    serialize::sr(file, &graph, &translator).unwrap();
+
+    Ok(())
+}
+
+pub fn deserialize() -> std::io::Result<()> {
+    let mut path = env::current_dir()?;
+    path = path.join("testing/adversarial.cbor");
+
+    let file = File::open(path)?;
+
+    let (graph, translator) = serialize::dsr(file).unwrap();
+
+    let rc_translator = Rc::new(translator);
+
+    let old_res = Rc::new(graph.clone());
+
+    // map each value to the corresponding value we want to display
+    let graph = graph.map(
+	|id, node|
+	graph::GraphMapNodesTy::from(graph::GraphMapNodes::Entities,
+				     Rc::clone(&rc_translator)).get()(id, node)
+	    + "; " +
+	    &graph::GraphMapNodesTy::from(graph::GraphMapNodes::Context,
+					  Rc::clone(&rc_translator)).get()(id, node),
+	graph::GraphMapEdgesTy::from(graph::GraphMapEdges::EntitiesAdded,
+					 Rc::clone(&rc_translator)).get()
+    );
+
+    println!("Generated graph in dot notation:\n{}",
+	     rsdot::RSDot::with_attr_getters(
+		 &graph,
 		 &[],
 		 &graph::default_edge_formatter(Rc::clone(&old_res)),
 		 &graph::default_node_formatter(Rc::clone(&old_res)),

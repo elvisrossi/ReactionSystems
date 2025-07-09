@@ -1,4 +1,4 @@
-Environment: [x = {a}.😵, 😵 =({a}.x + {b}.😵)]
+Environment: [x = {a}.y, y =({a}.x + {b}.y)]
 Initial Entities: {a, b}
 Context: [({a,b}.{a}.{a,c}.x + {a,b}.{a}.{a}.nill)]
 Reactions: ([{a,b}, {c}, {b}])

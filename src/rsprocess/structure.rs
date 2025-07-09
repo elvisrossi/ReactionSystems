@@ -2,12 +2,13 @@ use super::translator::IdType;
 use std::collections::{BTreeSet, HashMap, VecDeque};
 use std::hash::Hash;
 use std::rc::Rc;
+use serde::{Deserialize, Serialize};
 
 // -----------------------------------------------------------------------------
 // RSset
 // -----------------------------------------------------------------------------
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct RSset {
     pub identifiers: BTreeSet<IdType>,
 }
@@ -125,7 +126,7 @@ impl IntoIterator for RSset {
 // -----------------------------------------------------------------------------
 // RSreaction
 // -----------------------------------------------------------------------------
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RSreaction {
     pub reactants: RSset,
     pub inihibitors: RSset,
@@ -166,7 +167,7 @@ impl Default for RSreaction {
 // -----------------------------------------------------------------------------
 // RSprocess
 // -----------------------------------------------------------------------------
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum RSprocess {
     Nill,
     RecursiveIdentifier {
@@ -355,7 +356,7 @@ impl From<Vec<(Rc<RSset>, Rc<RSprocess>)>> for RSchoices {
 // -----------------------------------------------------------------------------
 // RSenvironment
 // -----------------------------------------------------------------------------
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RSenvironment {
     definitions: HashMap<IdType, RSprocess>,
 }
@@ -417,7 +418,7 @@ impl From<Vec<(IdType, RSprocess)>> for RSenvironment {
 // -----------------------------------------------------------------------------
 // RSsystem
 // -----------------------------------------------------------------------------
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct RSsystem {
     pub delta: Rc<RSenvironment>,
     pub available_entities: RSset,
@@ -483,7 +484,7 @@ impl Default for RSsystem {
 // -----------------------------------------------------------------------------
 // RSlabel
 // -----------------------------------------------------------------------------
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RSlabel {
     pub available_entities: RSset,
     pub context: RSset,
