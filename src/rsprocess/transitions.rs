@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use super::structure::{RSchoices,
 		       RSenvironment,
 		       RSlabel,
@@ -9,7 +7,10 @@ use super::structure::{RSchoices,
 use super::support_structures::TransitionsIterator;
 use std::rc::Rc;
 
-// see unfold
+/// unfold returns the list of choices for the context given the process
+/// definitions environment. RSchoices is a list of context moves mapping a set
+/// of entities and the continuation
+/// see unfold
 pub fn unfold(
     environment: &RSenvironment,
     context_process: &RSprocess,
@@ -93,7 +94,7 @@ pub fn iterator_transitions<'a>(
     TransitionsIterator::from(system)
 }
 
-// see oneTransition, transition, smartTransition, smartOneTransition
+/// see oneTransition, transition, smartTransition, smartOneTransition
 pub fn one_transition(
     system: &RSsystem
 ) -> Result<Option<(RSlabel, RSsystem)>, String> {
@@ -101,7 +102,7 @@ pub fn one_transition(
     Ok(tr.next())
 }
 
-// see allTransitions, smartAllTransitions
+/// see allTransitions, smartAllTransitions
 pub fn all_transitions(
     system: &RSsystem
 ) -> Result<Vec<(RSlabel, RSsystem)>, String> {
@@ -109,7 +110,7 @@ pub fn all_transitions(
     Ok(tr.collect::<Vec<_>>())
 }
 
-// see oneTarget, smartOneTarget, target, smartTarget
+/// see oneTarget, smartOneTarget, target, smartTarget
 pub fn target(
     system: &RSsystem
 ) -> Result<(i64, RSset), String> {
@@ -126,7 +127,7 @@ pub fn target(
     Ok((n, current.available_entities.clone()))
 }
 
-// see oneRun, run, smartOneRunEK, smartRunEK
+/// see oneRun, run, smartOneRunEK, smartRunEK
 pub fn run(system: RSsystem) -> Result<Vec<Rc<RSsystem>>, String> {
     let mut res = vec![Rc::new(system)];
     while let Some((_, next_sys)) = one_transition(res.last().unwrap())? {
@@ -135,7 +136,7 @@ pub fn run(system: RSsystem) -> Result<Vec<Rc<RSsystem>>, String> {
     Ok(res)
 }
 
-// see smartOneRunECT, smartRunECT
+/// see smartOneRunECT, smartRunECT
 pub fn run_separated(
     system: &RSsystem
 ) -> Result<Vec<(RSset, RSset, RSset)>, String> {

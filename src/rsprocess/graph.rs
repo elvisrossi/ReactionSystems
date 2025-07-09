@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use petgraph::{Graph, Directed};
 use std::collections::HashMap;
 use super::structure::{RSlabel, RSsystem, RSset, RSprocess};
@@ -9,6 +7,7 @@ use std::rc::Rc;
 
 type RSgraph = Graph<RSsystem, RSlabel, Directed, u32>;
 
+/// creates a graph starting from a system as root node
 pub fn digraph(
     system: RSsystem
 ) -> Result<RSgraph, String> {
@@ -27,10 +26,7 @@ pub fn digraph(
 	current = stack.pop().unwrap();
 	let current_node = *association.get(&current).unwrap();
 
-	// cycle through all next nodes
-	let tr = TransitionsIterator::from(&current)?;
-
-	for (label, next) in tr {
+	for (label, next) in TransitionsIterator::from(&current)? {
 	    // if not already visited
 	    let next_node = association.entry(next.clone()).or_insert_with(|| {
 		stack.push(next.clone());
@@ -49,6 +45,7 @@ pub fn digraph(
 
 // Nodes -----------------------------------------------------------------------
 
+/// Helper structure that specifies what information to display for nodes.
 pub enum GraphMapNodes {
     Hide,
     Entities,
@@ -57,6 +54,8 @@ pub enum GraphMapNodes {
 }
 
 type GraphMapNodesFnTy = dyn Fn(petgraph::prelude::NodeIndex, &RSsystem) -> String;
+/// Helper structure that holds a formatting function from node as RSsystem to
+/// string
 pub struct GraphMapNodesTy {
     function: Box<GraphMapNodesFnTy>
 }
@@ -131,6 +130,7 @@ impl From<GraphMapNodesTy> for Box<GraphMapNodesFnTy> {
 
 // Edges -----------------------------------------------------------------------
 
+/// Helper structure that specifies what information to display for edges
 pub enum GraphMapEdges {
     Hide,
     Products,
@@ -150,6 +150,8 @@ pub enum GraphMapEdges {
 }
 
 type GraphMapEdgesFnTy = dyn Fn(petgraph::prelude::EdgeIndex, &RSlabel) -> String;
+/// Helper structure that holds a formatting function from node as RSsystem to
+/// string
 pub struct GraphMapEdgesTy {
     function: Box<GraphMapEdgesFnTy>
 }

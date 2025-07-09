@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use crate::rsprocess::perpetual::lollipops_only_loop_decomposed_q;
 use std::collections::HashMap;
 
@@ -8,6 +6,8 @@ use super::structure::{RSreaction, RSset, RSsystem};
 use super::transitions::run_separated;
 use super::translator::IdType;
 
+/// structure that holds the frequency of elements of a run or multiple runs,
+/// weighted
 #[derive(Debug, Clone)]
 pub struct Frequency {
     pub frequency_map: HashMap<IdType, Vec<u32>>,
@@ -56,8 +56,9 @@ impl Default for Frequency {
 
 // -----------------------------------------------------------------------------
 
-// see naiveFreq, assume the system is finite, calculate the frequency of
-// each symbol in all traversed states
+/// assume the system is finite, calculate the frequency of each symbol in all
+/// traversed states
+/// see naiveFreq
 pub fn naive_frequency(system: &RSsystem) -> Result<Frequency, String> {
     let ect = run_separated(system)?;
     let es = ect.iter().map(|(e, _, _)| e).collect::<Vec<_>>();
@@ -70,8 +71,9 @@ pub fn naive_frequency(system: &RSsystem) -> Result<Frequency, String> {
     Ok(freq)
 }
 
-// see loopFreq, assume the system stabilizes in a loop, calculate the frequency
-// of each symbol in all states of the loop
+/// assume the system stabilizes in a loop, calculate the frequency of each
+/// symbol in all states of the loop
+/// see loopFreq
 pub fn loop_frequency(system: &RSsystem, symb: IdType) -> Frequency {
     let mut freq = Frequency::new();
     freq.append_weight(1);
@@ -82,8 +84,9 @@ pub fn loop_frequency(system: &RSsystem, symb: IdType) -> Frequency {
     freq
 }
 
-// see limitFreq, q[i] is given enough times such that the stabilizes in a loop,
-// calculate the frequency of the symbols in any state in the last loop
+/// ```q[i]``` is given enough times such that the stabilizes in a loop, calculate the
+/// frequency of the symbols in any state in the last loop
+/// see limitFreq
 pub fn limit_frequency(
     q: &[RSset],
     reaction_rules: &[RSreaction],
@@ -109,8 +112,9 @@ pub fn limit_frequency(
     Some(freq)
 }
 
-// see fastFreq, q[i] is given enough times such that the stabilizes in a loop,
-// calculate the frequency of the symbols in any state in any loop, weighted.
+/// ```q[i]``` is given enough times such that the stabilizes in a loop, calculate the
+/// frequency of the symbols in any state in any loop, weighted.
+/// see fastFreq
 pub fn fast_frequency(
     q: &[RSset],
     reaction_rules: &[RSreaction],

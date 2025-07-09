@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 use super::structure::{RSlabel, RSprocess, RSset, RSsystem};
 use super::transitions::unfold;
 use std::rc::Rc;
@@ -29,13 +28,19 @@ impl<'a> Iterator for TransitionsIterator<'a> {
     fn next(&mut self) -> Option<(RSlabel, RSsystem)> {
         let (c, k) = self.choices_iterator.next()?;
         let t = self.system.available_entities.union(c.as_ref());
-        let (reactants, reactantsi, inihibitors, ireactants, products) =
+        let (
+	    reactants,
+	    reactants_absent,
+	    inihibitors,
+	    inihibitors_present,
+	    products
+	) =
             self.system.reaction_rules.iter().fold(
                 (
                     RSset::new(), // reactants
-                    RSset::new(), // reactantsi
+                    RSset::new(), // reactants_absent
                     RSset::new(), // inihibitors
-                    RSset::new(), // ireactants
+                    RSset::new(), // inihibitors_present
                     RSset::new(), // products
                 ),
                 |acc, reaction| {
@@ -64,9 +69,9 @@ impl<'a> Iterator for TransitionsIterator<'a> {
             (*c).clone(),
             t,
             reactants,
-            reactantsi,
+            reactants_absent,
             inihibitors,
-            ireactants,
+            inihibitors_present,
             products.clone(),
         );
         let new_system = RSsystem::from(

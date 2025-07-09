@@ -4,13 +4,11 @@
 //! Reaction System (RS) Framework.
 //! The data is held in RSset or RSreaction, in the latter the reagents,
 //! inhibitors and products are held.
-#![allow(dead_code)]
-
 use super::structure::{RSreaction, RSset};
 
 /// Computes the result of a single reaction (if enabled returns the products)
 /// otherwise returns None.
-// see result
+/// see result
 pub fn compute_step<'a>(
     current_state: &'a RSset,
     reaction: &'a RSreaction
@@ -24,21 +22,13 @@ pub fn compute_step<'a>(
 
 /// Computes the result of a series of reactions. Returns the union of all
 /// products.
-// see result
+/// see result
 pub fn compute_all<'a>(
-    current_state: &'a RSset,
-    reactions: Vec<&'a RSreaction>
-) -> RSset {
-    reactions.iter().fold(RSset::new(), |acc, r| {
-        acc.union_option(compute_step(current_state, r))
-    })
-}
-
-pub fn compute_all_owned<'a>(
     current_state: &'a RSset,
     reactions: &'a [RSreaction]
 ) -> RSset {
-    reactions.iter().fold(RSset::new(), |acc, r| {
-        acc.union_option(compute_step(current_state, r))
+    reactions.iter().fold(RSset::new(), |mut acc, r| {
+        acc.union_option(compute_step(current_state, r));
+	acc
     })
 }

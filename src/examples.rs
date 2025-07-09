@@ -11,7 +11,7 @@ use std::io;
 use std::io::prelude::*;
 use std::rc::Rc;
 
-// grammar is defined in main.rs, calling lalrpop_mod! twice, generates twice
+// grammar is defined in lib.rs, calling lalrpop_mod! twice, generates twice
 // the code
 use super::grammar;
 

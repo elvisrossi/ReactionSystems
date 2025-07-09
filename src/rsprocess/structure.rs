@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use super::translator::IdType;
 use std::collections::{BTreeSet, HashMap, VecDeque};
 use std::hash::Hash;
@@ -8,6 +6,7 @@ use std::rc::Rc;
 // -----------------------------------------------------------------------------
 // RSset
 // -----------------------------------------------------------------------------
+
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct RSset {
     pub identifiers: BTreeSet<IdType>,
@@ -52,18 +51,16 @@ impl RSset {
         self.identifiers.is_disjoint(&b.identifiers)
     }
 
+    // returns the new set a \cup b
     pub fn union(&self, b: &RSset) -> RSset {
-        // TODO maybe find more efficient way without copy/clone
         let mut ret: RSset = b.clone();
         ret.identifiers.extend(self.identifiers.iter());
         ret
     }
 
-    pub fn union_option(&self, b: Option<&RSset>) -> RSset {
+    pub fn union_option(&mut self, b: Option<&RSset>) {
         if let Some(b) = b {
-            self.union(b)
-        } else {
-            self.clone()
+            self.identifiers.extend(b.iter());
         }
     }
 
@@ -78,7 +75,7 @@ impl RSset {
         RSset { identifiers: res }
     }
 
-    /// returns the new set a - b
+    /// returns the new set a \ b
     pub fn subtraction(&self, b: &RSset) -> RSset {
         // TODO maybe find more efficient way without copy/clone
         let res: BTreeSet<_> = self
@@ -152,7 +149,8 @@ impl RSreaction {
         }
     }
 
-    // see enable
+    /// returns true if ```current_state``` enables the reaction
+    /// see enable
     pub fn enabled(&self, current_state: &RSset) -> bool {
         self.reactants.is_subset(current_state)
 	    && self.inihibitors.is_disjoint(current_state)
@@ -215,6 +213,7 @@ impl RSprocess {
         }
     }
 
+    /// returns all elements used
     pub fn all_elements(&self) -> RSset {
         let mut queue = VecDeque::from([self]);
         let mut elements = RSset::new();
@@ -313,6 +312,12 @@ impl RSchoices {
 
     pub fn iter(&self) -> std::slice::Iter<'_, (Rc<RSset>, Rc<RSprocess>)> {
         self.context_moves.iter()
+    }
+}
+
+impl Default for RSchoices {
+    fn default() -> Self {
+	Self::new()
     }
 }
 
@@ -533,6 +538,12 @@ impl RSlabel {
             &self.context,
             &self.t,
         )
+    }
+}
+
+impl Default for RSlabel {
+    fn default() -> Self {
+	Self::new()
     }
 }
 

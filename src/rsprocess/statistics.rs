@@ -1,10 +1,10 @@
-#![allow(dead_code)]
-
 use super::structure::RSset;
 use super::structure::RSsystem;
 use super::translator;
 use super::translator::Translator;
 
+/// Returns statistics about the system
+/// see main_do(stat,MissingE)
 #[allow(non_snake_case)]
 pub fn of_RSsystem<'a>(translator: &'a Translator, system: &'a RSsystem) -> String {
     let mut result: String = "Statistics:\n".into();

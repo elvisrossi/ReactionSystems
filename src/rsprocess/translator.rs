@@ -1,6 +1,7 @@
-// translate and keeps track of strings
+//! Module for translation and keeping track of strings.
 use std::{cmp::max, collections::HashMap};
 
+/// precision for printing frequencies
 static PRECISION: &usize = &2;
 
 pub type IdType = u32;
@@ -29,6 +30,7 @@ impl Default for Translator {
 }
 
 impl Translator {
+    /// converts a string into an id
     pub fn encode(&mut self, s: impl Into<String>) -> IdType {
         let s = s.into();
         let id = *(self.strings.entry(s.clone()).or_insert({
@@ -39,6 +41,7 @@ impl Translator {
         id
     }
 
+    /// converts an id into the corresponding string
     pub fn decode(&self, el: IdType) -> Option<String> {
         self.reverse
             .get(&el)
