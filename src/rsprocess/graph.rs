@@ -86,7 +86,7 @@ impl GraphMapNodesTy {
 			format!("{}",
 				translator::RSsetDisplay::from(
 				    &translator,
-				    node.get_available_entities())
+				    &node.available_entities)
 			)
 		    )
 		},
@@ -94,7 +94,7 @@ impl GraphMapNodesTy {
 		    Box::new(
 			move |_, node: &RSsystem| {
 			    let masked_entities =
-				node.get_available_entities()
+				node.available_entities
 				.intersection(&mask);
 			    format!("{}",
 				    translator::RSsetDisplay::from(
@@ -110,7 +110,7 @@ impl GraphMapNodesTy {
 			format!("{}",
 				translator::RSprocessDisplay::from(
 				    &translator,
-				    node.get_context_process())
+				    &node.context_process)
 			)
 		    )
 		},
@@ -373,7 +373,7 @@ pub fn default_node_formatter(
     Box::new(
 	move |_g, n|
 	String::from(
-	    match original_graph.node_weight(n.0).unwrap().get_context_process()
+	    match original_graph.node_weight(n.0).unwrap().context_process
 	    {
 		RSprocess::Nill =>
 		    ", fillcolor=white",

@@ -115,7 +115,7 @@ pub fn target(
 ) -> Result<(i64, RSset), String> {
     let current = one_transition(system)?;
     if current.is_none() {
-        return Ok((0, system.get_available_entities().clone()));
+        return Ok((0, system.available_entities.clone()));
     }
     let mut n = 1;
     let mut current = current.unwrap().1;
@@ -123,7 +123,7 @@ pub fn target(
         current = next;
         n += 1;
     }
-    Ok((n, current.get_available_entities().clone()))
+    Ok((n, current.available_entities.clone()))
 }
 
 // see oneRun, run, smartOneRunEK, smartRunEK
@@ -145,11 +145,13 @@ pub fn run_separated(
         return Ok(res);
     }
     let current = current.unwrap();
-    res.push(current.0.get_context());
+    let (available_entities, context, t) = current.0.get_context();
+    res.push((available_entities.clone(), context.clone(), t.clone()));
     let mut current = current.1;
     while let Some((label, next)) = one_transition(&current)? {
         current = next;
-        res.push(label.get_context());
+	let (available_entities, context, t) = label.get_context();
+        res.push((available_entities.clone(), context.clone(), t.clone()));
     }
     Ok(res)
 }

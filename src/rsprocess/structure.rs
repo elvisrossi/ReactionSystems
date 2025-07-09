@@ -10,7 +10,7 @@ use std::rc::Rc;
 // -----------------------------------------------------------------------------
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct RSset {
-    identifiers: BTreeSet<IdType>,
+    pub identifiers: BTreeSet<IdType>,
 }
 
 impl<const N: usize> From<[IdType; N]> for RSset {
@@ -89,10 +89,6 @@ impl RSset {
         RSset { identifiers: res }
     }
 
-    pub fn set(&self) -> &BTreeSet<IdType> {
-        &self.identifiers
-    }
-
     pub fn iter(&self) -> std::collections::btree_set::Iter<'_, IdType> {
         self.identifiers.iter()
     }
@@ -134,9 +130,9 @@ impl IntoIterator for RSset {
 // -----------------------------------------------------------------------------
 #[derive(Clone, Debug)]
 pub struct RSreaction {
-    reactants: RSset,
-    inihibitors: RSset,
-    products: RSset,
+    pub reactants: RSset,
+    pub inihibitors: RSset,
+    pub products: RSset,
 }
 
 impl RSreaction {
@@ -160,22 +156,6 @@ impl RSreaction {
     pub fn enabled(&self, current_state: &RSset) -> bool {
         self.reactants.is_subset(current_state)
 	    && self.inihibitors.is_disjoint(current_state)
-    }
-
-    pub fn products_clone(&self) -> RSset {
-        self.products.clone()
-    }
-
-    pub fn reactants(&self) -> &RSset {
-        &self.reactants
-    }
-
-    pub fn inihibitors(&self) -> &RSset {
-        &self.inihibitors
-    }
-
-    pub fn products(&self) -> &RSset {
-        &self.products
     }
 }
 
@@ -434,10 +414,10 @@ impl From<Vec<(IdType, RSprocess)>> for RSenvironment {
 // -----------------------------------------------------------------------------
 #[derive(Clone, Debug)]
 pub struct RSsystem {
-    delta: Rc<RSenvironment>,
-    available_entities: RSset,
-    context_process: RSprocess,
-    reaction_rules: Rc<Vec<RSreaction>>,
+    pub delta: Rc<RSenvironment>,
+    pub available_entities: RSset,
+    pub context_process: RSprocess,
+    pub reaction_rules: Rc<Vec<RSreaction>>,
 }
 
 impl RSsystem {
@@ -463,24 +443,10 @@ impl RSsystem {
             reaction_rules: Rc::clone(&reaction_rules),
         }
     }
-
-    pub fn get_delta(&self) -> &Rc<RSenvironment> {
-        &self.delta
-    }
-
-    pub fn get_available_entities(&self) -> &RSset {
-        &self.available_entities
-    }
-
-    pub fn get_context_process(&self) -> &RSprocess {
-        &self.context_process
-    }
-
-    pub fn get_reaction_rules(&self) -> &Rc<Vec<RSreaction>> {
-        &self.reaction_rules
-    }
 }
 
+/// Equality does not care about delta or reaction rules, only entities and
+/// context is compared
 impl PartialEq for RSsystem {
     // we ignore delta and reaction rules
     fn eq(&self, other: &RSsystem) -> bool {
@@ -489,8 +455,12 @@ impl PartialEq for RSsystem {
     }
 }
 
+/// Equality does not care about delta or reaction rules, only entities and
+/// context is compared
 impl Eq for RSsystem {}
 
+/// Hash does not care about delta or reaction rules, only entities and
+/// context is hashed
 impl Hash for RSsystem {
     // ignores delta and reaction rules
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
@@ -513,11 +483,10 @@ pub struct RSlabel {
     pub available_entities: RSset,
     pub context: RSset,
     pub t: RSset,
-    ///      union of available_entities and context
     pub reactants: RSset,
-    pub reactantsi: RSset, // reactants absent
+    pub reactants_absent: RSset,
     pub inihibitors: RSset,
-    pub ireactants: RSset, // inhibitors present
+    pub inihibitors_present: RSset,
     pub products: RSset,
 }
 
@@ -528,9 +497,9 @@ impl RSlabel {
             context: RSset::new(),
             t: RSset::new(),
             reactants: RSset::new(),
-            reactantsi: RSset::new(),
+            reactants_absent: RSset::new(),
             inihibitors: RSset::new(),
-            ireactants: RSset::new(),
+            inihibitors_present: RSset::new(),
             products: RSset::new(),
         }
     }
@@ -541,9 +510,9 @@ impl RSlabel {
         context: RSset,
         t: RSset,
         reactants: RSset,
-        reactantsi: RSset,
+        reactants_absent: RSset,
         inihibitors: RSset,
-        ireactants: RSset,
+        inihibitors_present: RSset,
         products: RSset,
     ) -> Self {
         RSlabel {
@@ -551,19 +520,18 @@ impl RSlabel {
             context,
             t,
             reactants,
-            reactantsi,
+            reactants_absent,
             inihibitors,
-            ireactants,
+            inihibitors_present,
             products,
         }
     }
 
-    pub fn get_context(&self) -> (RSset, RSset, RSset) {
-        // TODO remove clone?
+    pub fn get_context(&self) -> (&RSset, &RSset, &RSset) {
         (
-            self.available_entities.clone(),
-            self.context.clone(),
-            self.t.clone(),
+            &self.available_entities,
+            &self.context,
+            &self.t,
         )
     }
 }

@@ -13,17 +13,17 @@ pub fn of_RSsystem<'a>(translator: &'a Translator, system: &'a RSsystem) -> Stri
     );
     result.push_str(&format!(
         "the initial state has {} entities:\n",
-        system.get_available_entities().len()
+        system.available_entities.len()
     ));
     result.push_str(&format!(
         "{}\n",
-        translator::RSsetDisplay::from(translator, system.get_available_entities())
+        translator::RSsetDisplay::from(translator, &system.available_entities)
     ));
 
     let reactants = system
-        .get_reaction_rules()
+        .reaction_rules
         .iter()
-        .fold(RSset::new(), |acc, new| acc.union(new.reactants()));
+        .fold(RSset::new(), |acc, new| acc.union(&new.reactants));
     result.push_str(&format!(
         "The reactants are {}:\n{}\n",
         reactants.len(),
@@ -31,9 +31,9 @@ pub fn of_RSsystem<'a>(translator: &'a Translator, system: &'a RSsystem) -> Stri
     ));
 
     let inhibitors = system
-        .get_reaction_rules()
+        .reaction_rules
         .iter()
-        .fold(RSset::new(), |acc, new| acc.union(new.inihibitors()));
+        .fold(RSset::new(), |acc, new| acc.union(&new.inihibitors));
     result.push_str(&format!(
         "The inhibitors are {}:\n{}\n",
         inhibitors.len(),
@@ -41,9 +41,9 @@ pub fn of_RSsystem<'a>(translator: &'a Translator, system: &'a RSsystem) -> Stri
     ));
 
     let products = system
-        .get_reaction_rules()
+        .reaction_rules
         .iter()
-        .fold(RSset::new(), |acc, new| acc.union(new.products()));
+        .fold(RSset::new(), |acc, new| acc.union(&new.products));
     result.push_str(&format!(
         "The products are {}:\n{}\n",
         products.len(),
@@ -57,14 +57,14 @@ pub fn of_RSsystem<'a>(translator: &'a Translator, system: &'a RSsystem) -> Stri
         translator::RSsetDisplay::from(translator, &total)
     ));
 
-    let entities_env = system.get_delta().all_elements();
+    let entities_env = system.delta.all_elements();
     result.push_str(&format!(
         "The environment involves {} entities:\n{}\n",
         entities_env.len(),
         translator::RSsetDisplay::from(translator, &entities_env)
     ));
 
-    let entities_context = system.get_context_process().all_elements();
+    let entities_context = system.context_process.all_elements();
     result.push_str(&format!(
         "The context involves {} entities:\n{}\n",
         entities_context.len(),
@@ -74,7 +74,7 @@ pub fn of_RSsystem<'a>(translator: &'a Translator, system: &'a RSsystem) -> Stri
     let entities_all = total
         .union(&entities_env)
         .union(&entities_context)
-        .union(system.get_available_entities());
+        .union(&system.available_entities);
 
     result.push_str(&format!(
         "The whole RS involves {} entities:\n{}\n",
@@ -83,7 +83,7 @@ pub fn of_RSsystem<'a>(translator: &'a Translator, system: &'a RSsystem) -> Stri
     ));
 
     let possible_e = products
-        .union(system.get_available_entities())
+        .union(&system.available_entities)
         .union(&entities_context);
     let missing_e = reactants.subtraction(&possible_e);
     result.push_str(&format!(
@@ -101,14 +101,14 @@ pub fn of_RSsystem<'a>(translator: &'a Translator, system: &'a RSsystem) -> Stri
 
     result.push_str(&format!(
         "There are {} reactions in total.\n",
-        system.get_reaction_rules().len()
+        system.reaction_rules.len()
     ));
 
     let mut admissible_reactions = vec![];
     let mut nonadmissible_reactions = vec![];
 
-    for reaction in system.get_reaction_rules().iter() {
-        if reaction.reactants().is_disjoint(&missing_e) {
+    for reaction in system.reaction_rules.iter() {
+        if reaction.reactants.is_disjoint(&missing_e) {
             admissible_reactions.push(reaction);
         } else {
             nonadmissible_reactions.push(reaction);

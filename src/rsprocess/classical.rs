@@ -16,7 +16,7 @@ pub fn compute_step<'a>(
     reaction: &'a RSreaction
 ) -> Option<&'a RSset> {
     if reaction.enabled(current_state) {
-        Some(reaction.products())
+        Some(&reaction.products)
     } else {
         None
     }

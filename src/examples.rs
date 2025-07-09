@@ -188,8 +188,8 @@ pub fn limit_freq() -> std::io::Result<()> {
     let (_, sets) = read_file(&mut translator, path, parser_experiment)?;
 
     let res = match frequency::limit_frequency(&sets,
-					       system.get_reaction_rules(),
-					       system.get_available_entities()) {
+					       &system.reaction_rules,
+					       &system.available_entities) {
 	Some(e) => e,
 	None => {return Ok(());}
     };
@@ -216,8 +216,8 @@ pub fn fast_freq() -> std::io::Result<()> {
     let (weights, sets) = read_file(&mut translator, path, parser_experiment)?;
 
     let res = match frequency::fast_frequency(&sets,
-					      system.get_reaction_rules(),
-					      system.get_available_entities(),
+					      &system.reaction_rules,
+					      &system.available_entities,
 					      &weights) {
 	Some(e) => e,
 	None => {return Ok(());}

@@ -115,9 +115,9 @@ pub fn lollipops_decomposed(
 // see lollipop
 pub fn lollipops(system: RSsystem) -> Vec<(Vec<RSset>, Vec<RSset>)> {
     lollipops_decomposed(
-        system.get_delta(),
-        system.get_reaction_rules(),
-        system.get_available_entities(),
+        &system.delta,
+        &system.reaction_rules,
+        &system.available_entities,
     )
 }
 
@@ -125,12 +125,12 @@ pub fn lollipops(system: RSsystem) -> Vec<(Vec<RSset>, Vec<RSset>)> {
 pub fn lollipops_only_loop(system: RSsystem) -> Vec<Vec<RSset>> {
     // FIXME: i think we are only interested in "x", not all symbols that
     // satisfy X = pre(Q, rec(X))
-    let filtered = system.get_delta().iter().filter_map(filter_delta);
+    let filtered = system.delta.iter().filter_map(filter_delta);
 
     let find_loop_fn = |q| {
         find_only_loop(
-            system.get_reaction_rules(),
-            system.get_available_entities().clone(),
+            &system.reaction_rules,
+            system.available_entities.clone(),
             q,
         )
     };
@@ -226,9 +226,9 @@ pub fn lollipops_named(
     symb: IdType
 ) -> Option<(Vec<RSset>, Vec<RSset>)> {
     lollipops_decomposed_named(
-        system.get_delta(),
-        system.get_reaction_rules(),
-        system.get_available_entities(),
+        &system.delta,
+        &system.reaction_rules,
+        &system.available_entities,
         symb,
     )
 }
@@ -239,15 +239,15 @@ pub fn lollipops_only_loop_named(
     symb: IdType
 ) -> Option<Vec<RSset>> {
     let filtered = system
-        .get_delta()
+        .delta
         .iter()
         .filter_map(|x| filter_delta_named(x, &symb))
         .next();
 
     let find_loop_fn = |q| {
         find_only_loop(
-            system.get_reaction_rules(),
-            system.get_available_entities().clone(),
+            &system.reaction_rules,
+            system.available_entities.clone(),
             q,
         )
     };

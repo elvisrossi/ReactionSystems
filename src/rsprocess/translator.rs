@@ -121,9 +121,9 @@ fn print_reaction(
     write!(
         f,
         "(r: {}, i: {}, p: {})",
-        RSsetDisplay::from(translator, reaction.reactants()),
-        RSsetDisplay::from(translator, reaction.inihibitors()),
-        RSsetDisplay::from(translator, reaction.products())
+        RSsetDisplay::from(translator, &reaction.reactants),
+        RSsetDisplay::from(translator, &reaction.inihibitors),
+        RSsetDisplay::from(translator, &reaction.products)
     )
 }
 
@@ -294,11 +294,11 @@ fn print_system(
     write!(
         f,
         "[delta: {}, available_entities: {}, context_process: {}, reaction_rules: [",
-        RSenvironmentDisplay::from(translator, system.get_delta()),
-        RSsetDisplay::from(translator, system.get_available_entities()),
-        RSprocessDisplay::from(translator, system.get_context_process())
+        RSenvironmentDisplay::from(translator, &system.delta),
+        RSsetDisplay::from(translator, &system.available_entities),
+        RSprocessDisplay::from(translator, &system.context_process)
     )?;
-    let mut it = system.get_reaction_rules().iter().peekable();
+    let mut it = system.reaction_rules.iter().peekable();
     while let Some(el) = it.next() {
         if it.peek().is_none() {
             write!(f, "{}", RSreactionDisplay::from(translator, el))?;
@@ -327,9 +327,9 @@ fn print_label(
         RSsetDisplay::from(translator, &label.context),
         RSsetDisplay::from(translator, &label.t),
         RSsetDisplay::from(translator, &label.reactants),
-        RSsetDisplay::from(translator, &label.reactantsi),
+        RSsetDisplay::from(translator, &label.reactants_absent),
         RSsetDisplay::from(translator, &label.inihibitors),
-        RSsetDisplay::from(translator, &label.ireactants),
+        RSsetDisplay::from(translator, &label.inihibitors_present),
         RSsetDisplay::from(translator, &label.products),
     )
 }
