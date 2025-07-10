@@ -1,3 +1,5 @@
+//! Definitions for generating graphs from a simulation.
+
 use petgraph::{Graph, Directed};
 use std::collections::HashMap;
 use super::structure::{RSlabel, RSsystem, RSset, RSprocess};
@@ -7,7 +9,7 @@ use std::rc::Rc;
 
 type RSgraph = Graph<RSsystem, RSlabel, Directed, u32>;
 
-/// creates a graph starting from a system as root node
+/// Creates a graph starting from a system as root node
 pub fn digraph(
     system: RSsystem
 ) -> Result<RSgraph, String> {

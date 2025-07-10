@@ -1,7 +1,6 @@
 //! Slightly modified Simple graphviz dot file format output.
 //! See petgraph::dot::mod.
 
-// use alloc::string::String;
 use core::fmt::{self, Display, Write};
 use petgraph::
 {

@@ -1,3 +1,5 @@
+//! Module for all basic structures.
+
 use super::translator::IdType;
 use std::collections::{BTreeSet, HashMap, VecDeque};
 use std::hash::Hash;
@@ -8,7 +10,9 @@ use serde::{Deserialize, Serialize};
 // RSset
 // -----------------------------------------------------------------------------
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+/// Basic set of entities.
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize,
+	 Deserialize)]
 pub struct RSset {
     pub identifiers: BTreeSet<IdType>,
 }
@@ -126,6 +130,8 @@ impl IntoIterator for RSset {
 // -----------------------------------------------------------------------------
 // RSreaction
 // -----------------------------------------------------------------------------
+
+/// Basic structure for a reaction.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RSreaction {
     pub reactants: RSset,
@@ -167,6 +173,7 @@ impl Default for RSreaction {
 // -----------------------------------------------------------------------------
 // RSprocess
 // -----------------------------------------------------------------------------
+
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum RSprocess {
     Nill,

@@ -1,4 +1,5 @@
 //! Module for translation and keeping track of strings.
+
 use std::{cmp::max, collections::HashMap};
 use serde::{Serialize, Deserialize};
 
@@ -7,6 +8,8 @@ static PRECISION: &usize = &2;
 
 pub type IdType = u32;
 
+/// Structure that keeps track of association string and id. Ids given
+/// sequentially from 0.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Translator {
     strings: HashMap<String, IdType>,

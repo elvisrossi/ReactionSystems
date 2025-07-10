@@ -1,3 +1,5 @@
+//! Module root
+
 pub mod rsprocess;
 pub mod examples;
 

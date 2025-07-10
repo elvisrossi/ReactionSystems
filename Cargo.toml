@@ -7,9 +7,10 @@ edition = "2024"
 lalrpop = "0.22"
 
 [dependencies]
-regex = { version = "1.11", features = ["unicode-bool"] }
-lalrpop-util = { version = "0.22", features = ["lexer", "unicode"] }
-petgraph = { version = "0.8", features = ["serde-1"] }
-# petgraph-graphml = { version = "4" }
+regex = { version = "1", features = ["unicode-bool"] }
+lalrpop-util = { version = "*", features = ["lexer", "unicode"] }
+petgraph = { version = "*", features = ["serde-1"] }
+# TODO remove git and use crates.io version when updated
+petgraph-graphml = { git = "https://github.com/jonasbb/petgraph-graphml" }
 serde = { version = "1", features = ["derive", "rc"] }
 serde_cbor_2 = { version = "*" }

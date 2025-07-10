@@ -1,3 +1,5 @@
+//! Definitions and structure for frequency of elements in a simulation
+
 use crate::rsprocess::perpetual::lollipops_only_loop_decomposed_q;
 use std::collections::HashMap;
 
@@ -7,7 +9,7 @@ use super::transitions::run_separated;
 use super::translator::IdType;
 
 /// structure that holds the frequency of elements of a run or multiple runs,
-/// weighted
+/// weighted.  To print use ```translator::FrequencyDisplay```.
 #[derive(Debug, Clone)]
 pub struct Frequency {
     pub frequency_map: HashMap<IdType, Vec<u32>>,

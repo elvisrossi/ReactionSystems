@@ -1,8 +1,10 @@
+//! Definitions for finding loops in simulation.
+
 use super::classical::compute_all;
 use super::structure::{RSenvironment, RSprocess, RSreaction, RSset, RSsystem};
 use super::translator::IdType;
 
-/// returns the prefix and the loop from a trace
+/// Returns the prefix and the loop from a trace.
 fn split<'a>(
     set: &'a RSset,
     trace: &'a [RSset]
@@ -11,7 +13,7 @@ fn split<'a>(
     position.map(|pos| trace.split_at(pos))
 }
 
-/// finds the loops by simulating the system
+/// Finds the loops by simulating the system.
 fn find_loop(
     rs: &[RSreaction],
     entities: RSset,
@@ -31,7 +33,7 @@ fn find_loop(
     }
 }
 
-/// finds the loops by simulating the system
+/// Finds the loops by simulating the system.
 fn find_only_loop(
     rs: &[RSreaction],
     entities: RSset,
@@ -51,7 +53,7 @@ fn find_only_loop(
     }
 }
 
-/// finds the loops and the length of the prefix by simulating the system
+/// Finds the loops and the length of the prefix by simulating the system.
 fn find_prefix_len_loop(
     rs: &[RSreaction],
     entities: RSset,
@@ -73,8 +75,8 @@ fn find_prefix_len_loop(
 
 // -----------------------------------------------------------------------------
 
-/// finds only the rules X = pre(Q, rec(X)), but not only x = pre(Q, rec(x))
-/// to use in filter_map
+/// Finds only the rules X = pre(Q, rec(X)), but not only x = pre(Q, rec(x))
+/// to use in filter_map.
 fn filter_delta<'a>(x: (&IdType, &'a RSprocess)) -> Option<&'a RSset> {
     use super::structure::RSprocess::*;
     let (id, rest) = x;
@@ -182,8 +184,8 @@ pub fn lollipops_only_loop_decomposed(
 // Named versions
 // -----------------------------------------------------------------------------
 
-/// finds only the rules symb = pre(Q, rec(symb)), get symb from a translator
-/// to use in filter_map
+/// Finds only the rules symb = pre(Q, rec(symb)), get symb from a translator
+/// to use in filter_map.
 fn filter_delta_named<'a>(
     x: (&IdType, &'a RSprocess),
     symb: &IdType

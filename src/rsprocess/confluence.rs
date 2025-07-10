@@ -1,3 +1,5 @@
+//! Definitions for confluence, strong confluence, loop confluence
+
 use super::perpetual::{
     lollipops_decomposed_named, lollipops_prefix_len_loop_decomposed,
     lollipops_prefix_len_loop_decomposed_named,
@@ -81,7 +83,8 @@ pub fn confluent_named(
 // -----------------------------------------------------------------------------
 
 /// invariant_named checks if all the sets of entities in ```entities``` are
-/// confluent and if so returns the set of all traversed states, together with the loop.
+/// confluent and if so returns the set of all traversed states, together with
+/// the loop.
 /// see invariant
 pub fn invariant_named(
     delta: &RSenvironment,

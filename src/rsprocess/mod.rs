@@ -1,3 +1,5 @@
+//! Crate root
+
 pub mod classical;
 pub mod confluence;
 pub mod frequency;

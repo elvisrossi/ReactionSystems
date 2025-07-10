@@ -1,3 +1,5 @@
+//! Definitions for simple simulation steps.
+
 use super::structure::{RSchoices,
 		       RSenvironment,
 		       RSlabel,
@@ -9,7 +11,7 @@ use std::rc::Rc;
 
 /// unfold returns the list of choices for the context given the process
 /// definitions environment. RSchoices is a list of context moves mapping a set
-/// of entities and the continuation
+/// of entities and the continuation.
 /// see unfold
 pub fn unfold(
     environment: &RSenvironment,

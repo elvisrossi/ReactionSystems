@@ -1,9 +1,15 @@
+//! Definitions for serializing and deserializing graph and translator.
+//!
+//! N.B. after serialization the size of the graph may be much larger than
+//! before since a lot of ```Rc``` are used in ```RSsystem```.
+
 use std::io;
 
 use petgraph::Graph;
 use serde::{Deserialize, Serialize};
 
-use super::{structure::{RSlabel, RSsystem}, translator::Translator};
+use super::{structure::{RSlabel, RSsystem},
+	    translator::Translator};
 
 #[derive(Serialize, Deserialize)]
 struct GraphAndTranslator {
@@ -11,7 +17,12 @@ struct GraphAndTranslator {
     translator: Translator
 }
 
-pub fn sr<W>(writer: W, graph: &Graph<RSsystem, RSlabel>, translator: &Translator) -> Result<(), serde_cbor_2::Error>
+/// Serializer for graph and translator.
+pub fn sr<W>(
+    writer: W,
+    graph: &Graph<RSsystem, RSlabel>,
+    translator: &Translator
+) -> Result<(), serde_cbor_2::Error>
 where
     W: io::Write,
 {
@@ -22,6 +33,7 @@ where
 			    })
 }
 
+/// Deserializer for file that contains graph and translator.
 pub fn dsr<R>(
     reader: R
 ) -> Result<(Graph<RSsystem, RSlabel>, Translator), serde_cbor_2::Error>
