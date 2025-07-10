@@ -18,7 +18,10 @@ fn read_file<T, F>(
     translator: &mut Translator,
     path: std::path::PathBuf,
     parser: F
-)  -> std::io::Result<T> where F: Fn(&mut Translator, String) -> T {
+)  -> std::io::Result<T>
+where
+    F: Fn(&mut Translator, String) -> T
+{
     // we read the file with a buffer
     let f = fs::File::open(path.clone())?;
     let mut buf_reader = io::BufReader::new(f);
@@ -29,6 +32,16 @@ fn read_file<T, F>(
     let result = parser(translator, contents);
 
     Ok(result)
+}
+
+fn save_file(
+    contents: String,
+    path: std::path::PathBuf
+)  -> std::io::Result<()>
+{
+    let mut f = fs::File::create(path.clone())?;
+    write!(f, "{contents}")?;
+    Ok(())
 }
 
 fn parser_system(translator: &mut Translator, contents: String) -> RSsystem {
@@ -276,6 +289,52 @@ pub fn digraph() -> std::io::Result<()> {
     Ok(())
 }
 
+pub fn graphml() -> std::io::Result<()> {
+    let mut translator = Translator::new();
+
+    let mut path = env::current_dir()?;
+    // file to read is inside testing/
+    path = path.join("testing/first.system");
+    let system = read_file(&mut translator, path.clone(), parser_system)?;
+
+    // the system needs to terminate to return
+    let res = match graph::digraph(system) {
+        Ok(o) => o,
+        Err(e) => {
+            println!("Error computing target: {e}");
+            return Ok(());
+        }
+    };
+
+    let rc_translator = Rc::new(translator);
+
+    //let old_res = Rc::new(res.clone());
+
+    // map each value to the corresponding value we want to display
+    let res = res.map(
+	|id, node|
+	graph::GraphMapNodesTy::from(graph::GraphMapNodes::Entities,
+				     Rc::clone(&rc_translator)).get()(id, node)
+	    + "; " +
+	    &graph::GraphMapNodesTy::from(graph::GraphMapNodes::Context,
+					  Rc::clone(&rc_translator)).get()(id, node),
+	graph::GraphMapEdgesTy::from(graph::GraphMapEdges::EntitiesAdded,
+					 Rc::clone(&rc_translator)).get()
+    );
+
+    path.set_extension("graphml");
+
+    use petgraph_graphml::GraphMl;
+    let graphml = GraphMl::new(&res)
+	.pretty_print(true)
+	.export_node_weights_display()
+	.export_edge_weights_display();
+    println!("Generated graph in graphml notation:\n{graphml}");
+    save_file(graphml.to_string(), path)?;
+
+    Ok(())
+}
+
 // equivalent to main_do(advdigraph, Arcs)
 pub fn adversarial() -> std::io::Result<()> {
     let mut translator = Translator::new();
@@ -339,10 +398,10 @@ pub fn serialize() -> std::io::Result<()> {
         }
     };
 
-    let mut file = env::current_dir()?;
-    file = file.join("testing/adversarial.cbor");
+    let mut path = env::current_dir()?;
+    path = path.join("testing/adversarial.cbor");
 
-    let file = File::create(file)?;
+    let file = File::create(path)?;
 
     serialize::sr(file, &graph, &translator).unwrap();
 
