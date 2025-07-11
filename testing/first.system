@@ -1,4 +1,9 @@
-Environment: [x = {a}.y, y =({a}.x + {b}.y)]
+Environment: [x = {a}.y, y =({a}.x + {b}.y) ]
 Initial Entities: {a, b}
 Context: [({a,b}.{a}.{a,c}.x + {a,b}.{a}.{a}.nill)]
 Reactions: ([{a,b}, {c}, {b}])
+
+Run > Print; Save("testing/asd"),
+LimitFrequency("testing/first.experiment") > Print,
+Digraph > Dot > Save("testing/asddd")
+        | Serialize("testing/asdd")

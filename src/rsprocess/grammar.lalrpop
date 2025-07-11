@@ -10,6 +10,8 @@ use crate::rsprocess::structure::{RSset,
 				  RSsystem,
 				  RSreaction};
 use crate::rsprocess::translator::{Translator, IdType};
+use crate::rsprocess::presets::Instructions;
+use crate::rsprocess::presets;
 
 grammar(translator: &mut Translator);
 
@@ -19,6 +21,7 @@ grammar(translator: &mut Translator);
 
 // order
 match {
+    ".", ",", ";",
     "nill",
     "{", "}",
     "[", "]",
@@ -27,12 +30,21 @@ match {
     "r:", "i:", "p:",
     "-", "^",
     "true", "false",
-    "inW", "inR", "inI", "inP"
+    "inW", "inR", "inI", "inP",
+    "Environment", "Initial Entities", "Context", "Reactions",
+    "Weights", "Sets",
+    "Print", "Save",
+    "Dot", "GraphML", "Serialize",
+    "Stats", "Target", "Run", "Loop", "Frequency", "LimitFrequency",
+    "FastFrequency", "Digraph",
+    "Deserialize"
 } else {
     r"[0-9]+" => NUMBER
 } else {
     // r"([[:alpha:]]|\p{Emoji})([[:word:]]|\p{Emoji})*" => WORD
-    r"(\p{L}|\p{Emoji})(\p{L}|\p{Emoji}|\p{Dash}|\p{N})*" => WORD
+    r"(\p{L}|\p{Emoji})(\p{L}|\p{Emoji}|\p{Dash}|\p{N})*" => WORD,
+} else {
+    r#"".*""# => PATH,
 } else {
     _
 }
@@ -47,6 +59,10 @@ Literal: String = {
 Num: i64 = {
     NUMBER =>? i64::from_str(<>)
 		  .map_err(|_| ParseError::User { error: "Number is too big" })
+};
+
+Path: String = {
+    PATH => <>.trim_end_matches("\"").trim_start_matches("\"").to_string()
 };
 
 // macro for matching sequence of patterns with C as separator
@@ -181,18 +197,19 @@ Formula_BHML: RSBHML = {
 };
 
 
-// -----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 //                                File Parsing
-// -----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
+
 // system
 // a system is an environment, a set of entities as initial state, a context and
 // a set of reaction rules.
 
 pub System: RSsystem = {
-    "Environment:" <delta: Environment>
-    "Initial Entities:" <available_entities: Set>
-    "Context:" <context_process: Context>
-    "Reactions:" <reaction_rules: Reactions>
+    "Environment" ":" <delta: Environment>
+    "Initial Entities" ":" <available_entities: Set>
+    "Context" ":" <context_process: Context>
+    "Reactions" ":" <reaction_rules: Reactions>
 	=> RSsystem::from(delta.into(),
 			  available_entities,
 			  context_process,
@@ -204,7 +221,68 @@ pub System: RSsystem = {
 // entities of equal length.
 
 pub Experiment: (Vec<u32>, Vec<RSset>) = {
-    "Weights:" <w: Separated_Or<Num, ",">>
-    "Sets:" <s: Separated_Or<Set_of_entities, ",">>
+    "Weights" ":" <w: Separated_Or<Num, ",">>
+    "Sets" ":" <s: Separated_Or<Set_of_entities, ",">>
 	=> (w.into_iter().map(|x| x as u32).collect::<Vec<_>>(), s),
+}
+
+
+
+// Instruction Parsing
+
+Helper_SO: presets::SaveOptions = {
+    "Print" =>
+	presets::SaveOptions {print: true, save: None},
+    "Save" "(" <p: Path> ")" =>
+	presets::SaveOptions {print: false, save: Some(vec![p])}
+}
+
+SaveOptions: presets::SaveOptions = {
+    <p: Separated_Or<Helper_SO, ";">> => {
+	if let Some(a) =
+	    p.into_iter()
+		.reduce(|mut acc, mut e| {acc.combine(&mut e); acc}) {
+	    a
+	} else {
+	    presets::SaveOptions::default()
+	}
+    }
+}
+
+GraphSaveOptions: presets::GraphSaveOptions = {
+    "Dot" ">" <so: SaveOptions> =>
+	presets::GraphSaveOptions::Dot { so },
+    "GraphML" ">" <so: SaveOptions> =>
+	presets::GraphSaveOptions::GraphML { so },
+    "Serialize" "(" <path: Path> ")" =>
+	presets::GraphSaveOptions::Serialize { path },
+}
+
+
+Instruction: presets::Instruction = {
+    "Stats" ">" <so: SaveOptions> =>
+	presets::Instruction::Stats { so },
+    "Target" ">" <so: SaveOptions> =>
+	presets::Instruction::Target { so },
+    "Run" ">" <so: SaveOptions> =>
+	presets::Instruction::Run { so },
+    "Loop" "(" <symbol: Literal> ")" ">" <so: SaveOptions> =>
+	presets::Instruction::Loop { symbol,  so },
+    "Frequency" "(" <p: Path> ")" ">" <so: SaveOptions> =>
+	presets::Instruction::Frequency { experiment: p, so },
+    "LimitFrequency" "(" <p: Path> ")" ">" <so: SaveOptions> =>
+	presets::Instruction::LimitFrequency { experiment: p, so },
+    "FastFrequency" "(" <p: Path> ")" ">" <so: SaveOptions> =>
+	presets::Instruction::FastFrequency { experiment: p, so },
+    "Digraph" ">" <gso: Separated_Or<GraphSaveOptions, "|">> =>
+	presets::Instruction::Digraph { gso },
+}
+
+pub Run: presets::Instructions = {
+    <sys: System> <instr: Separated_Or<Instruction, ",">> =>
+	Instructions { system: presets::System::RSsystem { sys },
+		       instructions: instr },
+    "Deserialize" "(" <path: Path> ")" <instr: Separated_Or<Instruction, ",">> =>
+	Instructions { system: presets::System::Deserialize { path },
+		       instructions: instr },
 }

@@ -1,6 +1,7 @@
 //! Module that holds useful presets for interacting with other modules.
 
 use std::env;
+use std::fmt::Display;
 use std::fs;
 use std::io;
 use std::io::prelude::*;
@@ -17,6 +18,75 @@ use super::structure::RSlabel;
 use super::structure::{RSset, RSsystem};
 use super::translator::Translator;
 use super::*;
+
+
+// -----------------------------------------------------------------------------
+//                                 Structures
+// -----------------------------------------------------------------------------
+
+#[derive(Debug)]
+pub struct SaveOptions {
+    pub print: bool,
+    pub save: Option<Vec<String>>
+}
+
+impl SaveOptions {
+    pub fn combine(&mut self, other: &mut Self) {
+	self.print = self.print || other.print;
+	match (self.save.is_some(), other.save.is_some()) {
+	    (false, false) |
+	    (true, false) => {}
+	    (false, true) => {
+		self.save = other.save.to_owned();
+	    },
+	    (true, true) => {
+		self.save
+		    .as_mut()
+		    .unwrap()
+		    .append(other.save.as_mut().unwrap());}
+	}
+    }
+    pub fn new() -> Self {
+	SaveOptions { print: false, save: None }
+    }
+}
+
+impl Default for SaveOptions {
+    fn default() -> Self {
+	SaveOptions::new()
+    }
+}
+
+#[derive(Debug)]
+pub enum GraphSaveOptions {
+    Dot { so: SaveOptions },
+    GraphML { so: SaveOptions },
+    Serialize { path: String }
+}
+
+#[derive(Debug)]
+pub enum Instruction {
+    Stats { so: SaveOptions },
+    Target { so: SaveOptions },
+    Run { so: SaveOptions },
+    Loop { symbol: String, so: SaveOptions },
+    Frequency { experiment: String, so: SaveOptions },
+    LimitFrequency { experiment: String, so: SaveOptions },
+    FastFrequency { experiment: String, so: SaveOptions },
+    Digraph { gso: Vec<GraphSaveOptions> },
+}
+
+#[derive(Debug)]
+pub enum System {
+    Deserialize { path: String },
+    RSsystem { sys: RSsystem }
+}
+
+#[derive(Debug)]
+pub struct Instructions {
+    pub system: System,
+    pub instructions: Vec<Instruction>
+}
 
 // -----------------------------------------------------------------------------
 //                              Helper Functions
@@ -55,6 +125,77 @@ where
     Ok(result)
 }
 
+fn reformat_error<T, S>(
+    e: ParseError<usize, T, &'static str>
+) -> Result<S, String>
+where
+    T: Display
+{
+    match e {
+	ParseError::ExtraToken { token: (l, t, r) } => {
+	    Err(format!(
+		"Unexpected token \"{t}\" \
+		 between positions {l} and {r}."
+	    ))
+	},
+	ParseError::UnrecognizedEof { location: _, expected: _ } => {
+	    Err("End of file encountered while parsing.".into())
+	},
+	ParseError::InvalidToken { location } => {
+	    Err(format!("Invalid token at position {location}."))
+	},
+	ParseError::UnrecognizedToken { token: (l, t, r), expected }
+	=> {
+	    Err(format!(
+		"Unrecognized token \"{t}\" \
+		 between positions {l} and {r}. Expected: {expected:?}"
+	    ))
+	},
+	ParseError::User { error } => {
+	    Err(error.to_string())
+	}
+    }
+}
+
+fn parser_system(
+    translator: &mut Translator,
+    contents: String
+) -> Result<RSsystem, String>
+{
+    match grammar::SystemParser::new()
+	.parse(translator, &contents)
+    {
+	Ok(sys) => Ok(sys),
+	Err(e) => reformat_error(e)
+    }
+}
+
+fn parser_experiment(
+    translator: &mut Translator,
+    contents: String
+) -> Result<(Vec<u32>, Vec<RSset>), String>
+{
+    match grammar::ExperimentParser::new()
+	.parse(translator, &contents)
+    {
+	Ok(sys) => Ok(sys),
+	Err(e) => reformat_error(e)
+    }
+}
+
+fn parser_instructions(
+    translator: &mut Translator,
+    contents: String
+) -> Result<Instructions, String>
+{
+    match grammar::RunParser::new()
+	.parse(translator, &contents)
+    {
+	Ok(sys) => Ok(sys),
+	Err(e) => reformat_error(e)
+    }
+}
+
 fn save_file(
     contents: String,
     path_string: String,
@@ -81,85 +222,9 @@ fn save_file(
     Ok(())
 }
 
-fn parser_system(
-    translator: &mut Translator,
-    contents: String
-) -> Result<RSsystem, String>
-{
-    match grammar::SystemParser::new()
-	.parse(translator, &contents)
-    {
-	Ok(sys) => Ok(sys),
-	Err(e) => {
-	    match e {
-		ParseError::ExtraToken { token: (l, t, r) } => {
-		    Err(format!(
-			"Unexpected token \"{t}\" \
-			 between positions {l} and {r}."
-		    ))
-		},
-		ParseError::UnrecognizedEof { location: _, expected: _ } => {
-		    Err("End of file encountered while parsing.".into())
-		},
-		ParseError::InvalidToken { location } => {
-		    Err(format!("Invalid token at position {location}."))
-		},
-		ParseError::UnrecognizedToken { token: (l, t, r), expected: _ }
-		=> {
-		    Err(format!(
-			"Unexpected token \"{t}\" \
-			 between positions {l} and {r}."
-		    ))
-		},
-		ParseError::User { error } => {
-		    Err(error.to_string())
-		}
-	    }
-	}
-    }
-}
-
-fn parser_experiment(
-    translator: &mut Translator,
-    contents: String
-) -> Result<(Vec<u32>, Vec<RSset>), String>
-{
-    match grammar::ExperimentParser::new()
-	.parse(translator, &contents)
-    {
-	Ok(sys) => Ok(sys),
-	Err(e) => {
-	    match e {
-		ParseError::ExtraToken { token: (l, t, r) } => {
-		    Err(format!(
-			"Unexpected token \"{t}\" \
-			 between positions {l} and {r}."
-		    ))
-		},
-		ParseError::UnrecognizedEof { location: _, expected: _ } => {
-		    Err("End of file encountered while parsing.".into())
-		},
-		ParseError::InvalidToken { location } => {
-		    Err(format!("Invalid token at position {location}."))
-		},
-		ParseError::UnrecognizedToken { token: (l, t, r), expected: _ }
-		=> {
-		    Err(format!(
-			"Unexpected token \"{t}\" \
-			 between positions {l} and {r}."
-		    ))
-		},
-		ParseError::User { error } => {
-		    Err(error.to_string())
-		}
-	    }
-	}
-    }
-}
-
 
 // -----------------------------------------------------------------------------
-//                                  Methods
+//                                  main_do
 // -----------------------------------------------------------------------------
 
 /// Prints statistics of the system.
@@ -195,10 +260,11 @@ pub fn target(path_string: String) -> Result<(), String> {
     Ok(())
 }
 
+
 /// Finds the list of traversed states in a (deterministic) terminating
 /// reaction.
 /// equivalent to main_do(run,Es)
-pub fn run(path_string: String) -> Result<(), String> {
+pub fn traversed(path_string: String) -> Result<(), String> {
     let mut translator = Translator::new();
 
     let system = read_file(&mut translator, path_string, parser_system)?;
@@ -217,7 +283,7 @@ pub fn run(path_string: String) -> Result<(), String> {
 
 
 /// Finds the looping list of states in a reaction system with a perpetual
-/// context IMPORTANT: for loops, we assume Delta defines the process constant
+/// context. IMPORTANT: for loops, we assume Delta defines the process constant
 /// x = Q.x and the context process is x .
 /// equivalent to main_do(loop,Es)
 pub fn hoop(path_string: String) -> Result<(), String> {
@@ -347,9 +413,9 @@ pub fn digraph(
 }
 
 
-// ----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 //                              Output Functions
-// ----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 
 /// Writes the specified graph to a file in .dot format.
 pub fn dot(
@@ -485,4 +551,19 @@ pub fn deserialize(
 	Ok(a) => Ok(a),
 	Err(_) => Err("Error during deserialization.".into())
     }
+}
+
+
+//------------------------------------------------------------------------------
+//                         Interpreting Instructions
+//------------------------------------------------------------------------------
+
+pub fn run(path: String) -> Result<(), String> {
+    let mut translator = Translator::new();
+
+    let instructions = read_file(&mut translator, path, parser_instructions)?;
+
+    println!("{:?}", instructions);
+
+    Ok(())
 }
