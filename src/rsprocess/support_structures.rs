@@ -4,7 +4,6 @@ use super::structure::{RSlabel, RSprocess, RSset, RSsystem};
 use super::transitions::unfold;
 use std::rc::Rc;
 
-/// 
 #[derive(Clone, Debug)]
 pub struct TransitionsIterator<'a> {
     choices_iterator: std::vec::IntoIter<(Rc<RSset>, Rc<RSprocess>)>,

@@ -1,6 +1,8 @@
 //! Slightly modified Simple graphviz dot file format output.
 //! See petgraph::dot::mod.
 
+static PRINTNAMES: bool = false;
+
 use core::fmt::{self, Display, Write};
 use petgraph::
 {
@@ -205,10 +207,15 @@ where
 
 	// output all labels
 	for node in g.node_references() {
-	    write!(f, "{INDENT}\"")?;
-	    // Escaped(FnFmt(node.weight(), &node_fmt)).fmt(f)?;
-	    write!(f, "{}", g.to_index(node.id()))?;
-	    write!(f, "\" [ ")?;
+	    if PRINTNAMES {
+		write!(f, "{INDENT}\"")?;
+		Escaped(FnFmt(node.weight(), &node_fmt)).fmt(f)?;
+		write!(f, "\" [ ")?;
+	    } else {
+		write!(f, "{INDENT}")?;
+		write!(f, "{}", g.to_index(node.id()))?;
+		write!(f, " [ ")?;
+	    }
 
 	    write!(f, "label = \"")?;
 	    Escaped(FnFmt(node.weight(), &node_fmt)).fmt(f)?;
@@ -218,15 +225,21 @@ where
 	}
 	// output all edges
 	for edge in g.edge_references() {
-	    write!(f, "{INDENT}\"")?;
-	    // let node_source_weight = g.node_weight(edge.source()).unwrap();
-	    // Escaped(FnFmt(node_source_weight, &node_fmt)).fmt(f)?;
-	    write!(f, "{}", g.to_index(edge.source()))?;
-	    write!(f, "\" {} \"", EDGE[g.is_directed() as usize])?;
-	    // let node_target_weight = g.node_weight(edge.target()).unwrap();
-	    // Escaped(FnFmt(node_target_weight, &node_fmt)).fmt(f)?;
-	    write!(f, "{}", g.to_index(edge.target()))?;
-	    write!(f, "\" [ ")?;
+	    if PRINTNAMES {
+		write!(f, "{INDENT}\"")?;
+		let node_source_weight = g.node_weight(edge.source()).unwrap();
+		Escaped(FnFmt(node_source_weight, &node_fmt)).fmt(f)?;
+		write!(f, "\" {} \"", EDGE[g.is_directed() as usize])?;
+		let node_target_weight = g.node_weight(edge.target()).unwrap();
+		Escaped(FnFmt(node_target_weight, &node_fmt)).fmt(f)?;
+		write!(f, "\" [ ")?;
+	    } else {
+		write!(f, "{INDENT}")?;
+		write!(f, "{} ", g.to_index(edge.source()))?;
+		write!(f, "{} ", EDGE[g.is_directed() as usize])?;
+		write!(f, "{} ", g.to_index(edge.target()))?;
+		write!(f, "[ ")?;
+	    }
 
 	    write!(f, "label = \"")?;
 	    Escaped(FnFmt(edge.weight(), &edge_fmt)).fmt(f)?;

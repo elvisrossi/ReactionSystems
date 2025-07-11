@@ -86,8 +86,8 @@ pub fn loop_frequency(system: &RSsystem, symb: IdType) -> Frequency {
     freq
 }
 
-/// ```q[i]``` is given enough times such that the stabilizes in a loop, calculate the
-/// frequency of the symbols in any state in the last loop
+/// ```q[i]``` is given enough times such that the stabilizes in a loop,
+/// calculate the frequency of the symbols in any state in the last loop
 /// see limitFreq
 pub fn limit_frequency(
     q: &[RSset],
@@ -114,8 +114,8 @@ pub fn limit_frequency(
     Some(freq)
 }
 
-/// ```q[i]``` is given enough times such that the stabilizes in a loop, calculate the
-/// frequency of the symbols in any state in any loop, weighted.
+/// ```q[i]``` is given enough times such that the stabilizes in a loop,
+/// calculate the frequency of the symbols in any state in any loop, weighted.
 /// see fastFreq
 pub fn fast_frequency(
     q: &[RSset],

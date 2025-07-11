@@ -1,8 +1,8 @@
-fn main() -> std::io::Result<()> {
+fn main() {
     // let now = std::time::Instant::now();
     // println!("{}", now.elapsed().as_micros());
 
-    reactionsystems::examples::graphml()?;
+    let (g, t) = reactionsystems::rsprocess::presets::digraph("testing/first.system".into()).unwrap();
 
-    Ok(())
+    reactionsystems::rsprocess::presets::dot(&g, &t, "testing/first.dot".into()).unwrap();
 }

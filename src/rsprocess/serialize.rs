@@ -18,7 +18,7 @@ struct GraphAndTranslator {
 }
 
 /// Serializer for graph and translator.
-pub fn sr<W>(
+pub fn ser<W>(
     writer: W,
     graph: &Graph<RSsystem, RSlabel>,
     translator: &Translator
@@ -34,7 +34,7 @@ where
 }
 
 /// Deserializer for file that contains graph and translator.
-pub fn dsr<R>(
+pub fn de<R>(
     reader: R
 ) -> Result<(Graph<RSsystem, RSlabel>, Translator), serde_cbor_2::Error>
 where
