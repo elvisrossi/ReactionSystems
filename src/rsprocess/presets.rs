@@ -70,7 +70,7 @@ pub enum Instruction {
     Target { so: SaveOptions },
     Run { so: SaveOptions },
     Loop { symbol: String, so: SaveOptions },
-    Frequency { experiment: String, so: SaveOptions },
+    Frequency { so: SaveOptions },
     LimitFrequency { experiment: String, so: SaveOptions },
     FastFrequency { experiment: String, so: SaveOptions },
     Digraph { gso: Vec<GraphSaveOptions> },
@@ -80,6 +80,32 @@ pub enum Instruction {
 pub enum System {
     Deserialize { path: String },
     RSsystem { sys: RSsystem }
+}
+
+#[derive(Debug)]
+pub enum EvaluatedSystem {
+    Graph { graph: Graph<RSsystem, RSlabel>,
+	    translator: Translator },
+    System { sys: RSsystem,
+	     translator: Translator }
+}
+
+
+impl System {
+    pub fn compute(
+	&self, translator: Translator
+    ) -> Result<EvaluatedSystem, String>
+    {
+	match self {
+	    Self::RSsystem { sys } => {
+		Ok(EvaluatedSystem::System { sys: sys.to_owned(), translator })
+	    },
+	    Self::Deserialize { path } => {
+		let (graph, translator) = deserialize(path.into())?;
+		Ok(EvaluatedSystem::Graph { graph, translator })
+	    }
+	}
+    }
 }
 
 #[derive(Debug)]
@@ -157,19 +183,6 @@ where
     }
 }
 
-fn parser_system(
-    translator: &mut Translator,
-    contents: String
-) -> Result<RSsystem, String>
-{
-    match grammar::SystemParser::new()
-	.parse(translator, &contents)
-    {
-	Ok(sys) => Ok(sys),
-	Err(e) => reformat_error(e)
-    }
-}
-
 fn parser_experiment(
     translator: &mut Translator,
     contents: String
@@ -197,9 +210,8 @@ fn parser_instructions(
 }
 
 fn save_file(
-    contents: String,
-    path_string: String,
-    extension: String
+    contents: &String,
+    path_string: String
 ) -> Result<(), String>
 {
     // relative path
@@ -208,7 +220,6 @@ fn save_file(
 	Err(_) => return Err("Error getting current directory.".into())
     };
     path = path.join(path_string);
-    path.set_extension(extension);
 
     let mut f = match fs::File::create(&path) {
 	Ok(f) => f,
@@ -223,61 +234,83 @@ fn save_file(
 }
 
 
+
 // -----------------------------------------------------------------------------
 //                                  main_do
 // -----------------------------------------------------------------------------
 
 /// Prints statistics of the system.
 /// Equivalent main_do(stat) or main_do(stat, MissingE)
-pub fn stats(path_string: String) -> Result<(), String> {
-    let mut translator = Translator::new();
-
-    let system = read_file(&mut translator, path_string, parser_system)?;
-
-    // print statistics to screan
-    println!("{}", statistics::of_RSsystem(&translator, &system));
-
-    Ok(())
+pub fn stats(system: &EvaluatedSystem) -> Result<String, String> {
+    match system {
+	EvaluatedSystem::System { sys, translator } => {
+	    Ok(statistics::of_RSsystem(translator, sys))
+	},
+	EvaluatedSystem::Graph { graph, translator } => {
+	    let Some(sys) = graph.node_weights().next()
+	    else {
+		return Err("No node found in graph".into());
+	    };
+	    Ok(statistics::of_RSsystem(translator, sys))
+	}
+    }
 }
 
 
 /// Prints a final set of entities in a terminating Reaction System.
+/// The system needs to terminate to return.
 /// Equivalent to main_do(target, E)
-pub fn target(path_string: String) -> Result<(), String> {
-    let mut translator = Translator::new();
-
-    let system = read_file(&mut translator, path_string, parser_system)?;
-
-    // the system needs to terminate to return
-    let res = transitions::target(&system)?;
-
-    println!(
+pub fn target(system: &EvaluatedSystem) -> Result<String, String> {
+    let (res, translator) = match system {
+	EvaluatedSystem::System { sys, translator } => {
+	    (transitions::target(sys)?, translator)
+	},
+	EvaluatedSystem::Graph { graph, translator } => {
+	    let Some(sys) = graph.node_weights().next()
+	    else {
+		return Err("No node found in graph".into());
+	    };
+	    (transitions::target(sys)?, translator)
+	}
+    };
+    Ok(format!(
 	"After {} steps we arrive at state:\n{}",
 	res.0,
-	translator::RSsetDisplay::from(&translator, &res.1)
-    );
-
-    Ok(())
+	translator::RSsetDisplay::from(translator, &res.1)
+    ))
 }
 
 
 /// Finds the list of traversed states in a (deterministic) terminating
 /// reaction.
+/// The system needs to terminate to return.
 /// equivalent to main_do(run,Es)
-pub fn traversed(path_string: String) -> Result<(), String> {
-    let mut translator = Translator::new();
+pub fn traversed(system: &EvaluatedSystem) -> Result<String, String> {
+    let (res, translator) = match system {
+	EvaluatedSystem::System { sys, translator } => {
+	    (transitions::run_separated(sys)?, translator)
+	},
+	EvaluatedSystem::Graph { graph, translator } => {
+	    let Some(sys) = graph.node_weights().next()
+	    else {
+		return Err("No node found in graph".into());
+	    };
+	    (transitions::run_separated(sys)?, translator)
+	}
+    };
 
-    let system = read_file(&mut translator, path_string, parser_system)?;
+    let mut output = String::new();
 
-    // the system needs to terminate to return
-    let res = transitions::run_separated(&system)?;
-
-    println!("The trace is composed by the set of entities:");
+    output.push_str("The trace is composed by the set of entities:");
     for (e, _c, _t) in res {
-	println!("{}", translator::RSsetDisplay::from(&translator, &e));
+	output.push_str(
+	    &format!(
+		"{}",
+		translator::RSsetDisplay::from(translator, &e)
+	    )
+	);
     }
-
-    Ok(())
+    Ok(output)
 }
 
 
@@ -286,45 +319,72 @@ pub fn traversed(path_string: String) -> Result<(), String> {
 /// context. IMPORTANT: for loops, we assume Delta defines the process constant
 /// x = Q.x and the context process is x .
 /// equivalent to main_do(loop,Es)
-pub fn hoop(path_string: String) -> Result<(), String> {
-    let mut translator = Translator::new();
-
-    let system = read_file(&mut translator, path_string, parser_system)?;
-
-    // we retrieve the id for "x" and use it to find the corresponding loop
-    let res =
-	match perpetual::lollipops_only_loop_named(system,
-						   translator.encode("x")) {
-	Some(o) => o,
-	None => {
-	    return Err("No loop found.".into());
+pub fn hoop(
+    system: &EvaluatedSystem, symbol: String
+) -> Result<String, String>
+{
+    let (res, translator) = match system {
+	EvaluatedSystem::System { sys, translator } => {
+	    (sys, translator)
+	},
+	EvaluatedSystem::Graph { graph, translator } => {
+	    let Some(sys) = graph.node_weights().next()
+	    else {
+		return Err("No node found in graph".into());
+	    };
+	    (sys, translator)
 	}
     };
+    // we retrieve the id for "x" and use it to find the corresponding loop
+    let Some(id) = translator.encode_not_mut(&symbol)
+    else {
+	return Err(format!("Symbol {symbol} not found"));
+    };
+    let res =
+	match perpetual::lollipops_only_loop_named(res, id) {
+	    Some(o) => o,
+	    None => {
+		return Err("No loop found.".into());
+	    }
+	};
 
-    println!("The loop is composed by the sets:");
+    let mut output = String::new();
+
+    output.push_str("The loop is composed by the sets:");
     for e in res {
-	println!("{}", translator::RSsetDisplay::from(&translator, &e));
+	output.push_str(
+	    &format!( "{}", translator::RSsetDisplay::from(translator, &e))
+	);
     }
 
-    Ok(())
+    Ok(output)
 }
 
 /// Finds the frequency of each entity in the traversed states for a
 /// (deterministic) terminating Reaction System.
 /// equivalent to main_do(freq, PairList)
-pub fn freq(path_string: String) -> Result<(), String> {
-    let mut translator = Translator::new();
+pub fn freq(
+    system: &EvaluatedSystem
+) -> Result<String, String> {
+    let (sys, translator) = match system {
+	EvaluatedSystem::System { sys, translator } => {
+	    (sys, translator)
+	},
+	EvaluatedSystem::Graph { graph, translator } => {
+	    let Some(sys) = graph.node_weights().next()
+	    else {
+		return Err("No node found in graph".into());
+	    };
+	    (sys, translator)
+	}
+    };
 
-    let system = read_file(&mut translator, path_string, parser_system)?;
+    let res = frequency::naive_frequency(sys)?;
 
-    let res = frequency::naive_frequency(&system)?;
-
-    println!(
+    Ok(format!(
 	"Frequency of encountered symbols:\n{}",
-	translator::FrequencyDisplay::from(&translator, &res)
-    );
-
-    Ok(())
+	translator::FrequencyDisplay::from(translator, &res)
+    ))
 }
 
 
@@ -332,33 +392,38 @@ pub fn freq(path_string: String) -> Result<(), String> {
 /// Reaction System whose context has the form Q1 ... Q1.Q2 ... Q2 ... Qn ...
 /// equivalent to main_do(limitfreq, PairList)
 pub fn limit_freq(
-    path_string_system: String,
-    path_string_experiment: String
-) -> Result<(), String>
+    system: &mut EvaluatedSystem,
+    experiment: String
+) -> Result<String, String>
 {
-    let mut translator = Translator::new();
+    let (sys, translator): (&RSsystem, &mut Translator) = match system {
+	EvaluatedSystem::System { sys, translator } => {
+	    (sys, translator)
+	},
+	EvaluatedSystem::Graph { graph, translator } => {
+	    let Some(sys) = graph.node_weights().next()
+	    else {
+		return Err("No node found in graph".into());
+	    };
+	    (sys, translator)
+	}
+    };
 
-    let system = read_file(&mut translator,
-			   path_string_system,
-			   parser_system)?;
-
-    let (_, sets) = read_file(&mut translator,
-			      path_string_experiment,
+    let (_, sets) = read_file(translator,
+			      experiment,
 			      parser_experiment)?;
 
     let res = match frequency::limit_frequency(&sets,
-					       &system.reaction_rules,
-					       &system.available_entities) {
+					       &sys.reaction_rules,
+					       &sys.available_entities) {
 	Some(e) => e,
 	None => {return Err("Error calculating frequency.".into());}
     };
 
-    println!(
+    Ok(format!(
 	"Frequency of encountered symbols:\n{}",
-	translator::FrequencyDisplay::from(&translator, &res)
-    );
-
-    Ok(())
+	translator::FrequencyDisplay::from(translator, &res)
+    ))
 }
 
 
@@ -368,48 +433,55 @@ pub fn limit_freq(
 /// read from a corresponding file.
 /// equivalent to main_do(fastfreq, PairList)
 pub fn fast_freq(
-    path_string_system: String,
-    path_string_experiment: String
-) -> Result<(), String>
+    system: &mut EvaluatedSystem,
+    experiment: String
+) -> Result<String, String>
 {
-    let mut translator = Translator::new();
+    let (sys, translator): (&RSsystem, &mut Translator) = match system {
+	EvaluatedSystem::System { sys, translator } => {
+	    (sys, translator)
+	},
+	EvaluatedSystem::Graph { graph, translator } => {
+	    let Some(sys) = graph.node_weights().next()
+	    else {
+		return Err("No node found in graph".into());
+	    };
+	    (sys, translator)
+	}
+    };
 
-    let system = read_file(&mut translator,
-			   path_string_system,
-			   parser_system)?;
-
-    let (weights, sets) = read_file(&mut translator,
-				    path_string_experiment,
+    let (weights, sets) = read_file(translator,
+				    experiment,
 				    parser_experiment)?;
 
     let res = match frequency::fast_frequency(&sets,
-					      &system.reaction_rules,
-					      &system.available_entities,
+					      &sys.reaction_rules,
+					      &sys.available_entities,
 					      &weights) {
 	Some(e) => e,
 	None => {return Err("Error calculating frequency.".into());}
     };
 
-    println!(
+    Ok(format!(
 	"Frequency of encountered symbols:\n{}",
-	translator::FrequencyDisplay::from(&translator, &res)
-    );
-
-    Ok(())
+	translator::FrequencyDisplay::from(translator, &res)
+    ))
 }
 
 /// Computes the LTS.
 /// equivalent to main_do(digraph, Arcs) or to main_do(advdigraph, Arcs)
 pub fn digraph(
-    path_string: String
-) -> Result<(Graph<RSsystem, RSlabel>, Translator), String> {
-    let mut translator = Translator::new();
-
-    let system = read_file(&mut translator, path_string, parser_system)?;
-
-    // the system needs to terminate to return
-    let res = graph::digraph(system)?;
-    Ok((res, translator))
+    system: &mut EvaluatedSystem
+) -> Result<(), String> {
+    *system = if let EvaluatedSystem::System { sys, translator } = system {
+	    EvaluatedSystem::Graph {
+		graph: graph::digraph(sys.clone())?,
+		translator: translator.to_owned()
+	    }
+    } else {
+	return Ok(());
+    };
+    Ok(())
 }
 
 
@@ -418,111 +490,113 @@ pub fn digraph(
 // -----------------------------------------------------------------------------
 
 /// Writes the specified graph to a file in .dot format.
-pub fn dot(
-    graph: &Graph<RSsystem, RSlabel>,
-    translator: &Translator,
-    output: String
-) -> Result<(), String>
-{
-    let rc_translator = Rc::new(translator.to_owned());
+pub fn dot(system: &EvaluatedSystem) -> Result<String, String> {
+    match system {
+	EvaluatedSystem::System { sys:_, translator:_ } =>
+	    Err("Supplied system is not a graph".into()),
+	EvaluatedSystem::Graph { graph, translator } => {
+	    let rc_translator = Rc::new(translator.to_owned());
+	    // map each value to the corresponding value we want to display
+	    let modified_graph = graph.map(
+		|id, node|
+		graph::GraphMapNodesTy::from(
+		    graph::GraphMapNodes::Entities,
+		    Rc::clone(&rc_translator)
+		).get()(id, node)
+		    + "; " +
+		    &graph::GraphMapNodesTy::from(
+			graph::GraphMapNodes::Context,
+			Rc::clone(&rc_translator)
+		    ).get()(id, node),
+		graph::GraphMapEdgesTy::from(
+		    graph::GraphMapEdges::EntitiesAdded,
+		    Rc::clone(&rc_translator)
+		).get()
+	    );
 
-    // map each value to the corresponding value we want to display
-    let modified_graph = graph.map(
-	|id, node|
-	graph::GraphMapNodesTy::from(
-	    graph::GraphMapNodes::Entities,
-	    Rc::clone(&rc_translator)
-	).get()(id, node)
-	    + "; " +
-	    &graph::GraphMapNodesTy::from(
-		graph::GraphMapNodes::Context,
-		Rc::clone(&rc_translator)
-	    ).get()(id, node),
-	graph::GraphMapEdgesTy::from(
-	    graph::GraphMapEdges::EntitiesAdded,
-	    Rc::clone(&rc_translator)
-	).get()
-    );
+	    let graph = Rc::new(graph.to_owned());
 
-    let graph = Rc::new(graph.to_owned());
+	    let edge_formatter = graph::default_edge_formatter(
+		Rc::clone(&graph)
+	    );
+	    let node_formatter = graph::default_node_formatter(
+		Rc::clone(&graph)
+	    );
 
-    let edge_formatter = graph::default_edge_formatter(Rc::clone(&graph));
-    let node_formatter = graph::default_node_formatter(Rc::clone(&graph));
+	    let dot = rsdot::RSDot::with_attr_getters(
+		&modified_graph,
+		&[],
+		&edge_formatter,
+		&node_formatter,
+	    );
 
-    let dot = rsdot::RSDot::with_attr_getters(
-	&modified_graph,
-	&[],
-	&edge_formatter,
-	&node_formatter,
-    );
-
-    save_file(format!("{dot}"), output, "dot".into())?;
-
-    Ok(())
+	    Ok(format!("{dot}"))
+	}
+    }
 }
 
 /// Writes the specified graph to a file in .graphml format.
-pub fn graphml(
-    graph: &Graph<RSsystem, RSlabel>,
-    translator: &Translator,
-    output: String
-) -> Result<(), String>
-{
-    let rc_translator = Rc::new(translator.to_owned());
+pub fn graphml(system: &EvaluatedSystem) -> Result<String, String> {
+    match system {
+	EvaluatedSystem::System { sys:_, translator:_ } =>
+	    Err("Supplied system is not a graph".into()),
+	EvaluatedSystem::Graph { graph, translator } => {
+	    let rc_translator = Rc::new(translator.to_owned());
 
-    // map each value to the corresponding value we want to display
-    let modified_graph = graph.map(
-	|id, node|
-	graph::GraphMapNodesTy::from(
-	    graph::GraphMapNodes::Entities,
-	    Rc::clone(&rc_translator)
-	).get()(id, node)
-	    + "; " +
-	    &graph::GraphMapNodesTy::from(
-		graph::GraphMapNodes::Context,
-		Rc::clone(&rc_translator)
-	    ).get()(id, node),
-	graph::GraphMapEdgesTy::from(graph::GraphMapEdges::EntitiesAdded,
-				     Rc::clone(&rc_translator)).get()
-    );
+	    // map each value to the corresponding value we want to display
+	    let modified_graph = graph.map(
+		|id, node|
+		graph::GraphMapNodesTy::from(
+		    graph::GraphMapNodes::Entities,
+		    Rc::clone(&rc_translator)
+		).get()(id, node)
+		    + "; " +
+		    &graph::GraphMapNodesTy::from(
+			graph::GraphMapNodes::Context,
+			Rc::clone(&rc_translator)
+		    ).get()(id, node),
+		graph::GraphMapEdgesTy::from(graph::GraphMapEdges::EntitiesAdded,
+					     Rc::clone(&rc_translator)).get()
+	    );
 
-    use petgraph_graphml::GraphMl;
-    let graphml = GraphMl::new(&modified_graph)
-	.pretty_print(true)
-	.export_node_weights_display()
-	.export_edge_weights_display();
+	    use petgraph_graphml::GraphMl;
+	    let graphml = GraphMl::new(&modified_graph)
+		.pretty_print(true)
+		.export_node_weights_display()
+		.export_edge_weights_display();
 
-    save_file(format!("{graphml}"), output, "graphml".into())?;
-
-    Ok(())
+	    Ok(format!("{graphml}"))
+	}
+    }
 }
 
 /// Writes the specified graph, translator tuple to file.
 /// N.B. graph size in memory might be much larger after serialization and
 /// deserialization.
 pub fn serialize(
-    graph: &Graph<RSsystem, RSlabel>,
-    translator: &Translator,
-    output_path: String
+    system: &EvaluatedSystem,
+    path: String
 ) -> Result<(), String>
 {
-    // relative path
-    let mut path = match env::current_dir() {
-	Ok(p) => p,
-	Err(_) => return Err("Error getting current directory.".into())
-    };
-    path = path.join(output_path);
-    path.set_extension("cbor");
+    match system {
+	EvaluatedSystem::System { sys:_, translator:_ } =>
+	    Err("Supplied system is not a graph".into()),
+	EvaluatedSystem::Graph { graph, translator } => {
+	    // relative path
+	    let mut path = std::path::PathBuf::from(path);
+	    path.set_extension("cbor");
 
-    let f = match fs::File::create(&path) {
-	Ok(f) => f,
-	Err(_) => return Err(format!("Error creating file {}.",
-				     path.to_str().unwrap()))
-    };
+	    let f = match fs::File::create(&path) {
+		Ok(f) => f,
+		Err(_) => return Err(format!("Error creating file {}.",
+					     path.to_str().unwrap()))
+	    };
 
-    match serialize::ser(f, graph, translator) {
-	Ok(_) => Ok(()),
-	Err(_) => Err("Error during serialization.".into())
+	    match serialize::ser(f, graph, translator) {
+		Ok(_) => Ok(()),
+		Err(_) => Err("Error during serialization.".into())
+	    }
+	}
     }
 }
 
@@ -558,12 +632,78 @@ pub fn deserialize(
 //                         Interpreting Instructions
 //------------------------------------------------------------------------------
 
+macro_rules! save_options {
+    ($assignment: expr, $so: ident) => {
+	let SaveOptions { print, save } = $so;
+	let output = $assignment;
+	if print {
+	    println!("{output}");
+	}
+	if let Some(save) = save {
+	    for file in save {
+		save_file(&output, file)?;
+	    }
+	}
+    };
+}
+
+fn execute(
+    instruction: Instruction,
+    system: &mut EvaluatedSystem
+) -> Result<(), String> {
+    match instruction {
+	Instruction::Stats { so } => {
+	    save_options!(stats(system)?, so);
+	}
+	Instruction::Target { so } => {
+	    save_options!(target(system)?, so);
+	},
+	Instruction::Run { so } => {
+	    save_options!(traversed(system)?, so);
+	},
+	Instruction::Loop { symbol, so } => {
+	    save_options!(hoop(system, symbol)?, so);
+	},
+	Instruction::Frequency { so } => {
+	    save_options!(freq(system)?, so);
+	},
+	Instruction::LimitFrequency { experiment, so } => {
+	    save_options!(limit_freq(system, experiment)?, so);
+	},
+	Instruction::FastFrequency { experiment, so } => {
+	    save_options!(fast_freq(system, experiment)?, so);
+	},
+	Instruction::Digraph { gso } => {
+	    for save in gso {
+		digraph(system)?;
+		match save {
+		    GraphSaveOptions::Dot { so } => {
+			save_options!(dot(system)?, so);
+		    },
+		    GraphSaveOptions::GraphML { so } => {
+			save_options!(graphml(system)?, so);
+		    },
+		    GraphSaveOptions::Serialize { path } => {
+			serialize(system, path)?;
+		    }
+		}
+	    }
+	}
+    }
+    Ok(())
+}
+
 pub fn run(path: String) -> Result<(), String> {
     let mut translator = Translator::new();
 
-    let instructions = read_file(&mut translator, path, parser_instructions)?;
+    let Instructions { system, instructions } =
+	read_file(&mut translator, path, parser_instructions)?;
 
-    println!("{:?}", instructions);
+    let mut system = system.compute(translator)?;
+
+    for instr in instructions {
+	execute(instr, &mut system)?;
+    }
 
     Ok(())
 }

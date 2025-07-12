@@ -239,13 +239,9 @@ Helper_SO: presets::SaveOptions = {
 
 SaveOptions: presets::SaveOptions = {
     <p: Separated_Or<Helper_SO, ";">> => {
-	if let Some(a) =
-	    p.into_iter()
-		.reduce(|mut acc, mut e| {acc.combine(&mut e); acc}) {
-	    a
-	} else {
-	    presets::SaveOptions::default()
-	}
+	p.into_iter()
+	 .reduce(|mut acc, mut e| {acc.combine(&mut e); acc})
+	 .unwrap_or_default()
     }
 }
 
@@ -268,8 +264,8 @@ Instruction: presets::Instruction = {
 	presets::Instruction::Run { so },
     "Loop" "(" <symbol: Literal> ")" ">" <so: SaveOptions> =>
 	presets::Instruction::Loop { symbol,  so },
-    "Frequency" "(" <p: Path> ")" ">" <so: SaveOptions> =>
-	presets::Instruction::Frequency { experiment: p, so },
+    "Frequency" ">" <so: SaveOptions> =>
+	presets::Instruction::Frequency { so },
     "LimitFrequency" "(" <p: Path> ")" ">" <so: SaveOptions> =>
 	presets::Instruction::LimitFrequency { experiment: p, so },
     "FastFrequency" "(" <p: Path> ")" ">" <so: SaveOptions> =>

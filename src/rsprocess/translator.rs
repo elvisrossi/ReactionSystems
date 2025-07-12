@@ -45,6 +45,10 @@ impl Translator {
         id
     }
 
+    pub fn encode_not_mut(&self, s: impl Into<String>) -> Option<IdType> {
+	self.strings.get(&s.into()).copied()
+    }
+
     /// converts an id into the corresponding string
     pub fn decode(&self, el: IdType) -> Option<String> {
         self.reverse

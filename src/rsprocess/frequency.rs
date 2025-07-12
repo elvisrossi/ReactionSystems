@@ -28,7 +28,8 @@ impl Frequency {
 
     pub fn add(&mut self, e: &RSset, run: usize) {
         for &el in e.iter() {
-	    let entry = self.frequency_map.entry(el).or_insert(vec![0; run + 1]);
+	    let entry =
+		self.frequency_map.entry(el).or_insert(vec![0; run + 1]);
 	    if entry.len() < run +1 {
 		entry.resize(run + 1, 0);
 	    }
@@ -80,7 +81,7 @@ pub fn loop_frequency(system: &RSsystem, symb: IdType) -> Frequency {
     let mut freq = Frequency::new();
     freq.append_weight(1);
 
-    if let Some(hoop) = lollipops_only_loop_named(system.clone(), symb) {
+    if let Some(hoop) = lollipops_only_loop_named(system, symb) {
         hoop.iter().for_each(|e| freq.add(e, 0));
     }
     freq

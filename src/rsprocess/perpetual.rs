@@ -245,7 +245,7 @@ pub fn lollipops_decomposed_named(
 /// predicate lollipop finds the Prefixes and the Loops sequences of entities.
 /// see lollipop
 pub fn lollipops_named(
-    system: RSsystem,
+    system: &RSsystem,
     symb: IdType
 ) -> Option<(Vec<RSset>, Vec<RSset>)> {
     lollipops_decomposed_named(
@@ -259,7 +259,7 @@ pub fn lollipops_named(
 /// Only returns the loop part of the lollipop, returns for all X, where X = Q.X
 /// see loop
 pub fn lollipops_only_loop_named(
-    system: RSsystem,
+    system: &RSsystem,
     symb: IdType
 ) -> Option<Vec<RSset>> {
     let filtered = system
