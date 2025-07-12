@@ -4,4 +4,4 @@ Context: [({a,b}.{a}.{a,c}.x + {a,b}.{a}.{a}.nill)]
 Reactions: ([{a,b}, {c}, {b}])
 
 
-Digraph > Dot > Print
+Digraph > Dot Entities | Context "; " MaskDifference {a, b} > Print

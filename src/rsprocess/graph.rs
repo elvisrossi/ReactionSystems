@@ -48,6 +48,7 @@ pub fn digraph(
 // Nodes -----------------------------------------------------------------------
 
 /// Helper structure that specifies what information to display for nodes.
+#[derive(Clone)]
 pub enum GraphMapNodes {
     Hide,
     Entities,
@@ -55,7 +56,8 @@ pub enum GraphMapNodes {
     Context,
 }
 
-type GraphMapNodesFnTy = dyn Fn(petgraph::prelude::NodeIndex, &RSsystem) -> String;
+type GraphMapNodesFnTy =
+    dyn Fn(petgraph::prelude::NodeIndex, &RSsystem) -> String;
 /// Helper structure that holds a formatting function from node as RSsystem to
 /// string
 pub struct GraphMapNodesTy {
@@ -133,6 +135,7 @@ impl From<GraphMapNodesTy> for Box<GraphMapNodesFnTy> {
 // Edges -----------------------------------------------------------------------
 
 /// Helper structure that specifies what information to display for edges
+#[derive(Clone)]
 pub enum GraphMapEdges {
     Hide,
     Products,

@@ -24,7 +24,6 @@ use super::*;
 //                                 Structures
 // -----------------------------------------------------------------------------
 
-#[derive(Debug)]
 pub struct SaveOptions {
     pub print: bool,
     pub save: Option<Vec<String>>
@@ -57,14 +56,28 @@ impl Default for SaveOptions {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone)]
+pub enum NodeDisplay {
+    Separator(String),
+    Display(graph::GraphMapNodes)
+}
+
+#[derive(Clone)]
+pub enum EdgeDisplay {
+    Separator(String),
+    Display(graph::GraphMapEdges)
+}
+
 pub enum GraphSaveOptions {
-    Dot { so: SaveOptions },
-    GraphML { so: SaveOptions },
+    Dot       { node_display: Vec<NodeDisplay>,
+		edge_display: Vec<EdgeDisplay>,
+		so: SaveOptions },
+    GraphML   { node_display: Vec<NodeDisplay>,
+		edge_display: Vec<EdgeDisplay>,
+		so: SaveOptions },
     Serialize { path: String }
 }
 
-#[derive(Debug)]
 pub enum Instruction {
     Stats { so: SaveOptions },
     Target { so: SaveOptions },
@@ -76,13 +89,11 @@ pub enum Instruction {
     Digraph { gso: Vec<GraphSaveOptions> },
 }
 
-#[derive(Debug)]
 pub enum System {
     Deserialize { path: String },
     RSsystem { sys: RSsystem }
 }
 
-#[derive(Debug)]
 pub enum EvaluatedSystem {
     Graph { graph: Graph<RSsystem, RSlabel>,
 	    translator: Translator },
@@ -93,22 +104,24 @@ pub enum EvaluatedSystem {
 
 impl System {
     pub fn compute(
-	&self, translator: Translator
+	&self,
+	translator: Translator
     ) -> Result<EvaluatedSystem, String>
     {
 	match self {
 	    Self::RSsystem { sys } => {
-		Ok(EvaluatedSystem::System { sys: sys.to_owned(), translator })
+		Ok(EvaluatedSystem::System { sys: sys.to_owned(),
+					     translator })
 	    },
 	    Self::Deserialize { path } => {
 		let (graph, translator) = deserialize(path.into())?;
-		Ok(EvaluatedSystem::Graph { graph, translator })
+		Ok(EvaluatedSystem::Graph { graph,
+					    translator })
 	    }
 	}
     }
 }
 
-#[derive(Debug)]
 pub struct Instructions {
     pub system: System,
     pub instructions: Vec<Instruction>
@@ -489,29 +502,96 @@ pub fn digraph(
 //                              Output Functions
 // -----------------------------------------------------------------------------
 
+#[allow(clippy::type_complexity)]
+fn generate_node_pringting_fn<'a>(
+    node_display: &'a Vec<NodeDisplay>,
+    translator: Rc<Translator>
+) -> Box<dyn Fn(petgraph::prelude::NodeIndex, &'a RSsystem) -> String + 'a> {
+    // The type cannot be aliased since rust doesnt like generics.
+    // We are iterating over the node_display and constructing a function
+    // (accumulator) that prints out our formatted nodes. So at each step we
+    // call the previous function and add the next string or function.
+    let mut accumulator:
+	    Box<dyn Fn(petgraph::prelude::NodeIndex, &RSsystem) -> String>
+	= Box::new(|_, _| String::new());
+    for nd in node_display {
+	accumulator =
+	    match nd {
+		NodeDisplay::Display(d) => { // retrieve from the graph module
+		    // the correct formatting function
+		    let val = translator.clone();
+		    Box::new(
+			move |i, n| (accumulator)(i, n) +
+			    &graph::GraphMapNodesTy::from(
+				d.clone(),
+				val.clone()
+			    ).get()(i, n))
+		},
+		NodeDisplay::Separator(s) => { // we have a string so simply
+		    // add it at the end
+		    Box::new(
+			move |i, n| (accumulator)(i, n) + s
+		    )
+		}
+	    };
+    }
+    accumulator
+}
+
+#[allow(clippy::type_complexity)]
+fn generate_edge_pringting_fn<'a>(
+    edge_display: &'a Vec<EdgeDisplay>,
+    translator: Rc<Translator>
+) -> Box<dyn Fn(petgraph::prelude::EdgeIndex, &'a RSlabel) -> String + 'a> {
+    // The type cannot be aliased since rust doesnt like generics.
+    // We are iterating over the edge_display and constructing a function
+    // (accumulator) that prints out our formatted nodes. So at each step we
+    // call the previous function and add the next string or function.
+    let mut accumulator:
+	    Box<dyn Fn(petgraph::prelude::EdgeIndex, &RSlabel) -> String>
+	= Box::new(|_, _| String::new());
+    for nd in edge_display {
+	accumulator =
+	    match nd {
+		EdgeDisplay::Display(d) => { // retrieve from the graph module
+		    // the correct formatting function
+		    let val = translator.clone();
+		    Box::new(
+			move |i, n| (accumulator)(i, n) +
+			    &graph::GraphMapEdgesTy::from(
+				d.clone(),
+				val.clone()
+			    ).get()(i, n))
+		},
+		EdgeDisplay::Separator(s) => { // we have a string so simply
+		    // add it at the end
+		    Box::new(
+			move |i, n| (accumulator)(i, n) + s
+		    )
+		}
+	    };
+    }
+    accumulator
+}
+
 /// Writes the specified graph to a file in .dot format.
-pub fn dot(system: &EvaluatedSystem) -> Result<String, String> {
+pub fn dot(
+    system: &EvaluatedSystem,
+    node_display: Vec<NodeDisplay>,
+    edge_display: Vec<EdgeDisplay>
+) -> Result<String, String>
+{
     match system {
 	EvaluatedSystem::System { sys:_, translator:_ } =>
 	    Err("Supplied system is not a graph".into()),
 	EvaluatedSystem::Graph { graph, translator } => {
-	    let rc_translator = Rc::new(translator.to_owned());
+	    let rc_translator = Rc::new(translator.clone());
 	    // map each value to the corresponding value we want to display
+	    // this is awful but rust is not a functional language so its all
+	    // fine...
 	    let modified_graph = graph.map(
-		|id, node|
-		graph::GraphMapNodesTy::from(
-		    graph::GraphMapNodes::Entities,
-		    Rc::clone(&rc_translator)
-		).get()(id, node)
-		    + "; " +
-		    &graph::GraphMapNodesTy::from(
-			graph::GraphMapNodes::Context,
-			Rc::clone(&rc_translator)
-		    ).get()(id, node),
-		graph::GraphMapEdgesTy::from(
-		    graph::GraphMapEdges::EntitiesAdded,
-		    Rc::clone(&rc_translator)
-		).get()
+		generate_node_pringting_fn(&node_display, Rc::clone(&rc_translator)),
+		generate_edge_pringting_fn(&edge_display, rc_translator)
 	    );
 
 	    let graph = Rc::new(graph.to_owned());
@@ -677,10 +757,10 @@ fn execute(
 	    for save in gso {
 		digraph(system)?;
 		match save {
-		    GraphSaveOptions::Dot { so } => {
-			save_options!(dot(system)?, so);
+		    GraphSaveOptions::Dot { node_display, edge_display, so } => {
+			save_options!(dot(system, node_display, edge_display)?, so);
 		    },
-		    GraphSaveOptions::GraphML { so } => {
+		    GraphSaveOptions::GraphML { node_display:_, edge_display:_, so } => {
 			save_options!(graphml(system)?, so);
 		    },
 		    GraphSaveOptions::Serialize { path } => {

@@ -12,6 +12,7 @@ use crate::rsprocess::structure::{RSset,
 use crate::rsprocess::translator::{Translator, IdType};
 use crate::rsprocess::presets::Instructions;
 use crate::rsprocess::presets;
+use crate::rsprocess::graph;
 
 grammar(translator: &mut Translator);
 
@@ -37,12 +38,17 @@ match {
     "Dot", "GraphML", "Serialize",
     "Stats", "Target", "Run", "Loop", "Frequency", "LimitFrequency",
     "FastFrequency", "Digraph",
-    "Deserialize"
+    "Deserialize",
+    "Hide", "Entities", "MaskEntities", "MaskContext",
+    "Products", "MaskProducts", "Union", "MaskUnion",
+    "Difference", "MaskDifference",
+    "EntitiesDeleted", "MaskEntitiesDeleted",
+    "EntitiesAdded", "MaskEntitiesAdded"
 } else {
     r"[0-9]+" => NUMBER
 } else {
-    // r"([[:alpha:]]|\p{Emoji})([[:word:]]|\p{Emoji})*" => WORD
-    r"(\p{L}|\p{Emoji})(\p{L}|\p{Emoji}|\p{Dash}|\p{N})*" => WORD,
+    r"([[:alpha:]])([[:word:]])*" => WORD
+    // r"(\p{L}|\p{Emoji})(\p{L}|\p{Emoji}|\p{Dash}|\p{N})*" => WORD,
 } else {
     r#"".*""# => PATH,
 } else {
@@ -245,11 +251,86 @@ SaveOptions: presets::SaveOptions = {
     }
 }
 
+
+LiteralSeparatorNode: presets::NodeDisplay = {
+    PATH =>
+	presets::NodeDisplay::Separator(
+	    <>.trim_end_matches("\"").trim_start_matches("\"").to_string()
+	)
+};
+
+LiteralSeparatorEdge: presets::EdgeDisplay = {
+    PATH =>
+	presets::EdgeDisplay::Separator(
+	    <>.trim_end_matches("\"").trim_start_matches("\"").to_string()
+	)
+};
+
+NodeDisplay: presets::NodeDisplay = {
+    "Hide" => presets::NodeDisplay::Display(graph::GraphMapNodes::Hide),
+    "Entities" => presets::NodeDisplay::Display(graph::GraphMapNodes::Entities),
+    "MaskEntities" <mask: Set> =>
+	presets::NodeDisplay::Display(graph::GraphMapNodes::MaskEntities{ mask }),
+    "Context" => presets::NodeDisplay::Display(graph::GraphMapNodes::Context)
+}
+
+SeparatorNode: Vec<presets::NodeDisplay> = {
+    <v: NodeDisplay> => vec![v],
+    <v:(<NodeDisplay> <LiteralSeparatorNode>)+> <e: NodeDisplay?> =>
+	match e {
+	    None => v.iter().fold(vec![], |mut acc, (a, b)| {acc.push(a.clone()); acc.push(b.clone()); acc.clone()}),
+	    Some(e) => {
+		let mut v = v.iter().fold(vec![], |mut acc, (a, b)| {acc.push(a.clone()); acc.push(b.clone()); acc.clone()});
+		v.push(e);
+		v
+	    }
+	}
+}
+
+EdgeDisplay: presets::EdgeDisplay = {
+    "Hide" => presets::EdgeDisplay::Display(graph::GraphMapEdges::Hide),
+    "Products" => presets::EdgeDisplay::Display(graph::GraphMapEdges::Products),
+    "MaskProducts" <mask: Set> =>
+	presets::EdgeDisplay::Display(graph::GraphMapEdges::MaskEntities{ mask }),
+    "Entities" => presets::EdgeDisplay::Display(graph::GraphMapEdges::Entities),
+    "MaskEntities" <mask: Set> => presets::EdgeDisplay::Display(graph::GraphMapEdges::MaskEntities{ mask }),
+    "Context" => presets::EdgeDisplay::Display(graph::GraphMapEdges::Context),
+    "MaskContext" <mask: Set> => presets::EdgeDisplay::Display(graph::GraphMapEdges::MaskContext{ mask }),
+    "Union" => presets::EdgeDisplay::Display(graph::GraphMapEdges::Union),
+    "MaskUnion" <mask: Set> => presets::EdgeDisplay::Display(graph::GraphMapEdges::MaskUnion{ mask }),
+    "Difference" => presets::EdgeDisplay::Display(graph::GraphMapEdges::Difference),
+    "MaskDifference" <mask: Set> => presets::EdgeDisplay::Display(graph::GraphMapEdges::MaskDifference{ mask }),
+    "EntitiesDeleted" => presets::EdgeDisplay::Display(graph::GraphMapEdges::EntitiesDeleted),
+    "MaskEntitiesDeleted" <mask: Set> => presets::EdgeDisplay::Display(graph::GraphMapEdges::MaskEntitiesDeleted{ mask }),
+    "EntitiesAdded" => presets::EdgeDisplay::Display(graph::GraphMapEdges::EntitiesAdded),
+    "MaskEntitiesAdded" <mask: Set> => presets::EdgeDisplay::Display(graph::GraphMapEdges::MaskEntitiesAdded{ mask }),
+}
+
+SeparatorEdge: Vec<presets::EdgeDisplay> = {
+    <v: EdgeDisplay> => vec![v],
+    <v:(<EdgeDisplay> <LiteralSeparatorEdge>)+> <e: EdgeDisplay?> =>
+	match e {
+	    None => v.iter().fold(vec![], |mut acc, (a, b)| {acc.push(a.clone()); acc.push(b.clone()); acc.clone()}),
+	    Some(e) => {
+		let mut v = v.iter().fold(vec![], |mut acc, (a, b)| {acc.push(a.clone()); acc.push(b.clone()); acc.clone()});
+		v.push(e);
+		v
+	    }
+	}
+}
+
+
 GraphSaveOptions: presets::GraphSaveOptions = {
-    "Dot" ">" <so: SaveOptions> =>
-	presets::GraphSaveOptions::Dot { so },
-    "GraphML" ">" <so: SaveOptions> =>
-	presets::GraphSaveOptions::GraphML { so },
+    "Dot" <s_node: SeparatorNode> "|" <s_edge: SeparatorEdge> ">"
+	<so: SaveOptions> =>
+	presets::GraphSaveOptions::Dot { node_display: s_node,
+					 edge_display: s_edge,
+					 so },
+    "GraphML" <s_node: SeparatorNode> "|" <s_edge: SeparatorEdge> ">"
+	<so: SaveOptions> =>
+	presets::GraphSaveOptions::GraphML { node_display: s_node,
+					     edge_display: s_edge,
+					     so },
     "Serialize" "(" <path: Path> ")" =>
 	presets::GraphSaveOptions::Serialize { path },
 }
