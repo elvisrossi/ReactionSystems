@@ -566,7 +566,7 @@ pub fn edge_formatter_base_color(
     base_color: String
 ) -> String
 {
-    ", fillcolor=".to_string() + &base_color
+    ", color=".to_string() + &base_color
 }
 
 pub fn edge_formatter(
@@ -581,7 +581,7 @@ pub fn edge_formatter(
 		move |_, e| {
 		    let rssystem = original_graph.edge_weight(e.id()).unwrap();
 		    if ot.evaluate(&rssystem.available_entities, &set) {
-			Some(", fillcolor=".to_string() + &color)
+			Some(", color=".to_string() + &color)
 		    } else {
 			None
 		    }
@@ -593,7 +593,7 @@ pub fn edge_formatter(
 		move |_, e| {
 		    let rssystem = original_graph.edge_weight(e.id()).unwrap();
 		    if ot.evaluate(&rssystem.context, &set) {
-			Some(", fillcolor=".to_string() + &color)
+			Some(", color=".to_string() + &color)
 		    } else {
 			None
 		    }
@@ -605,7 +605,7 @@ pub fn edge_formatter(
 		move |_, e| {
 		    let rssystem = original_graph.edge_weight(e.id()).unwrap();
 		    if ot.evaluate(&rssystem.t, &set) {
-			Some(", fillcolor=".to_string() + &color)
+			Some(", color=".to_string() + &color)
 		    } else {
 			None
 		    }
@@ -617,7 +617,7 @@ pub fn edge_formatter(
 		move |_, e| {
 		    let rssystem = original_graph.edge_weight(e.id()).unwrap();
 		    if ot.evaluate(&rssystem.reactants, &set) {
-			Some(", fillcolor=".to_string() + &color)
+			Some(", color=".to_string() + &color)
 		    } else {
 			None
 		    }
@@ -629,7 +629,7 @@ pub fn edge_formatter(
 		move |_, e| {
 		    let rssystem = original_graph.edge_weight(e.id()).unwrap();
 		    if ot.evaluate(&rssystem.reactants_absent, &set) {
-			Some(", fillcolor=".to_string() + &color)
+			Some(", color=".to_string() + &color)
 		    } else {
 			None
 		    }
@@ -641,7 +641,7 @@ pub fn edge_formatter(
 		move |_, e| {
 		    let rssystem = original_graph.edge_weight(e.id()).unwrap();
 		    if ot.evaluate(&rssystem.inhibitors, &set) {
-			Some(", fillcolor=".to_string() + &color)
+			Some(", color=".to_string() + &color)
 		    } else {
 			None
 		    }
@@ -653,7 +653,7 @@ pub fn edge_formatter(
 		move |_, e| {
 		    let rssystem = original_graph.edge_weight(e.id()).unwrap();
 		    if ot.evaluate(&rssystem.inhibitors_present, &set) {
-			Some(", fillcolor=".to_string() + &color)
+			Some(", color=".to_string() + &color)
 		    } else {
 			None
 		    }
@@ -665,7 +665,7 @@ pub fn edge_formatter(
 		move |_, e| {
 		    let rssystem = original_graph.edge_weight(e.id()).unwrap();
 		    if ot.evaluate(&rssystem.products, &set) {
-			Some(", fillcolor=".to_string() + &color)
+			Some(", color=".to_string() + &color)
 		    } else {
 			None
 		    }

@@ -488,7 +488,7 @@ ColorEdge: graph::EdgeColor = {
 
 
 GraphSaveOptions: presets::GraphSaveOptions = {
-    "Dot" <s_node: SeparatorNode> "|" <s_edge: SeparatorEdge> "|"
+    "Dot" "|"? <s_node: SeparatorNode> "|" <s_edge: SeparatorEdge> "|"
 	  <c_node: ColorNode> "|" <c_edge: ColorEdge> ">"
 	<so: SaveOptions> =>
 	presets::GraphSaveOptions::Dot { node_display: s_node,
@@ -496,7 +496,7 @@ GraphSaveOptions: presets::GraphSaveOptions = {
 					 node_color:   c_node,
 					 edge_color:   c_edge,
 					 so },
-    "GraphML" <s_node: SeparatorNode> "|" <s_edge: SeparatorEdge> ">"
+    "GraphML" "|"? <s_node: SeparatorNode> "|" <s_edge: SeparatorEdge> ">"
 	<so: SaveOptions> =>
 	presets::GraphSaveOptions::GraphML { node_display: s_node,
 					     edge_display: s_edge,
