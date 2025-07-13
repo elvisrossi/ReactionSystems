@@ -76,6 +76,7 @@ pub enum GraphSaveOptions {
         node_display: Vec<NodeDisplay>,
         edge_display: Vec<EdgeDisplay>,
 	node_color: graph::NodeColor,
+	edge_color: graph::EdgeColor,
         so: SaveOptions,
     },
     GraphML {
@@ -205,7 +206,7 @@ where
 	    let mut it = expected.iter().peekable();
 	    while let Some(s) = it.next() {
 		err.push('(');
-		err.push_str(&s);
+		err.push_str(s);
 		err.push(')');
 		if it.peek().is_some() {
 		    err.push(',');
@@ -575,12 +576,36 @@ fn generate_node_color_fn<'a>(
     )
 }
 
+use petgraph::visit::IntoEdgeReferences;
+#[allow(clippy::type_complexity)]
+fn generate_edge_color_fn<'a>(
+    edge_color: &'a graph::EdgeColor,
+    original_graph: Rc<Graph<RSsystem, RSlabel>>,
+) -> Box<dyn Fn(&Graph<String, String>, <&Graph<String, String, petgraph::Directed, u32> as IntoEdgeReferences>::EdgeRef) -> String + 'a> {
+    Box::new(
+	move |i, n| {
+	    let cloned_edge_color = edge_color.clone();
+	    for (rule, color) in cloned_edge_color.conditionals {
+		if let Some(s) = graph::edge_formatter(
+		    original_graph.clone(),
+		    rule,
+		    color
+		)(i, n) {
+		    return s
+		}
+	    }
+	    graph::edge_formatter_base_color(edge_color.base_color.to_string())
+	}
+    )
+}
+
 /// Writes the specified graph to a file in .dot format.
 pub fn dot(
     system: &EvaluatedSystem,
     node_display: Vec<NodeDisplay>,
     edge_display: Vec<EdgeDisplay>,
-    node_color: &graph::NodeColor
+    node_color: &graph::NodeColor,
+    edge_color: &graph::EdgeColor
 ) -> Result<String, String> {
     match system {
         EvaluatedSystem::System {
@@ -601,15 +626,15 @@ pub fn dot(
 
             let graph = Rc::new(graph.to_owned());
 
-            // let edge_formatter =
-	    // 	graph::default_edge_formatter(Rc::clone(&graph));
             let node_formatter =
-	     	generate_node_color_fn(node_color, graph, rc_translator);
+	     	generate_node_color_fn(node_color, Rc::clone(&graph), rc_translator);
+	    let edge_formatter =
+		generate_edge_color_fn(edge_color, graph);
 
             let dot = rsdot::RSDot::with_attr_getters(
                 &modified_graph,
                 &[],
-		&|_, _| String::new(), // &edge_formatter,
+		&edge_formatter,
                 &node_formatter,
             );
 
@@ -759,9 +784,10 @@ fn execute(
                         node_display: nd,
                         edge_display: ed,
 			node_color: nc,
+			edge_color: ec,
                         so,
                     } => {
-                        save_options!(dot(system, nd, ed, &nc)?, so);
+                        save_options!(dot(system, nd, ed, &nc, &ec)?, so);
                     }
                     GraphSaveOptions::GraphML {
                         node_display: nd,

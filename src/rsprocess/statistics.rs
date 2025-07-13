@@ -35,7 +35,7 @@ pub fn of_RSsystem<'a>(translator: &'a Translator, system: &'a RSsystem) -> Stri
     let inhibitors = system
         .reaction_rules
         .iter()
-        .fold(RSset::new(), |acc, new| acc.union(&new.inihibitors));
+        .fold(RSset::new(), |acc, new| acc.union(&new.inhibitors));
     result.push_str(&format!(
         "The inhibitors are {}:\n{}\n",
         inhibitors.len(),

@@ -34,16 +34,16 @@ impl<'a> Iterator for TransitionsIterator<'a> {
         let (
 	    reactants,
 	    reactants_absent,
-	    inihibitors,
-	    inihibitors_present,
+	    inhibitors,
+	    inhibitors_present,
 	    products
 	) =
             self.system.reaction_rules.iter().fold(
                 (
                     RSset::new(), // reactants
                     RSset::new(), // reactants_absent
-                    RSset::new(), // inihibitors
-                    RSset::new(), // inihibitors_present
+                    RSset::new(), // inhibitors
+                    RSset::new(), // inhibitors_present
                     RSset::new(), // products
                 ),
                 |acc, reaction| {
@@ -51,14 +51,14 @@ impl<'a> Iterator for TransitionsIterator<'a> {
 			(
                             acc.0.union(&reaction.reactants),
                             acc.1,
-                            acc.2.union(&reaction.inihibitors),
+                            acc.2.union(&reaction.inhibitors),
                             acc.3,
                             acc.4.union(&reaction.products),
 			)
                     } else {
                         (
                             acc.0,
-                            acc.1.union(&reaction.inihibitors.intersection(&t)),
+                            acc.1.union(&reaction.inhibitors.intersection(&t)),
                             acc.2,
                             acc.3.union(&reaction.reactants.subtraction(&t)),
                             acc.4,
@@ -73,8 +73,8 @@ impl<'a> Iterator for TransitionsIterator<'a> {
             t,
             reactants,
             reactants_absent,
-            inihibitors,
-            inihibitors_present,
+            inhibitors,
+            inhibitors_present,
             products.clone(),
         );
         let new_system = RSsystem::from(

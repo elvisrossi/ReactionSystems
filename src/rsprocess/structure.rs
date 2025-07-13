@@ -135,7 +135,7 @@ impl IntoIterator for RSset {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RSreaction {
     pub reactants: RSset,
-    pub inihibitors: RSset,
+    pub inhibitors: RSset,
     pub products: RSset,
 }
 
@@ -143,15 +143,15 @@ impl RSreaction {
     pub fn new() -> Self {
         RSreaction {
             reactants: RSset::new(),
-            inihibitors: RSset::new(),
+            inhibitors: RSset::new(),
             products: RSset::new(),
         }
     }
 
-    pub fn from(reactants: RSset, inihibitors: RSset, products: RSset) -> Self {
+    pub fn from(reactants: RSset, inhibitors: RSset, products: RSset) -> Self {
         RSreaction {
             reactants,
-            inihibitors,
+            inhibitors,
             products,
         }
     }
@@ -160,7 +160,7 @@ impl RSreaction {
     /// see enable
     pub fn enabled(&self, current_state: &RSset) -> bool {
         self.reactants.is_subset(current_state)
-	    && self.inihibitors.is_disjoint(current_state)
+	    && self.inhibitors.is_disjoint(current_state)
     }
 }
 
@@ -498,8 +498,8 @@ pub struct RSlabel {
     pub t: RSset,
     pub reactants: RSset,
     pub reactants_absent: RSset,
-    pub inihibitors: RSset,
-    pub inihibitors_present: RSset,
+    pub inhibitors: RSset,
+    pub inhibitors_present: RSset,
     pub products: RSset,
 }
 
@@ -511,8 +511,8 @@ impl RSlabel {
             t: RSset::new(),
             reactants: RSset::new(),
             reactants_absent: RSset::new(),
-            inihibitors: RSset::new(),
-            inihibitors_present: RSset::new(),
+            inhibitors: RSset::new(),
+            inhibitors_present: RSset::new(),
             products: RSset::new(),
         }
     }
@@ -524,8 +524,8 @@ impl RSlabel {
         t: RSset,
         reactants: RSset,
         reactants_absent: RSset,
-        inihibitors: RSset,
-        inihibitors_present: RSset,
+        inhibitors: RSset,
+        inhibitors_present: RSset,
         products: RSset,
     ) -> Self {
         RSlabel {
@@ -534,8 +534,8 @@ impl RSlabel {
             t,
             reactants,
             reactants_absent,
-            inihibitors,
-            inihibitors_present,
+            inhibitors,
+            inhibitors_present,
             products,
         }
     }

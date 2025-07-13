@@ -440,7 +440,7 @@ NodeColorConditional: (graph::NodeColorConditional, String) = {
 ColorNode: graph::NodeColor = {
     <conditionals: Separated_Or<NodeColorConditional, "||">>
     "!" <base_color: PATH> =>
-	graph::NodeColor { conditionals: conditionals,
+	graph::NodeColor { conditionals,
 			   base_color: base_color.to_string() },
 
     "!" <base_color: PATH> =>
@@ -448,15 +448,53 @@ ColorNode: graph::NodeColor = {
 			   base_color: base_color.to_string() },
 }
 
+EdgeColorConditional: (graph::EdgeColorConditional, String) = {
+    "Entities" <op: Operation> <set: Set> "?" <color: PATH> =>
+	(graph::EdgeColorConditional::Entities(op, set),
+	    color.to_string()),
+    "Context" <op: Operation> <set: Set> "?" <color: PATH> =>
+	(graph::EdgeColorConditional::Context(op, set),
+	    color.to_string()),
+    "T" <op: Operation> <set: Set> "?" <color: PATH> =>
+	(graph::EdgeColorConditional::T(op, set),
+	    color.to_string()),
+    "Reactants" <op: Operation> <set: Set> "?" <color: PATH> =>
+	(graph::EdgeColorConditional::Reactants(op, set),
+	    color.to_string()),
+    "AbsentReactants" <op: Operation> <set: Set> "?" <color: PATH> =>
+	(graph::EdgeColorConditional::ReactantsAbsent(op, set),
+	    color.to_string()),
+    "Inhibitors" <op: Operation> <set: Set> "?" <color: PATH> =>
+	(graph::EdgeColorConditional::Inhibitors(op, set),
+	    color.to_string()),
+    "PresentInhibitors" <op: Operation> <set: Set> "?" <color: PATH> =>
+	(graph::EdgeColorConditional::InhibitorsPresent(op, set),
+	    color.to_string()),
+    "Products" <op: Operation> <set: Set> "?" <color: PATH> =>
+	(graph::EdgeColorConditional::Products(op, set),
+	    color.to_string()),
+}
+
+ColorEdge: graph::EdgeColor = {
+    <conditionals: Separated_Or<EdgeColorConditional, "||">>
+    "!" <base_color: PATH> =>
+	graph::EdgeColor { conditionals,
+			   base_color: base_color.to_string() },
+
+    "!" <base_color: PATH> =>
+	graph::EdgeColor { conditionals: vec![],
+			   base_color: base_color.to_string() },
+}
 
 
 GraphSaveOptions: presets::GraphSaveOptions = {
     "Dot" <s_node: SeparatorNode> "|" <s_edge: SeparatorEdge> "|"
-	  <c_node: ColorNode> ">"
+	  <c_node: ColorNode> "|" <c_edge: ColorEdge> ">"
 	<so: SaveOptions> =>
 	presets::GraphSaveOptions::Dot { node_display: s_node,
 					 edge_display: s_edge,
 					 node_color:   c_node,
+					 edge_color:   c_edge,
 					 so },
     "GraphML" <s_node: SeparatorNode> "|" <s_edge: SeparatorEdge> ">"
 	<so: SaveOptions> =>

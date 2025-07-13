@@ -133,7 +133,7 @@ fn print_reaction(
         f,
         "(r: {}, i: {}, p: {})",
         RSsetDisplay::from(translator, &reaction.reactants),
-        RSsetDisplay::from(translator, &reaction.inihibitors),
+        RSsetDisplay::from(translator, &reaction.inhibitors),
         RSsetDisplay::from(translator, &reaction.products)
     )
 }
@@ -339,8 +339,8 @@ fn print_label(
         RSsetDisplay::from(translator, &label.t),
         RSsetDisplay::from(translator, &label.reactants),
         RSsetDisplay::from(translator, &label.reactants_absent),
-        RSsetDisplay::from(translator, &label.inihibitors),
-        RSsetDisplay::from(translator, &label.inihibitors_present),
+        RSsetDisplay::from(translator, &label.inhibitors),
+        RSsetDisplay::from(translator, &label.inhibitors_present),
         RSsetDisplay::from(translator, &label.products),
     )
 }

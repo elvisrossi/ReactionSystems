@@ -373,12 +373,6 @@ type RSformatNodeTy =
 	<&RSdotGraph as IntoNodeReferences>::NodeRef
     ) -> Option<String>;
 
-type RSformatEdgeTy =
-    dyn Fn(
-	&RSdotGraph,
-	<&RSdotGraph as IntoEdgeReferences>::EdgeRef
-    ) -> String;
-
 #[derive(Clone, Copy)]
 pub enum OperationType {
     Equals,
@@ -419,7 +413,6 @@ pub enum ContextColorConditional {
     Summation,
     WaitEntity
 }
-
 
 #[derive(Clone)]
 pub enum NodeColorConditional {
@@ -544,16 +537,140 @@ pub fn node_formatter(
     }
 }
 
+type RSformatEdgeTy =
+    dyn Fn(
+	&RSdotGraph,
+	<&RSdotGraph as IntoEdgeReferences>::EdgeRef
+    ) -> Option<String>;
+
+#[derive(Clone)]
+pub enum EdgeColorConditional {
+    Entities(OperationType, RSset),
+    Context(OperationType, RSset),
+    T(OperationType, RSset),
+    Reactants(OperationType, RSset),
+    ReactantsAbsent(OperationType, RSset),
+    Inhibitors(OperationType, RSset),
+    InhibitorsPresent(OperationType, RSset),
+    Products(OperationType, RSset),
+}
+
+#[derive(Clone)]
+pub struct EdgeColor {
+    pub conditionals: Vec<(EdgeColorConditional, String)>,
+    pub base_color: String
+}
+
+
+pub fn edge_formatter_base_color(
+    base_color: String
+) -> String
+{
+    ", fillcolor=".to_string() + &base_color
+}
+
 pub fn edge_formatter(
-    original_graph: Rc<RSgraph>
+    original_graph: Rc<RSgraph>,
+    rule: EdgeColorConditional,
+    color: String,
 ) -> Box<RSformatEdgeTy>
 {
-    Box::new(
-	move |_g, e| String::from(
-	    if original_graph.edge_weight(e.id()).unwrap().products.is_empty() {
-		"color=black, fontcolor=black"
-	    } else {
-		"color=blue, fontcolor=blue"
-	    }
-    ))
+    match rule {
+	EdgeColorConditional::Entities(ot, set) => {
+	    Box::new(
+		move |_, e| {
+		    let rssystem = original_graph.edge_weight(e.id()).unwrap();
+		    if ot.evaluate(&rssystem.available_entities, &set) {
+			Some(", fillcolor=".to_string() + &color)
+		    } else {
+			None
+		    }
+		}
+	    )
+	},
+	EdgeColorConditional::Context(ot, set) => {
+	    Box::new(
+		move |_, e| {
+		    let rssystem = original_graph.edge_weight(e.id()).unwrap();
+		    if ot.evaluate(&rssystem.context, &set) {
+			Some(", fillcolor=".to_string() + &color)
+		    } else {
+			None
+		    }
+		}
+	    )
+	},
+	EdgeColorConditional::T(ot, set) => {
+	    Box::new(
+		move |_, e| {
+		    let rssystem = original_graph.edge_weight(e.id()).unwrap();
+		    if ot.evaluate(&rssystem.t, &set) {
+			Some(", fillcolor=".to_string() + &color)
+		    } else {
+			None
+		    }
+		}
+	    )
+	},
+	EdgeColorConditional::Reactants(ot, set) => {
+	    Box::new(
+		move |_, e| {
+		    let rssystem = original_graph.edge_weight(e.id()).unwrap();
+		    if ot.evaluate(&rssystem.reactants, &set) {
+			Some(", fillcolor=".to_string() + &color)
+		    } else {
+			None
+		    }
+		}
+	    )
+	},
+	EdgeColorConditional::ReactantsAbsent(ot, set) => {
+	    Box::new(
+		move |_, e| {
+		    let rssystem = original_graph.edge_weight(e.id()).unwrap();
+		    if ot.evaluate(&rssystem.reactants_absent, &set) {
+			Some(", fillcolor=".to_string() + &color)
+		    } else {
+			None
+		    }
+		}
+	    )
+	},
+	EdgeColorConditional::Inhibitors(ot, set) => {
+	    Box::new(
+		move |_, e| {
+		    let rssystem = original_graph.edge_weight(e.id()).unwrap();
+		    if ot.evaluate(&rssystem.inhibitors, &set) {
+			Some(", fillcolor=".to_string() + &color)
+		    } else {
+			None
+		    }
+		}
+	    )
+	},
+	EdgeColorConditional::InhibitorsPresent(ot, set) => {
+	    Box::new(
+		move |_, e| {
+		    let rssystem = original_graph.edge_weight(e.id()).unwrap();
+		    if ot.evaluate(&rssystem.inhibitors_present, &set) {
+			Some(", fillcolor=".to_string() + &color)
+		    } else {
+			None
+		    }
+		}
+	    )
+	},
+	EdgeColorConditional::Products(ot, set) => {
+	    Box::new(
+		move |_, e| {
+		    let rssystem = original_graph.edge_weight(e.id()).unwrap();
+		    if ot.evaluate(&rssystem.products, &set) {
+			Some(", fillcolor=".to_string() + &color)
+		    } else {
+			None
+		    }
+		}
+	    )
+	},
+    }
 }
