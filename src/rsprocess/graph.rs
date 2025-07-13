@@ -4,7 +4,7 @@ use petgraph::{Graph, Directed};
 use std::collections::HashMap;
 use super::structure::{RSlabel, RSsystem, RSset, RSprocess};
 use super::support_structures::TransitionsIterator;
-use super::translator;
+use super::translator::{self, IdType};
 use std::rc::Rc;
 
 type RSgraph = Graph<RSsystem, RSlabel, Directed, u32>;
@@ -368,39 +368,176 @@ use petgraph::visit::{IntoNodeReferences, IntoEdgeReferences, EdgeRef};
 
 type RSdotGraph = Graph<String, String, Directed, u32>;
 type RSformatNodeTy =
-    dyn Fn(&RSdotGraph, <&RSdotGraph as IntoNodeReferences>::NodeRef) -> String;
+    dyn Fn(
+	&RSdotGraph,
+	<&RSdotGraph as IntoNodeReferences>::NodeRef
+    ) -> Option<String>;
 
 type RSformatEdgeTy =
-    dyn Fn(&RSdotGraph, <&RSdotGraph as IntoEdgeReferences>::EdgeRef) -> String;
+    dyn Fn(
+	&RSdotGraph,
+	<&RSdotGraph as IntoEdgeReferences>::EdgeRef
+    ) -> String;
 
-pub fn default_node_formatter(
-    original_graph: Rc<RSgraph>
-) -> Box<RSformatNodeTy>
-{
-    Box::new(
-	move |_g, n|
-	String::from(
-	    match original_graph.node_weight(n.0).unwrap().context_process
-	    {
-		RSprocess::Nill =>
-		    ", fillcolor=white",
-		RSprocess::RecursiveIdentifier { identifier: _ } =>
-		    ", fillcolor=\"#BBFF99\"",
-		RSprocess::EntitySet { entities: _, next_process: _ } =>
-		    ", fillcolor=\"#AAEEFF\"",
-		RSprocess::NondeterministicChoice { children: _ } =>
-		    ", fillcolor=\"#FFEE99\"",
-		RSprocess::Summation { children: _ } =>
-		    ", fillcolor=\"#CC99FF\"",
-		RSprocess::WaitEntity
-		{ repeat: _, repeated_process: _, next_process: _ } =>
-		    ", fillcolor=\"#FF99AA\"",
-	    }
-	)
-    )
+#[derive(Clone, Copy)]
+pub enum OperationType {
+    Equals,
+    Subset,
+    SubsetEqual,
+    Superset,
+    SupersetEqual
 }
 
-pub fn default_edge_formatter(
+impl OperationType {
+    pub fn evaluate(&self, a: &RSset, b: &RSset) -> bool {
+	match self {
+	    Self::Equals => {
+		a.is_subset(b) && b.is_subset(a)
+	    },
+	    Self::Subset => {
+		a.is_subset(b) && !b.is_subset(a)
+	    },
+	    Self::SubsetEqual => {
+		a.is_subset(b)
+	    },
+	    Self::Superset => {
+		b.is_subset(a) && !a.is_subset(b)
+	    },
+	    Self::SupersetEqual => {
+		b.is_subset(a)
+	    }
+	}
+    }
+}
+
+#[derive(Clone)]
+pub enum ContextColorConditional {
+    Nill,
+    RecursiveIdentifier(IdType),
+    EntitySet(OperationType, RSset),
+    NonDeterministicChoice,
+    Summation,
+    WaitEntity
+}
+
+
+#[derive(Clone)]
+pub enum NodeColorConditional {
+    ContextConditional(ContextColorConditional),
+    EntitiesConditional(OperationType, RSset)
+}
+
+#[derive(Clone)]
+pub struct NodeColor {
+    pub conditionals: Vec<(NodeColorConditional, String)>,
+    pub base_color: String
+}
+
+pub fn node_formatter(
+    original_graph: Rc<RSgraph>,
+    rule: NodeColorConditional,
+    color: String,
+    star: Option<IdType>,
+) -> Box<RSformatNodeTy>
+{
+    match rule {
+	NodeColorConditional::ContextConditional(ccc) => {
+	    match ccc {
+		ContextColorConditional::Nill => {
+		    Box::new(
+			move |_, n| {
+			    let rssystem = original_graph.node_weight(n.0).unwrap();
+			    if rssystem.context_process == RSprocess::Nill {
+				Some(", fillcolor=".to_string() + &color)
+			    } else {
+				None
+			    }
+			}
+		    )
+		},
+		ContextColorConditional::RecursiveIdentifier(s) => {
+		    Box::new(
+			move |_, n| {
+			    let rssystem = original_graph.node_weight(n.0).unwrap();
+			    match (Some(s) == star, &rssystem.context_process) {
+				(true, RSprocess::RecursiveIdentifier { identifier: _ }) => {
+				    Some(", fillcolor=".to_string() + &color)
+				},
+				(false, RSprocess::RecursiveIdentifier { identifier: id }) if id == &s => {
+				    Some(", fillcolor=".to_string() + &color)
+				},
+				_ => {None}
+			    }
+			}
+		    )
+		},
+		ContextColorConditional::EntitySet(ot, set) => {
+		    Box::new(
+			move |_, n| {
+			    let rssystem = original_graph.node_weight(n.0).unwrap();
+			    match &rssystem.context_process {
+				RSprocess::EntitySet { entities, next_process: _ } if ot.evaluate(entities, &set) => {
+				    Some(", fillcolor=".to_string() + &color)
+				},
+				_ => {None}
+			    }
+			}
+		    )
+		},
+		ContextColorConditional::NonDeterministicChoice => {
+		    Box::new(
+			move |_, n| {
+			    let rssystem = original_graph.node_weight(n.0).unwrap();
+			    if let RSprocess::NondeterministicChoice { children: _ } = rssystem.context_process {
+				Some(", fillcolor=".to_string() + &color)
+			    } else {
+				None
+			    }
+			}
+		    )
+		},
+		ContextColorConditional::Summation => {
+		    Box::new(
+			move |_, n| {
+			    let rssystem = original_graph.node_weight(n.0).unwrap();
+			    if let RSprocess::Summation { children: _ } = rssystem.context_process {
+				Some(", fillcolor=".to_string() + &color)
+			    } else {
+				None
+			    }
+			}
+		    )
+		},
+		ContextColorConditional::WaitEntity => {
+		    Box::new(
+			move |_, n| {
+			    let rssystem = original_graph.node_weight(n.0).unwrap();
+			    if let RSprocess::WaitEntity { repeat: _, repeated_process: _, next_process: _ } = &rssystem.context_process  {
+				Some(", fillcolor=".to_string() + &color)
+			    } else {
+				None
+			    }
+			}
+		    )
+		},
+	    }
+	},
+	NodeColorConditional::EntitiesConditional(ot, set) => {
+	    Box::new(
+		move |_, n| {
+		    let rssystem = original_graph.node_weight(n.0).unwrap();
+		    if ot.evaluate(&rssystem.available_entities, &set) {
+			Some(", fillcolor=".to_string() + &color)
+		    } else {
+			None
+		    }
+		}
+	    )
+	},
+    }
+}
+
+pub fn edge_formatter(
     original_graph: Rc<RSgraph>
 ) -> Box<RSformatEdgeTy>
 {

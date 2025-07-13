@@ -4,4 +4,5 @@ Context: [({a,b}.{a}.{a,c}.x + {a,b}.{a}.{a}.nill)]
 Reactions: ([{a,b}, {c}, {b}])
 
 
-Digraph > Dot Entities | Context "; " MaskDifference {a, b} > Print
+Digraph > Dot Entities ", " Entities | Context "; " Difference > Print,
+LimitFrequency("testing/first.experiment") > Print

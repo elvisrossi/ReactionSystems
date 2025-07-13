@@ -20,9 +20,9 @@ pub struct Translator {
 impl Translator {
     pub fn new() -> Self {
         Translator {
-            strings: HashMap::new(),
-            reverse: HashMap::new(),
-            last_id: 0,
+            strings: HashMap::from([("*".into(), 0)]),
+            reverse: HashMap::from([(0, "*".into())]),
+            last_id: 1,
         }
     }
 }

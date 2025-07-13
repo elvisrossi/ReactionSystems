@@ -49,8 +49,10 @@ match {
 } else {
     r"([[:alpha:]])([[:word:]])*" => WORD
     // r"(\p{L}|\p{Emoji})(\p{L}|\p{Emoji}|\p{Dash}|\p{N})*" => WORD,
+// } else {
+//     r#"'([^']+)'"# => SEPARATOR,
 } else {
-    r#"".*""# => PATH,
+    r#""[^"]+""# => PATH, // "
 } else {
     _
 }
@@ -233,9 +235,11 @@ pub Experiment: (Vec<u32>, Vec<RSset>) = {
 }
 
 
-
+// ~~~~~~~~~~~~~~~~~~~
 // Instruction Parsing
+// ~~~~~~~~~~~~~~~~~~~
 
+/// Decides whetherer to print to stdout or to save to file
 Helper_SO: presets::SaveOptions = {
     "Print" =>
 	presets::SaveOptions {print: true, save: None},
@@ -243,6 +247,7 @@ Helper_SO: presets::SaveOptions = {
 	presets::SaveOptions {print: false, save: Some(vec![p])}
 }
 
+/// we could need to save to multiple files
 SaveOptions: presets::SaveOptions = {
     <p: Separated_Or<Helper_SO, ";">> => {
 	p.into_iter()
@@ -251,7 +256,7 @@ SaveOptions: presets::SaveOptions = {
     }
 }
 
-
+/// Match for strings between nodes formatters
 LiteralSeparatorNode: presets::NodeDisplay = {
     PATH =>
 	presets::NodeDisplay::Separator(
@@ -259,6 +264,7 @@ LiteralSeparatorNode: presets::NodeDisplay = {
 	)
 };
 
+/// Match for strings between edge formatters
 LiteralSeparatorEdge: presets::EdgeDisplay = {
     PATH =>
 	presets::EdgeDisplay::Separator(
@@ -274,6 +280,7 @@ NodeDisplay: presets::NodeDisplay = {
     "Context" => presets::NodeDisplay::Display(graph::GraphMapNodes::Context)
 }
 
+/// Node display formatters separated by arbitrary strings in quotes
 SeparatorNode: Vec<presets::NodeDisplay> = {
     <v: NodeDisplay> => vec![v],
     <v:(<NodeDisplay> <LiteralSeparatorNode>)+> <e: NodeDisplay?> =>
@@ -306,6 +313,7 @@ EdgeDisplay: presets::EdgeDisplay = {
     "MaskEntitiesAdded" <mask: Set> => presets::EdgeDisplay::Display(graph::GraphMapEdges::MaskEntitiesAdded{ mask }),
 }
 
+/// Edge display formatters separated by arbitrary strings in quotes
 SeparatorEdge: Vec<presets::EdgeDisplay> = {
     <v: EdgeDisplay> => vec![v],
     <v:(<EdgeDisplay> <LiteralSeparatorEdge>)+> <e: EdgeDisplay?> =>
@@ -325,6 +333,10 @@ GraphSaveOptions: presets::GraphSaveOptions = {
 	<so: SaveOptions> =>
 	presets::GraphSaveOptions::Dot { node_display: s_node,
 					 edge_display: s_edge,
+					 node_color: graph::NodeColor {
+					     conditionals: vec![],
+					     base_color: "white".into()
+					 },
 					 so },
     "GraphML" <s_node: SeparatorNode> "|" <s_edge: SeparatorEdge> ">"
 	<so: SaveOptions> =>

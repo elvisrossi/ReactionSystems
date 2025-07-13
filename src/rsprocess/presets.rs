@@ -64,6 +64,7 @@ pub enum NodeDisplay {
     Display(graph::GraphMapNodes),
 }
 
+
 #[derive(Clone)]
 pub enum EdgeDisplay {
     Separator(String),
@@ -74,6 +75,7 @@ pub enum GraphSaveOptions {
     Dot {
         node_display: Vec<NodeDisplay>,
         edge_display: Vec<EdgeDisplay>,
+	node_color: graph::NodeColor,
         so: SaveOptions,
     },
     GraphML {
@@ -195,10 +197,24 @@ where
         ParseError::UnrecognizedToken {
             token: (l, t, r),
             expected,
-        } => Err(format!(
-            "Unrecognized token \"{t}\" \
-		 between positions {l} and {r}. Expected: {expected:?}"
-        )),
+        } => {
+	    let mut err = format!(
+		"Unrecognized token \"{t}\" \
+		 between positions {l} and {r}. Expected: "
+	    );
+	    let mut it = expected.iter().peekable();
+	    while let Some(s) = it.next() {
+		err.push('(');
+		err.push_str(&s);
+		err.push(')');
+		if it.peek().is_some() {
+		    err.push(',');
+		    err.push(' ');		    
+		}
+
+	    }
+	    Err(err)
+	},
         ParseError::User { error } => Err(error.to_string()),
     }
 }
@@ -534,11 +550,37 @@ fn generate_edge_pringting_fn<'a>(
     accumulator
 }
 
+use petgraph::visit::IntoNodeReferences;
+#[allow(clippy::type_complexity)]
+fn generate_node_color_fn<'a>(
+    node_color: &'a graph::NodeColor,
+    original_graph: Rc<Graph<RSsystem, RSlabel>>,
+    translator: Rc<Translator>,
+) -> Box<dyn Fn(&Graph<String, String>, <&Graph<String, String, petgraph::Directed, u32> as IntoNodeReferences>::NodeRef) -> String + 'a> {
+    Box::new(
+	move |i, n| {
+	    let cloned_node_color = node_color.clone();
+	    for (rule, color) in cloned_node_color.conditionals {
+		if let Some(s) = graph::node_formatter(
+		    original_graph.clone(),
+		    rule,
+		    color,
+		    translator.encode_not_mut("*")
+		)(i, n) {
+		    return s
+		}
+	    }
+	    node_color.base_color.to_string()
+	}
+    )
+}
+
 /// Writes the specified graph to a file in .dot format.
 pub fn dot(
     system: &EvaluatedSystem,
     node_display: Vec<NodeDisplay>,
     edge_display: Vec<EdgeDisplay>,
+    node_color: &graph::NodeColor
 ) -> Result<String, String> {
     match system {
         EvaluatedSystem::System {
@@ -554,20 +596,20 @@ pub fn dot(
                 generate_node_pringting_fn(&node_display,
 					   Rc::clone(&rc_translator)),
                 generate_edge_pringting_fn(&edge_display,
-					   rc_translator),
+					   Rc::clone(&rc_translator)),
             );
 
             let graph = Rc::new(graph.to_owned());
 
-            let edge_formatter =
-		graph::default_edge_formatter(Rc::clone(&graph));
+            // let edge_formatter =
+	    // 	graph::default_edge_formatter(Rc::clone(&graph));
             let node_formatter =
-		graph::default_node_formatter(Rc::clone(&graph));
+	     	generate_node_color_fn(node_color, graph, rc_translator);
 
             let dot = rsdot::RSDot::with_attr_getters(
                 &modified_graph,
                 &[],
-                &edge_formatter,
+		&|_, _| String::new(), // &edge_formatter,
                 &node_formatter,
             );
 
@@ -577,7 +619,11 @@ pub fn dot(
 }
 
 /// Writes the specified graph to a file in .graphml format.
-pub fn graphml(system: &EvaluatedSystem) -> Result<String, String> {
+pub fn graphml(
+    system: &EvaluatedSystem,
+    node_display: Vec<NodeDisplay>,
+    edge_display: Vec<EdgeDisplay>,
+) -> Result<String, String> {
     match system {
         EvaluatedSystem::System {
             sys: _,
@@ -588,24 +634,10 @@ pub fn graphml(system: &EvaluatedSystem) -> Result<String, String> {
 
             // map each value to the corresponding value we want to display
             let modified_graph = graph.map(
-                |id, node| {
-                    graph::GraphMapNodesTy::from(
-                        graph::GraphMapNodes::Entities,
-                        Rc::clone(&rc_translator),
-                    )
-                    .get()(id, node)
-                        + "; "
-                        + &graph::GraphMapNodesTy::from(
-                            graph::GraphMapNodes::Context,
-                            Rc::clone(&rc_translator),
-                        )
-                        .get()(id, node)
-                },
-                graph::GraphMapEdgesTy::from(
-                    graph::GraphMapEdges::EntitiesAdded,
-                    Rc::clone(&rc_translator),
-                )
-                .get(),
+                generate_node_pringting_fn(&node_display,
+					   Rc::clone(&rc_translator)),
+                generate_edge_pringting_fn(&edge_display,
+					   rc_translator),
             );
 
             use petgraph_graphml::GraphMl;
@@ -726,16 +758,17 @@ fn execute(
                     GraphSaveOptions::Dot {
                         node_display: nd,
                         edge_display: ed,
+			node_color: nc,
                         so,
                     } => {
-                        save_options!(dot(system, nd, ed)?, so);
+                        save_options!(dot(system, nd, ed, &nc)?, so);
                     }
                     GraphSaveOptions::GraphML {
-                        node_display: _,
-                        edge_display: _,
+                        node_display: nd,
+                        edge_display: ed,
                         so,
                     } => {
-                        save_options!(graphml(system)?, so);
+                        save_options!(graphml(system, nd, ed)?, so);
                     }
                     GraphSaveOptions::Serialize { path } => {
                         serialize(system, path)?;
