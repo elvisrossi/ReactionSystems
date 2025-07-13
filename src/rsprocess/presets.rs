@@ -570,7 +570,7 @@ fn generate_node_color_fn<'a>(
 		    return s
 		}
 	    }
-	    node_color.base_color.to_string()
+	    graph::node_formatter_base_color(node_color.base_color.to_string())
 	}
     )
 }

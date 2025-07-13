@@ -49,10 +49,8 @@ match {
 } else {
     r"([[:alpha:]])([[:word:]])*" => WORD
     // r"(\p{L}|\p{Emoji})(\p{L}|\p{Emoji}|\p{Dash}|\p{N})*" => WORD,
-// } else {
-//     r#"'([^']+)'"# => SEPARATOR,
 } else {
-    r#""[^"]+""# => PATH, // "
+    r#""[^"]+""# => PATH, // " <- ignore comment, its for the linter in emacs
 } else {
     _
 }
@@ -99,7 +97,8 @@ pub Set: RSset = {
 Set_of_entities: RSset = {
     "{" "}" => RSset::from(vec![]),
     "{" <t: Separated_Or<Literal, ",">> "}" =>
-	RSset::from(t.into_iter().map(|t| translator.encode(t)).collect::<Vec<_>>())
+	RSset::from(t.into_iter().map(|t| translator.encode(t))
+						    .collect::<Vec<_>>())
 };
 
 
@@ -276,7 +275,7 @@ NodeDisplay: presets::NodeDisplay = {
     "Hide" => presets::NodeDisplay::Display(graph::GraphMapNodes::Hide),
     "Entities" => presets::NodeDisplay::Display(graph::GraphMapNodes::Entities),
     "MaskEntities" <mask: Set> =>
-	presets::NodeDisplay::Display(graph::GraphMapNodes::MaskEntities{ mask }),
+	presets::NodeDisplay::Display(graph::GraphMapNodes::MaskEntities{mask}),
     "Context" => presets::NodeDisplay::Display(graph::GraphMapNodes::Context)
 }
 
@@ -285,9 +284,19 @@ SeparatorNode: Vec<presets::NodeDisplay> = {
     <v: NodeDisplay> => vec![v],
     <v:(<NodeDisplay> <LiteralSeparatorNode>)+> <e: NodeDisplay?> =>
 	match e {
-	    None => v.iter().fold(vec![], |mut acc, (a, b)| {acc.push(a.clone()); acc.push(b.clone()); acc.clone()}),
+	    None => v.iter().fold(vec![],
+				  |mut acc, (a, b)| {
+				      acc.push(a.clone());
+				      acc.push(b.clone());
+				      acc.clone()
+				  }),
 	    Some(e) => {
-		let mut v = v.iter().fold(vec![], |mut acc, (a, b)| {acc.push(a.clone()); acc.push(b.clone()); acc.clone()});
+		let mut v = v.iter().fold(vec![],
+					  |mut acc, (a, b)| {
+					      acc.push(a.clone());
+					      acc.push(b.clone());
+					      acc.clone()
+					  });
 		v.push(e);
 		v
 	    }
@@ -295,22 +304,66 @@ SeparatorNode: Vec<presets::NodeDisplay> = {
 }
 
 EdgeDisplay: presets::EdgeDisplay = {
-    "Hide" => presets::EdgeDisplay::Display(graph::GraphMapEdges::Hide),
-    "Products" => presets::EdgeDisplay::Display(graph::GraphMapEdges::Products),
+    "Hide" =>
+	presets::EdgeDisplay::Display(
+	    graph::GraphMapEdges::Hide
+	),
+    "Products" =>
+	presets::EdgeDisplay::Display(
+	    graph::GraphMapEdges::Products
+	),
     "MaskProducts" <mask: Set> =>
-	presets::EdgeDisplay::Display(graph::GraphMapEdges::MaskEntities{ mask }),
-    "Entities" => presets::EdgeDisplay::Display(graph::GraphMapEdges::Entities),
-    "MaskEntities" <mask: Set> => presets::EdgeDisplay::Display(graph::GraphMapEdges::MaskEntities{ mask }),
-    "Context" => presets::EdgeDisplay::Display(graph::GraphMapEdges::Context),
-    "MaskContext" <mask: Set> => presets::EdgeDisplay::Display(graph::GraphMapEdges::MaskContext{ mask }),
-    "Union" => presets::EdgeDisplay::Display(graph::GraphMapEdges::Union),
-    "MaskUnion" <mask: Set> => presets::EdgeDisplay::Display(graph::GraphMapEdges::MaskUnion{ mask }),
-    "Difference" => presets::EdgeDisplay::Display(graph::GraphMapEdges::Difference),
-    "MaskDifference" <mask: Set> => presets::EdgeDisplay::Display(graph::GraphMapEdges::MaskDifference{ mask }),
-    "EntitiesDeleted" => presets::EdgeDisplay::Display(graph::GraphMapEdges::EntitiesDeleted),
-    "MaskEntitiesDeleted" <mask: Set> => presets::EdgeDisplay::Display(graph::GraphMapEdges::MaskEntitiesDeleted{ mask }),
-    "EntitiesAdded" => presets::EdgeDisplay::Display(graph::GraphMapEdges::EntitiesAdded),
-    "MaskEntitiesAdded" <mask: Set> => presets::EdgeDisplay::Display(graph::GraphMapEdges::MaskEntitiesAdded{ mask }),
+	presets::EdgeDisplay::Display(
+	    graph::GraphMapEdges::MaskEntities{ mask }
+	),
+    "Entities" =>
+	presets::EdgeDisplay::Display(
+	    graph::GraphMapEdges::Entities
+	),
+    "MaskEntities" <mask: Set> =>
+	presets::EdgeDisplay::Display(
+	    graph::GraphMapEdges::MaskEntities{ mask }
+	),
+    "Context" =>
+	presets::EdgeDisplay::Display(
+	    graph::GraphMapEdges::Context
+	),
+    "MaskContext" <mask: Set> =>
+	presets::EdgeDisplay::Display(
+	    graph::GraphMapEdges::MaskContext{ mask }
+	),
+    "Union" =>
+	presets::EdgeDisplay::Display(
+	    graph::GraphMapEdges::Union
+	),
+    "MaskUnion" <mask: Set> =>
+	presets::EdgeDisplay::Display(
+	    graph::GraphMapEdges::MaskUnion{ mask }
+	),
+    "Difference" =>
+	presets::EdgeDisplay::Display(
+	    graph::GraphMapEdges::Difference
+	),
+    "MaskDifference" <mask: Set> =>
+	presets::EdgeDisplay::Display(
+	    graph::GraphMapEdges::MaskDifference{ mask }
+	),
+    "EntitiesDeleted" =>
+	presets::EdgeDisplay::Display(
+	    graph::GraphMapEdges::EntitiesDeleted
+	),
+    "MaskEntitiesDeleted" <mask: Set> =>
+	presets::EdgeDisplay::Display(
+	    graph::GraphMapEdges::MaskEntitiesDeleted{ mask }
+	),
+    "EntitiesAdded" =>
+	presets::EdgeDisplay::Display(
+	    graph::GraphMapEdges::EntitiesAdded
+	),
+    "MaskEntitiesAdded" <mask: Set> =>
+	presets::EdgeDisplay::Display(
+	    graph::GraphMapEdges::MaskEntitiesAdded{ mask }
+	),
 }
 
 /// Edge display formatters separated by arbitrary strings in quotes
@@ -318,25 +371,92 @@ SeparatorEdge: Vec<presets::EdgeDisplay> = {
     <v: EdgeDisplay> => vec![v],
     <v:(<EdgeDisplay> <LiteralSeparatorEdge>)+> <e: EdgeDisplay?> =>
 	match e {
-	    None => v.iter().fold(vec![], |mut acc, (a, b)| {acc.push(a.clone()); acc.push(b.clone()); acc.clone()}),
+	    None => v.iter().fold(vec![],
+				  |mut acc, (a, b)| {
+				      acc.push(a.clone());
+				      acc.push(b.clone());
+				      acc.clone()
+				  }),
 	    Some(e) => {
-		let mut v = v.iter().fold(vec![], |mut acc, (a, b)| {acc.push(a.clone()); acc.push(b.clone()); acc.clone()});
+		let mut v = v.iter().fold(vec![],
+					  |mut acc, (a, b)| {
+					      acc.push(a.clone());
+					      acc.push(b.clone());
+					      acc.clone()
+					  });
 		v.push(e);
 		v
 	    }
 	}
 }
 
+Operation: graph::OperationType = {
+    "==" => graph::OperationType::Equals,
+    "="  => graph::OperationType::Equals,
+    "<"  => graph::OperationType::Subset,
+    "⊂"  => graph::OperationType::Subset,
+    "<=" => graph::OperationType::SubsetEqual,
+    "⊆"  => graph::OperationType::SubsetEqual,
+    ">"  => graph::OperationType::Superset,
+    "⊃"  => graph::OperationType::Superset,
+    ">=" => graph::OperationType::SupersetEqual,
+    "⊇"  => graph::OperationType::SupersetEqual
+}
+
+NodeColorConditional: (graph::NodeColorConditional, String) = {
+    "Entities" <op: Operation> <set: Set> "?" <color: PATH> =>
+	(graph::NodeColorConditional::EntitiesConditional(op, set),
+	    color.to_string()),
+    "Context.Nill" "?" <color: PATH> =>
+	(graph::NodeColorConditional::ContextConditional(
+	    graph::ContextColorConditional::Nill),
+	    color.to_string()),
+    "Context.RecursiveIdentifier" "(" <x: Literal> ")" "?" <color: PATH> =>
+	(graph::NodeColorConditional::ContextConditional(
+	    graph::ContextColorConditional::RecursiveIdentifier(
+		translator.encode(x)
+	    )),
+	    color.to_string()),
+    "Context.EntitySet" <op: Operation> <set: Set> "?" <color: PATH> =>
+	(graph::NodeColorConditional::ContextConditional(
+	    graph::ContextColorConditional::EntitySet(op, set)),
+	    color.to_string()),
+    "Context.NonDeterministicChoice" "?" <color: PATH> =>
+	(graph::NodeColorConditional::ContextConditional(
+	    graph::ContextColorConditional::NonDeterministicChoice),
+	    color.to_string()),
+    "Context.Summation" "?" <color: PATH> =>
+	(graph::NodeColorConditional::ContextConditional(
+	    graph::ContextColorConditional::Summation),
+	    color.to_string()),
+    "Context.WaitEntity" "?" <color: PATH> =>
+	(graph::NodeColorConditional::ContextConditional(
+	    graph::ContextColorConditional::WaitEntity),
+	    color.to_string()),
+}
+
+
+/// Node color formatter
+ColorNode: graph::NodeColor = {
+    <conditionals: Separated_Or<NodeColorConditional, "||">>
+    "!" <base_color: PATH> =>
+	graph::NodeColor { conditionals: conditionals,
+			   base_color: base_color.to_string() },
+
+    "!" <base_color: PATH> =>
+	graph::NodeColor { conditionals: vec![],
+			   base_color: base_color.to_string() },
+}
+
+
 
 GraphSaveOptions: presets::GraphSaveOptions = {
-    "Dot" <s_node: SeparatorNode> "|" <s_edge: SeparatorEdge> ">"
+    "Dot" <s_node: SeparatorNode> "|" <s_edge: SeparatorEdge> "|"
+	  <c_node: ColorNode> ">"
 	<so: SaveOptions> =>
 	presets::GraphSaveOptions::Dot { node_display: s_node,
 					 edge_display: s_edge,
-					 node_color: graph::NodeColor {
-					     conditionals: vec![],
-					     base_color: "white".into()
-					 },
+					 node_color:   c_node,
 					 so },
     "GraphML" <s_node: SeparatorNode> "|" <s_edge: SeparatorEdge> ">"
 	<so: SaveOptions> =>
@@ -371,7 +491,9 @@ pub Run: presets::Instructions = {
     <sys: System> <instr: Separated_Or<Instruction, ",">> =>
 	Instructions { system: presets::System::RSsystem { sys },
 		       instructions: instr },
-    "Deserialize" "(" <path: Path> ")" <instr: Separated_Or<Instruction, ",">> =>
+
+    "Deserialize" "(" <path: Path> ")"
+    <instr: Separated_Or<Instruction, ",">> =>
 	Instructions { system: presets::System::Deserialize { path },
 		       instructions: instr },
 }

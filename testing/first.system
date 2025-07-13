@@ -4,5 +4,4 @@ Context: [({a,b}.{a}.{a,c}.x + {a,b}.{a}.{a}.nill)]
 Reactions: ([{a,b}, {c}, {b}])
 
 
-Digraph > Dot Entities ", " Entities | Context "; " Difference > Print,
-LimitFrequency("testing/first.experiment") > Print
+Digraph > Dot Context | Hide | Context.EntitySet ⊆ {a, c} ? "HERE" || Context.NonDeterministicChoice ? "ASDASDSAD" ! "#123" > Print

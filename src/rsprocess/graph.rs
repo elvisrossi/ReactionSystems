@@ -433,6 +433,13 @@ pub struct NodeColor {
     pub base_color: String
 }
 
+pub fn node_formatter_base_color(
+    base_color: String
+) -> String
+{
+    ", fillcolor=".to_string() + &base_color
+}
+
 pub fn node_formatter(
     original_graph: Rc<RSgraph>,
     rule: NodeColorConditional,
