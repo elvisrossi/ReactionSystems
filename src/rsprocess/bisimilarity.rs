@@ -1,21 +1,11 @@
 use std::collections::{BTreeSet, HashMap};
 
-use petgraph::visit::{EdgeIndexable, EdgeRef, IntoEdgeReferences, IntoEdges, IntoNodeReferences, NodeIndexable};
-
-
-
-
-
-
-#[allow(dead_code)]
-fn print_type_of<T>(_: &T) {
-    println!("type: {}", std::any::type_name::<T>());
-}
-
-
-
-
-
+use petgraph::visit::{ EdgeIndexable,
+		       EdgeRef,
+		       IntoEdgeReferences,
+		       IntoEdges,
+		       IntoNodeReferences,
+		       NodeIndexable };
 
 struct GraphPartition<'a, G>
 where
@@ -28,6 +18,25 @@ where
     pub graphs: [&'a G; 2],
     last_block: u32,
     blocks: BTreeSet<u32>
+}
+
+
+fn equal_vectors<T>(a: &Vec<T>, b: &Vec<T>) -> bool
+where
+    T: PartialEq
+{
+    for el in a {
+	if !b.contains(el) {
+	    return false;
+	}
+    }
+
+    for el in b {
+	if !a.contains(el) {
+	    return false;
+	}
+    }
+    true
 }
 
 impl<'a, G> GraphPartition<'a, G>
@@ -74,12 +83,13 @@ where
 	&self,
 	label: &G::EdgeRef,
 	s: &(usize, G::NodeId)
-    ) -> Vec<(usize, G::NodeId)>
+    ) -> Vec<u32>
     where <G as IntoEdgeReferences>::EdgeRef: PartialEq
     {
 	let mut val = vec![];
 	for el in self.graphs[s.0].edges(s.1).filter(|x| x == label) {
-	    val.push((s.0, el.target()));
+	    let tmp = (s.0, el.target());
+	    val.push(*self.node_to_block.get(&tmp).unwrap());
 	}
 	val
     }
@@ -99,15 +109,13 @@ where
 
 	let reachable_blocks_s = self.reachable_blocks(label, s);
 
-	'outer: for t in nodes {
+	for t in nodes {
 	    let reachable_blocks_t = self.reachable_blocks(label, t);
-	    for rbt in reachable_blocks_t {
-		if !reachable_blocks_s.contains(&rbt) {
-		    b2.push(*t);
-		    continue 'outer;
-		}
+	    if equal_vectors(&reachable_blocks_s, &reachable_blocks_t) {
+		b1.push(t);
+	    } else {
+		b2.push(*t);
 	    }
-	    b1.push(t);
 	}
 
 	if b2.is_empty() {

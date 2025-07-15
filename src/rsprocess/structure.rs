@@ -11,8 +11,7 @@ use serde::{Deserialize, Serialize};
 // -----------------------------------------------------------------------------
 
 /// Basic set of entities.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize,
-	 Deserialize)]
+#[derive(Clone, Debug, PartialOrd, Eq, Ord, Hash, Serialize, Deserialize)]
 pub struct RSset {
     pub identifiers: BTreeSet<IdType>,
 }
@@ -115,6 +114,12 @@ impl RSset {
 impl Default for RSset {
     fn default() -> Self {
         RSset::new()
+    }
+}
+
+impl PartialEq for RSset {
+    fn eq(&self, other: &Self) -> bool {
+	self.identifiers.eq(&other.identifiers)
     }
 }
 
@@ -491,7 +496,7 @@ impl Default for RSsystem {
 // -----------------------------------------------------------------------------
 // RSlabel
 // -----------------------------------------------------------------------------
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialOrd)]
 pub struct RSlabel {
     pub available_entities: RSset,
     pub context: RSset,
@@ -552,6 +557,19 @@ impl RSlabel {
 impl Default for RSlabel {
     fn default() -> Self {
 	Self::new()
+    }
+}
+
+impl PartialEq for RSlabel {
+    fn eq(&self, other: &Self) -> bool {
+	self.available_entities == other.available_entities &&
+	    self.context == other.context &&
+	    self.t == other.t &&
+	    self.reactants == other.reactants &&
+	    self.reactants_absent == other.reactants_absent &&
+	    self.inhibitors == other.inhibitors &&
+	    self.inhibitors_present == other.inhibitors_present &&
+	    self.products == other.products
     }
 }
 
