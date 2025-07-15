@@ -7,7 +7,8 @@ use super::support_structures::TransitionsIterator;
 use super::translator::{self, IdType};
 use std::rc::Rc;
 
-type RSgraph = Graph<RSsystem, RSlabel, Directed, u32>;
+
+pub type RSgraph = Graph<RSsystem, RSlabel, Directed, u32>;
 
 /// Creates a graph starting from a system as root node
 pub fn digraph(
@@ -364,7 +365,9 @@ impl GraphMapEdgesTy {
 // -----------------------------------------------------------------------------
 //                          Formatting Nodes & Edges
 // -----------------------------------------------------------------------------
-use petgraph::visit::{IntoNodeReferences, IntoEdgeReferences, EdgeRef};
+use petgraph::visit::{ IntoEdgeReferences,
+		       IntoNodeReferences,
+		       EdgeRef };
 
 type RSdotGraph = Graph<String, String, Directed, u32>;
 type RSformatNodeTy =

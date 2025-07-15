@@ -37,7 +37,7 @@ match {
     "Print", "Save",
     "Dot", "GraphML", "Serialize",
     "Stats", "Target", "Run", "Loop", "Frequency", "LimitFrequency",
-    "FastFrequency", "Digraph",
+    "FastFrequency", "Digraph", "Bisimilarity",
     "Deserialize",
     "Hide", "Entities", "MaskEntities", "MaskContext",
     "Products", "MaskProducts", "Union", "MaskUnion",
@@ -523,12 +523,18 @@ Instruction: presets::Instruction = {
 	presets::Instruction::FastFrequency { experiment: p, so },
     "Digraph" ">" <gso: Separated_Or<GraphSaveOptions, "|">> =>
 	presets::Instruction::Digraph { gso },
+    "Bisimilarity" "(" <p: Path> ")" ">" <so: SaveOptions> =>
+	presets::Instruction::Bisimilarity { system_b: p, so },
 }
 
 pub Run: presets::Instructions = {
     <sys: System> <instr: Separated_Or<Instruction, ",">> =>
 	Instructions { system: presets::System::RSsystem { sys },
 		       instructions: instr },
+
+    <sys: System> =>
+	Instructions { system: presets::System::RSsystem { sys },
+		       instructions: vec![] },
 
     "Deserialize" "(" <path: Path> ")"
     <instr: Separated_Or<Instruction, ",">> =>

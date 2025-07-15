@@ -4,10 +4,4 @@ Context: [({a,b}.{a}.{a,c}.x + {a,b}.{a}.{a}.nill)]
 Reactions: ([{a,b}, {c}, {b}])
 
 
-Digraph
-  > Dot
-  | Context
-  | Hide
-  | Context.EntitySet ⊆ {a, c} ? "lightblue" || Context.NonDeterministicChoice ? "yellow" ! "#123"
-  | Entities < {a} ? "white" ! "#lightgreen"
-  > Print
+Bisimilarity ("testing/adversarial.system") > Print

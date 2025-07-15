@@ -491,7 +491,7 @@ impl Default for RSsystem {
 // -----------------------------------------------------------------------------
 // RSlabel
 // -----------------------------------------------------------------------------
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd)]
 pub struct RSlabel {
     pub available_entities: RSset,
     pub context: RSset,

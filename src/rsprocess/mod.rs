@@ -13,3 +13,4 @@ pub mod graph;
 pub mod rsdot;
 pub mod serialize;
 pub mod presets;
+pub mod bisimilarity;

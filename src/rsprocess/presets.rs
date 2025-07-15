@@ -98,22 +98,12 @@ pub enum Instruction {
     LimitFrequency { experiment: String, so: SaveOptions },
     FastFrequency { experiment: String, so: SaveOptions },
     Digraph { gso: Vec<GraphSaveOptions> },
+    Bisimilarity { system_b: String, so: SaveOptions }
 }
 
 pub enum System {
     Deserialize { path: String },
     RSsystem { sys: RSsystem },
-}
-
-pub enum EvaluatedSystem {
-    Graph {
-        graph: Graph<RSsystem, RSlabel>,
-        translator: Translator,
-    },
-    System {
-        sys: RSsystem,
-        translator: Translator,
-    },
 }
 
 impl System {
@@ -132,6 +122,30 @@ impl System {
                 Ok(EvaluatedSystem::Graph { graph, translator })
             }
         }
+    }
+}
+
+pub enum EvaluatedSystem {
+    Graph {
+        graph: graph::RSgraph,
+        translator: Translator,
+    },
+    System {
+        sys: RSsystem,
+        translator: Translator,
+    },
+}
+
+impl EvaluatedSystem {
+    pub fn get_translator(&mut self) -> &mut Translator {
+	match self {
+	    EvaluatedSystem::Graph { graph: _, translator } => {
+		translator
+	    },
+	    EvaluatedSystem::System { sys: _, translator } => {
+		translator
+	    }
+	}
     }
 }
 
@@ -474,15 +488,48 @@ pub fn fast_freq(
 /// Computes the LTS.
 /// equivalent to main_do(digraph, Arcs) or to main_do(advdigraph, Arcs)
 pub fn digraph(system: &mut EvaluatedSystem) -> Result<(), String> {
-    *system = if let EvaluatedSystem::System { sys, translator } = system {
-        EvaluatedSystem::Graph {
-            graph: graph::digraph(sys.clone())?,
-            translator: translator.to_owned(),
-        }
-    } else {
-        return Ok(());
-    };
+    if let EvaluatedSystem::System { sys, translator } = system {
+	*system =
+            EvaluatedSystem::Graph {
+		graph: graph::digraph(sys.clone())?,
+		translator: translator.to_owned(),
+            };
+    }
     Ok(())
+}
+
+pub fn bisimilar(
+    system_a: &mut EvaluatedSystem,
+    system_b: String
+) -> Result<String, String>
+{
+    digraph(system_a)?;
+
+    let system_b = read_file(system_a.get_translator(),
+				 system_b.to_string(),
+				 parser_instructions)?;
+
+    let system_b = match system_b.system {
+	System::RSsystem { sys } => sys,
+	_ => return Err("Not implemented yet".into())
+    };
+
+    let mut system_b = EvaluatedSystem::System { sys: system_b,
+						 translator: system_a.get_translator().clone() };
+
+    digraph(&mut system_b)?;
+
+    match (system_a, &system_b) {
+	(EvaluatedSystem::Graph { graph: a, translator: _ },
+	 EvaluatedSystem::Graph { graph: b, translator: _ }) => {
+	    // needed because rust cant see that we want to use &graph::RSgraph
+	    // and not &mut graph::RSgraph
+	    let a: &graph::RSgraph = a;
+	    let b: &graph::RSgraph = b;
+	    Ok(format!("{}", super::bisimilarity::bisimilarity_kanellakis_smolka(&a, &b)))
+	},
+	_ => { unreachable!() }
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -555,7 +602,7 @@ use petgraph::visit::IntoNodeReferences;
 #[allow(clippy::type_complexity)]
 fn generate_node_color_fn<'a>(
     node_color: &'a graph::NodeColor,
-    original_graph: Rc<Graph<RSsystem, RSlabel>>,
+    original_graph: Rc<graph::RSgraph>,
     translator: Rc<Translator>,
 ) -> Box<dyn Fn(&Graph<String, String>, <&Graph<String, String, petgraph::Directed, u32> as IntoNodeReferences>::NodeRef) -> String + 'a> {
     Box::new(
@@ -708,8 +755,8 @@ pub fn serialize(system: &EvaluatedSystem, path: String) -> Result<(), String> {
 /// N.B. graph size in memory might be much larger after serialization and
 /// deserialization
 pub fn deserialize(
-    input_path: String
-) -> Result<(Graph<RSsystem, RSlabel>, Translator), String>
+    input_path: String,
+) -> Result<(graph::RSgraph, Translator), String>
 {
     // relative path
     let mut path = match env::current_dir() {
@@ -802,6 +849,9 @@ fn execute(
                 }
             }
         }
+	Instruction::Bisimilarity { system_b, so } => {
+	    save_options!(bisimilar(system, system_b)?, so);
+	}
     }
     Ok(())
 }

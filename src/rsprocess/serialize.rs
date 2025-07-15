@@ -5,22 +5,21 @@
 
 use std::io;
 
-use petgraph::Graph;
 use serde::{Deserialize, Serialize};
+use super::graph;
 
-use super::{structure::{RSlabel, RSsystem},
-	    translator::Translator};
+use super::translator::Translator;
 
 #[derive(Serialize, Deserialize)]
 struct GraphAndTranslator {
-    graph: Graph<RSsystem, RSlabel>,
+    graph: graph::RSgraph,
     translator: Translator
 }
 
 /// Serializer for graph and translator.
 pub fn ser<W>(
     writer: W,
-    graph: &Graph<RSsystem, RSlabel>,
+    graph: &graph::RSgraph,
     translator: &Translator
 ) -> Result<(), serde_cbor_2::Error>
 where
@@ -36,7 +35,7 @@ where
 /// Deserializer for file that contains graph and translator.
 pub fn de<R>(
     reader: R
-) -> Result<(Graph<RSsystem, RSlabel>, Translator), serde_cbor_2::Error>
+) -> Result<(graph::RSgraph, Translator), serde_cbor_2::Error>
 where
     R: io::Read,
 {
