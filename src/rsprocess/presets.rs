@@ -516,8 +516,6 @@ pub fn bisimilar(
     system_b: String
 ) -> Result<String, String>
 {
-    digraph(system_a)?;
-
     let system_b = read_file(system_a.get_translator(),
 				 system_b.to_string(),
 				 parser_instructions)?;
@@ -529,15 +527,17 @@ pub fn bisimilar(
 	    EvaluatedSystem::Graph { graph, translator } => {
 		if translator != *system_a.get_translator() {
 		    return Err("Bisimilarity not implemented for systems with \
-				different encodings. Serialize the systems with \
-				the same translator.".into());
+				different encodings. Serialize the systems \
+				with the same translator.".into());
 		}
 		EvaluatedSystem::Graph { graph, translator }
 	    }
 	};
 
+    digraph(system_a)?;
     digraph(&mut system_b)?;
 
+    // since we ran digraph on both they have to be graphs
     match (system_a, &system_b) {
 	(EvaluatedSystem::Graph { graph: a, translator: _ },
 	 EvaluatedSystem::Graph { graph: b, translator: _ }) => {
@@ -545,7 +545,10 @@ pub fn bisimilar(
 	    // and not &mut graph::RSgraph
 	    let a: &graph::RSgraph = a;
 	    let b: &graph::RSgraph = b;
-	    Ok(format!("{}", super::bisimilarity::bisimilarity_kanellakis_smolka(&a, &b)))
+	    Ok(format!(
+		"{}",
+		super::bisimilarity::bisimilarity_kanellakis_smolka(&a, &b)
+	    ))
 	},
 	_ => { unreachable!() }
     }
@@ -565,7 +568,8 @@ fn generate_node_pringting_fn<'a>(
     // We are iterating over the node_display and constructing a function
     // (accumulator) that prints out our formatted nodes. So at each step we
     // call the previous function and add the next string or function.
-    let mut accumulator: Box<dyn Fn(petgraph::prelude::NodeIndex, &RSsystem) -> String> =
+    let mut accumulator:
+    Box<dyn Fn(petgraph::prelude::NodeIndex, &RSsystem) -> String> =
         Box::new(|_, _| String::new());
     for nd in node_display {
         accumulator = match nd {
@@ -575,7 +579,8 @@ fn generate_node_pringting_fn<'a>(
                 let val = translator.clone();
                 Box::new(move |i, n| {
                     (accumulator)(i, n)
-                        + &graph::GraphMapNodesTy::from(d.clone(), val.clone()).get()(i, n)
+                        + &graph::GraphMapNodesTy::from(d.clone(),
+							val.clone()).get()(i, n)
                 })
             },
             NodeDisplay::Separator(s) => {
@@ -628,7 +633,8 @@ fn generate_edge_pringting_fn<'a>(
     // We are iterating over the edge_display and constructing a function
     // (accumulator) that prints out our formatted nodes. So at each step we
     // call the previous function and add the next string or function.
-    let mut accumulator: Box<dyn Fn(petgraph::prelude::EdgeIndex, &RSlabel) -> String> =
+    let mut accumulator:
+    Box<dyn Fn(petgraph::prelude::EdgeIndex, &RSlabel) -> String> =
         Box::new(|_, _| String::new());
     for nd in edge_display {
         accumulator = match nd {
@@ -638,7 +644,8 @@ fn generate_edge_pringting_fn<'a>(
                 let val = translator.clone();
                 Box::new(move |i, n| {
                     (accumulator)(i, n)
-                        + &graph::GraphMapEdgesTy::from(d.clone(), val.clone()).get()(i, n)
+                        + &graph::GraphMapEdgesTy::from(d.clone(),
+							val.clone()).get()(i, n)
                 })
             }
             EdgeDisplay::Separator(s) => {
@@ -656,7 +663,11 @@ fn generate_node_color_fn<'a>(
     node_color: &'a graph::NodeColor,
     original_graph: Rc<graph::RSgraph>,
     translator: Rc<Translator>,
-) -> Box<dyn Fn(&Graph<String, String>, <&Graph<String, String, petgraph::Directed, u32> as IntoNodeReferences>::NodeRef) -> String + 'a> {
+) -> Box<dyn Fn(
+    &Graph<String, String>,
+    <&Graph<String, String, petgraph::Directed, u32> as IntoNodeReferences>::NodeRef
+) -> String + 'a>
+{
     Box::new(
 	move |i, n| {
 	    let cloned_node_color = node_color.clone();
@@ -680,7 +691,11 @@ use petgraph::visit::IntoEdgeReferences;
 fn generate_edge_color_fn<'a>(
     edge_color: &'a graph::EdgeColor,
     original_graph: Rc<Graph<RSsystem, RSlabel>>,
-) -> Box<dyn Fn(&Graph<String, String>, <&Graph<String, String, petgraph::Directed, u32> as IntoEdgeReferences>::EdgeRef) -> String + 'a> {
+) -> Box<dyn Fn(
+    &Graph<String, String>,
+    <&Graph<String, String, petgraph::Directed, u32> as IntoEdgeReferences>::EdgeRef
+) -> String + 'a>
+{
     Box::new(
 	move |i, n| {
 	    let cloned_edge_color = edge_color.clone();
@@ -727,7 +742,9 @@ pub fn dot(
             let graph = Rc::new(graph.to_owned());
 
             let node_formatter =
-	     	generate_node_color_fn(node_color, Rc::clone(&graph), rc_translator);
+	     	generate_node_color_fn(node_color,
+				       Rc::clone(&graph),
+				       rc_translator);
 	    let edge_formatter =
 		generate_edge_color_fn(edge_color, graph);
 

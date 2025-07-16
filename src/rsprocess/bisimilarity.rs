@@ -1,26 +1,16 @@
 use std::collections::{BTreeSet, HashMap};
 
-use petgraph::visit::{ EdgeIndexable,
-		       EdgeRef,
+use petgraph::visit::{ EdgeRef,
+		       GraphBase,
 		       IntoEdgeReferences,
 		       IntoEdges,
-		       IntoNodeReferences,
-		       NodeIndexable };
+		       IntoNodeReferences };
 
-struct GraphPartition<'a, G>
-where
-    G: EdgeIndexable + NodeIndexable + IntoEdgeReferences + IntoNodeReferences
-    + IntoEdges,
-    G::NodeId: std::cmp::Eq + std::hash::Hash,
-{
-    pub node_to_block: HashMap<(usize, G::NodeId), u32>,
-    pub block_to_node: HashMap<u32, Vec<(usize, G::NodeId)>>,
-    pub graphs: [&'a G; 2],
-    last_block: u32,
-    blocks: BTreeSet<u32>
-}
+// -----------------------------------------------------------------------------
+//                              Helper Functions
+// -----------------------------------------------------------------------------
 
-
+#[inline(always)]
 fn equal_vectors<T>(a: &Vec<T>, b: &Vec<T>) -> bool
 where
     T: PartialEq
@@ -39,11 +29,27 @@ where
     true
 }
 
+
+// -----------------------------------------------------------------------------
+//                                Bisimilarity
+// -----------------------------------------------------------------------------
+
+struct GraphPartition<'a, G>
+where
+    G: GraphBase,
+    G::NodeId: std::cmp::Eq + std::hash::Hash,
+{
+    pub node_to_block: HashMap<(usize, G::NodeId), u32>,
+    pub block_to_node: HashMap<u32, Vec<(usize, G::NodeId)>>,
+    pub graphs: [&'a G; 2],
+    last_block: u32,
+    blocks: BTreeSet<u32>
+}
+
 impl<'a, G> GraphPartition<'a, G>
 where
-    G: EdgeIndexable + NodeIndexable + IntoEdgeReferences + IntoNodeReferences
-    + IntoEdges,
-    G::NodeId: std::cmp::Eq + std::hash::Hash,
+    G: GraphBase,
+    G::NodeId: std::cmp::Eq + std::hash::Hash
 {
     pub fn new(graph_a: &'a G, graph_b: &'a G) -> Self {
 	GraphPartition { node_to_block: HashMap::new(),
@@ -63,6 +69,7 @@ where
 	self.blocks.insert(self.last_block);
     }
 
+    #[inline(always)]
     pub fn iterate_blocks(&self) -> Vec<u32> {
 	self.blocks.iter().cloned().collect::<Vec<_>>()
     }
@@ -78,7 +85,13 @@ where
 	}
 	true
     }
+}
 
+impl<'a, G> GraphPartition<'a, G>
+where
+    G: IntoEdges,
+    G::NodeId: std::cmp::Eq + std::hash::Hash,
+{
     fn reachable_blocks(
 	&self,
 	label: &G::EdgeRef,
@@ -145,8 +158,7 @@ pub fn bisimilarity_kanellakis_smolka<'a, G>(
     graph_b: &'a G
 ) -> bool
 where
-    G: EdgeIndexable + NodeIndexable + IntoEdgeReferences + IntoNodeReferences
-    + IntoEdges,
+    G: IntoNodeReferences + IntoEdges,
     G::NodeId: std::cmp::Eq + std::hash::Hash,
     G::EdgeRef: PartialEq
 {
