@@ -41,6 +41,20 @@ pub fn digraph(
     Ok(graph)
 }
 
+
+pub fn common_entities(
+    graph: &RSgraph
+) -> RSset {
+    graph.node_references().fold(
+	None,
+	|acc, node|
+	match acc {
+	    None => Some(node.1.available_entities.clone()),
+	    Some(acc) => Some(node.1.available_entities.intersection(&acc))
+	}
+    ).unwrap_or(RSset::new())
+}
+
 // -----------------------------------------------------------------------------
 //                              helper functions
 // -----------------------------------------------------------------------------
@@ -54,6 +68,7 @@ pub enum GraphMapNodes {
     Hide,
     Entities,
     MaskEntities { mask: RSset },
+    ExcludeEntities { mask: RSset },
     Context,
 }
 
@@ -108,6 +123,20 @@ impl GraphMapNodesTy {
 			}
 		    )
 		},
+		ExcludeEntities { mask } => {
+		    Box::new(
+			move |_, node: &RSsystem| {
+			    let masked_entities =
+				node.available_entities
+				.subtraction(&mask);
+			    format!("{}",
+				    translator::RSsetDisplay::from(
+					&translator,
+					&masked_entities)
+			    )
+			}
+		    )
+		}
 		Context => {
 		    Box::new(
 			move |_, node: &RSsystem|

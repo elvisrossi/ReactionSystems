@@ -62,6 +62,8 @@ impl Default for SaveOptions {
 pub enum NodeDisplay {
     Separator(String),
     Display(graph::GraphMapNodes),
+    UncommonEntities,
+    MaskUncommonEntities(RSset)
 }
 
 
@@ -539,6 +541,7 @@ pub fn bisimilar(
 #[allow(clippy::type_complexity)]
 fn generate_node_pringting_fn<'a>(
     node_display: &'a Vec<NodeDisplay>,
+    graph: &graph::RSgraph,
     translator: Rc<Translator>,
 ) -> Box<dyn Fn(petgraph::prelude::NodeIndex, &'a RSsystem) -> String + 'a> {
     // The type cannot be aliased since rust doesnt like generics.
@@ -557,11 +560,43 @@ fn generate_node_pringting_fn<'a>(
                     (accumulator)(i, n)
                         + &graph::GraphMapNodesTy::from(d.clone(), val.clone()).get()(i, n)
                 })
-            }
+            },
             NodeDisplay::Separator(s) => {
                 // we have a string so simply add it at the end
                 Box::new(move |i, n| (accumulator)(i, n) + s)
-            }
+            },
+	    // ad hoc since graph information is not available in the graph
+	    // function generation
+	    NodeDisplay::UncommonEntities => {
+		let common_entities = graph::common_entities(graph);
+		let val = translator.clone();
+		Box::new(move |i, n| {
+		    (accumulator)(i, n)
+			+ &graph::GraphMapNodesTy::from(
+			    graph::GraphMapNodes::ExcludeEntities {
+				mask: common_entities.clone()
+			    },
+			    val.clone()
+			).get()(i, n)
+		    }
+		)
+	    },
+	    // ad hoc since graph information is not available in the graph
+	    // function generation
+	    NodeDisplay::MaskUncommonEntities(mask) => {
+		let common_entities = graph::common_entities(graph);
+		let val = translator.clone();
+		Box::new(move |i, n| {
+		    (accumulator)(i, n)
+			+ &graph::GraphMapNodesTy::from(
+			    graph::GraphMapNodes::ExcludeEntities {
+				mask: common_entities.union(mask)
+			    },
+			    val.clone()
+			).get()(i, n)
+		    }
+		)
+	    },
         };
     }
     accumulator
@@ -666,6 +701,7 @@ pub fn dot(
             // fine...
             let modified_graph = graph.map(
                 generate_node_pringting_fn(&node_display,
+					   graph,
 					   Rc::clone(&rc_translator)),
                 generate_edge_pringting_fn(&edge_display,
 					   Rc::clone(&rc_translator)),
@@ -707,6 +743,7 @@ pub fn graphml(
             // map each value to the corresponding value we want to display
             let modified_graph = graph.map(
                 generate_node_pringting_fn(&node_display,
+					   graph,
 					   Rc::clone(&rc_translator)),
                 generate_edge_pringting_fn(&edge_display,
 					   rc_translator),

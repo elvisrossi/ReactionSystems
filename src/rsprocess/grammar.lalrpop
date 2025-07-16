@@ -272,11 +272,20 @@ LiteralSeparatorEdge: presets::EdgeDisplay = {
 };
 
 NodeDisplay: presets::NodeDisplay = {
-    "Hide" => presets::NodeDisplay::Display(graph::GraphMapNodes::Hide),
-    "Entities" => presets::NodeDisplay::Display(graph::GraphMapNodes::Entities),
+    "Hide" =>
+	presets::NodeDisplay::Display(graph::GraphMapNodes::Hide),
+    "Entities" =>
+	presets::NodeDisplay::Display(graph::GraphMapNodes::Entities),
     "MaskEntities" <mask: Set> =>
 	presets::NodeDisplay::Display(graph::GraphMapNodes::MaskEntities{mask}),
-    "Context" => presets::NodeDisplay::Display(graph::GraphMapNodes::Context)
+    "Context" =>
+	presets::NodeDisplay::Display(graph::GraphMapNodes::Context),
+    "UncommonEntities" =>
+	presets::NodeDisplay::UncommonEntities,
+    "MaskUncommonentities" <mask: Set> =>
+	presets::NodeDisplay::MaskUncommonEntities(mask),
+    "ExcludeEntities" <mask: Set> =>
+      presets::NodeDisplay::Display(graph::GraphMapNodes::ExcludeEntities{mask})
 }
 
 /// Node display formatters separated by arbitrary strings in quotes

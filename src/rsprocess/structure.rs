@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 // -----------------------------------------------------------------------------
 
 /// Basic set of entities.
-#[derive(Clone, Debug, PartialOrd, Eq, Ord, Hash, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialOrd, Eq, Ord, Serialize, Deserialize)]
 pub struct RSset {
     pub identifiers: BTreeSet<IdType>,
 }
@@ -79,7 +79,7 @@ impl RSset {
         RSset { identifiers: res }
     }
 
-    /// returns the new set a \ b
+    /// returns the new set a ∖ b
     pub fn subtraction(&self, b: &RSset) -> RSset {
         // TODO maybe find more efficient way without copy/clone
         let res: BTreeSet<_> = self
@@ -120,6 +120,12 @@ impl Default for RSset {
 impl PartialEq for RSset {
     fn eq(&self, other: &Self) -> bool {
 	self.identifiers.eq(&other.identifiers)
+    }
+}
+
+impl Hash for RSset {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+	self.identifiers.hash(state)
     }
 }
 
@@ -564,7 +570,8 @@ impl PartialEq for RSlabel {
     fn eq(&self, other: &Self) -> bool {
 	self.available_entities == other.available_entities &&
 	    self.context == other.context &&
-	    self.t == other.t &&
+	//  self.t == other.t && // no need since its the union of the above
+	//  // elements
 	    self.reactants == other.reactants &&
 	    self.reactants_absent == other.reactants_absent &&
 	    self.inhibitors == other.inhibitors &&
