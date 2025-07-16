@@ -23,6 +23,7 @@ use super::*;
 //                                 Structures
 // -----------------------------------------------------------------------------
 
+/// Describes how the result of some computation has to be saved.
 pub struct SaveOptions {
     pub print: bool,
     pub save: Option<Vec<String>>,
@@ -58,6 +59,7 @@ impl Default for SaveOptions {
     }
 }
 
+/// Describes display options for nodes (RSsystem).
 #[derive(Clone)]
 pub enum NodeDisplay {
     Separator(String),
@@ -66,13 +68,14 @@ pub enum NodeDisplay {
     MaskUncommonEntities(RSset)
 }
 
-
+// Describes display options for edges (RSlabels).
 #[derive(Clone)]
 pub enum EdgeDisplay {
     Separator(String),
     Display(graph::GraphMapEdges),
 }
 
+// Describes output options for a graph.
 pub enum GraphSaveOptions {
     Dot {
         node_display: Vec<NodeDisplay>,
@@ -91,6 +94,7 @@ pub enum GraphSaveOptions {
     },
 }
 
+/// Describes the computation to apply to the input system or graph.
 pub enum Instruction {
     Stats { so: SaveOptions },
     Target { so: SaveOptions },
@@ -103,12 +107,14 @@ pub enum Instruction {
     Bisimilarity { system_b: String, so: SaveOptions }
 }
 
+/// Describes a system or a graph.
 pub enum System {
     Deserialize { path: String },
     RSsystem { sys: RSsystem },
 }
 
 impl System {
+    /// Deserialize the graph if applicable.
     pub fn compute(
 	&self,
 	translator: Translator
@@ -151,6 +157,7 @@ impl EvaluatedSystem {
     }
 }
 
+/// Holds all the computations to be done on the system
 pub struct Instructions {
     pub system: System,
     pub instructions: Vec<Instruction>,
@@ -217,8 +224,11 @@ where
         } => {
 	    let mut err = format!(
 		"Unrecognized token \"{t}\" \
-		 between positions {l} and {r}. Expected: "
+		 between positions {l} and {r}."
 	    );
+
+	    // Temporary debug.
+	    err.push_str("Expected: ");
 	    let mut it = expected.iter().peekable();
 	    while let Some(s) = it.next() {
 		err.push('(');
@@ -500,6 +510,7 @@ pub fn digraph(system: &mut EvaluatedSystem) -> Result<(), String> {
     Ok(())
 }
 
+/// Computes bisimularity of two provided systems
 pub fn bisimilar(
     system_a: &mut EvaluatedSystem,
     system_b: String
@@ -511,13 +522,19 @@ pub fn bisimilar(
 				 system_b.to_string(),
 				 parser_instructions)?;
 
-    let system_b = match system_b.system {
-	System::RSsystem { sys } => sys,
-	_ => return Err("Not implemented yet".into())
-    };
-
-    let mut system_b = EvaluatedSystem::System { sys: system_b,
-						 translator: system_a.get_translator().clone() };
+    let mut system_b =
+	match system_b.system.compute(system_a.get_translator().clone())? {
+	    EvaluatedSystem::System { sys, translator } =>
+		EvaluatedSystem::System { sys, translator },
+	    EvaluatedSystem::Graph { graph, translator } => {
+		if translator != *system_a.get_translator() {
+		    return Err("Bisimilarity not implemented for systems with \
+				different encodings. Serialize the systems with \
+				the same translator.".into());
+		}
+		EvaluatedSystem::Graph { graph, translator }
+	    }
+	};
 
     digraph(&mut system_b)?;
 

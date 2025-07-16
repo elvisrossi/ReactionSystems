@@ -33,6 +33,19 @@ impl Default for Translator {
     }
 }
 
+impl PartialEq for Translator {
+    fn eq(&self, other: &Self) -> bool {
+	for (s, id) in self.strings.iter() {
+	    match other.strings.get(s) {
+		None => return false,
+		Some(id2) if id != id2 => return false,
+		_ => {}
+	    }
+	}
+	true
+    }
+}
+
 impl Translator {
     /// converts a string into an id
     pub fn encode(&mut self, s: impl Into<String>) -> IdType {
