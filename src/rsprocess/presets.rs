@@ -547,7 +547,8 @@ pub fn bisimilar(
 	    let b: &graph::RSgraph = b;
 	    Ok(format!(
 		"{}",
-		super::bisimilarity::bisimilarity_kanellakis_smolka(&a, &b)
+		// super::bisimilarity::bisimilarity_kanellakis_smolka(&a, &b)
+		super::bisimilarity::bisimilarity_paige_tarjan(&a, &b)
 	    ))
 	},
 	_ => { unreachable!() }
