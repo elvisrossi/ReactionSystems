@@ -1,10 +1,10 @@
 use std::cell::RefCell;
 use std::collections::hash_map::Entry;
 use std::collections::{BTreeSet, HashMap, HashSet};
-use std::fmt::Debug;
 use std::rc::Rc;
 
-use petgraph::visit::{ EdgeRef, GraphBase, IntoEdgeReferences, IntoEdges, IntoNeighborsDirected, IntoNodeReferences, NodeCount };
+use petgraph::visit::{ EdgeRef, GraphBase, IntoEdgeReferences, IntoEdges,
+					   IntoNeighborsDirected, IntoNodeReferences, NodeCount };
 use petgraph::Direction::{Incoming, Outgoing};
 
 // -----------------------------------------------------------------------------
@@ -218,7 +218,6 @@ trait NextId<From, T> {
 	fn next_id_of_graph(&mut self, val: From) -> T;
 }
 
-#[derive(Debug)]
 struct Translator<From, To, State>
 where
 	State: NextId<From, To>
@@ -263,7 +262,7 @@ where
 	}
 }
 
-#[derive(Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[derive(Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 struct NodeState<const N: usize> {
 	last_ids: [u32; N],
 }
@@ -361,11 +360,8 @@ fn initialization<const N: usize, G>(
 	   NodeToBlock,
 	   MyTranslator<G::NodeId, N> )
 where
-	G: IntoNodeReferences + IntoEdges + IntoNeighborsDirected,
-	G::NodeId: std::cmp::Eq + std::hash::Hash,
-	G::EdgeId: std::cmp::Eq + std::hash::Hash,
-	G::EdgeRef: PartialEq,
-	G::NodeId: Debug
+	G: IntoNodeReferences + IntoNeighborsDirected,
+	G::NodeId: std::cmp::Eq + std::hash::Hash
 {
 	// translate into unique ids
 	let mut convert_nodes: MyTranslator<G::NodeId, N>
@@ -477,10 +473,8 @@ fn build_backedges<IndexHolder: HasBlock, const N:usize, G>(
 	convert_nodes: &MyTranslator<G::NodeId, N>
 ) -> BackEdges
 where
-	G: IntoNodeReferences + IntoEdges + IntoNeighborsDirected,
-	G::NodeId: std::cmp::Eq + std::hash::Hash,
-	G::EdgeId: std::cmp::Eq + std::hash::Hash,
-	G::EdgeRef: PartialEq,
+	G: IntoNeighborsDirected,
+	G::NodeId: std::cmp::Eq + std::hash::Hash
 {
 	let mut backedges = HashMap::new();
 
@@ -598,11 +592,8 @@ fn maximum_bisimulation<const N: usize, G>(
 	graphs: &[&G; N]
 ) -> (Option<Vec<Block>>, MyTranslator<G::NodeId, N>)
 where
-	G: IntoNodeReferences + IntoEdges + IntoNeighborsDirected,
-	G::NodeId: std::cmp::Eq + std::hash::Hash,
-	G::EdgeId: std::cmp::Eq + std::hash::Hash,
-	G::EdgeRef: PartialEq,
-	G::NodeId: Debug
+	G: IntoNodeReferences + IntoNeighborsDirected,
+	G::NodeId: std::cmp::Eq + std::hash::Hash
 {
 	let ((simple_block_0, simple_block_1),
 		 initial_compound_partition,
@@ -694,7 +685,7 @@ where
 			|x| !removeable_simple_blocks.iter().any(|y| Rc::ptr_eq(x, y)) );
 		queue.extend(compound_block_that_are_now_compound);
 
-		// counterimage = E^{-1}(B) - E^{-1}(S-B)
+		// back edges = E^{-1}(B) - E^{-1}(S-B)
 		{
 			let counterimage_splitter_complement =
 				build_backedges(graphs,
@@ -734,11 +725,8 @@ pub fn bisimilarity_paige_tarjan<G>(
 	graph_b: &G
 ) -> bool
 where
-	G: IntoNodeReferences + IntoEdges + IntoNeighborsDirected + NodeCount,
-	G::NodeId: std::cmp::Eq + std::hash::Hash,
-	G::EdgeId: std::cmp::Eq + std::hash::Hash,
-	G::EdgeRef: PartialEq,
-	G::NodeId: Debug,
+	G: IntoNodeReferences + IntoNeighborsDirected + NodeCount,
+	G::NodeId: std::cmp::Eq + std::hash::Hash
 {
 	if graph_a.node_count() == 0 && graph_b.node_count() == 0 {
 		return true
@@ -749,7 +737,7 @@ where
 
 	let (result, _converter) =
 		match maximum_bisimulation(&[graph_a, graph_b]) {
-			(None, _) => {return false},
+			(None, _) => { return false },
 			(Some(val), converter) => {
 				(val.into_iter()
 					.find(
