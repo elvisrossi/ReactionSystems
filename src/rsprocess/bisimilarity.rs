@@ -1,6 +1,7 @@
 use std::cell::RefCell;
 use std::collections::hash_map::Entry;
 use std::collections::{BTreeSet, HashMap, HashSet};
+use std::fmt::Debug;
 use std::rc::Rc;
 
 use petgraph::visit::{ EdgeRef, GraphBase, IntoEdgeReferences, IntoEdges, IntoNeighborsDirected, IntoNodeReferences, NodeCount };
@@ -213,23 +214,14 @@ type GraphIdType = u32;
 
 type NodeType = (GraphIdType, NodeIdType);
 
-trait NodeTrait {
-	fn graph(&self) -> GraphIdType;
+trait NextId<From, T> {
+	fn next_id_of_graph(&mut self, val: From) -> T;
 }
 
-impl NodeTrait for NodeType {
-	fn graph(&self) -> GraphIdType {
-		self.0
-	}
-}
-
-trait NextId<T> {
-	fn next_id_of_graph(&mut self, graph_id: GraphIdType) -> T;
-}
-
+#[derive(Debug)]
 struct Translator<From, To, State>
 where
-	State: NextId<To>
+	State: NextId<From, To>
 {
 	data: HashMap<From, To>,
 	reverse_data: HashMap<To, From>,
@@ -240,7 +232,7 @@ impl<From, To, State> Translator<From, To, State>
 where
 	To: std::hash::Hash + std::cmp::Eq + Copy,
 	From: std::hash::Hash + std::cmp::Eq + Clone,
-	State: NextId<To>
+	State: NextId<From, To>
 {
 	pub fn new() -> Self
 	where
@@ -251,11 +243,11 @@ where
 					 last_id: State::default() }
 	}
 
-	pub fn encode(&mut self, val: From, graph_id: GraphIdType) -> To
+	pub fn encode(&mut self, val: From) -> To
 	{
 		let id = *(self.data.entry(val.clone())
 				   .or_insert(
-					   self.last_id.next_id_of_graph(graph_id)
+					   self.last_id.next_id_of_graph(val.clone())
 				   ));
 		self.reverse_data.insert(id, val);
 		id
@@ -271,7 +263,7 @@ where
 	}
 }
 
-#[derive(Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Debug)]
 struct NodeState<const N: usize> {
 	last_ids: [u32; N],
 }
@@ -288,91 +280,95 @@ impl<const N: usize> Default for NodeState<N> {
 	}
 }
 
-impl<const N: usize> NextId<NodeType> for NodeState<N> {
-	fn next_id_of_graph(&mut self, graph_id: u32) -> NodeType {
-		let graph_id_usize = graph_id as usize;
+impl<const N: usize, T> NextId<(T, GraphIdType), NodeType> for NodeState<N> {
+	fn next_id_of_graph(&mut self, val: (T, GraphIdType)) -> NodeType {
+		let graph_id_usize = val.1 as usize;
 		if graph_id_usize > self.last_ids.len() {
 			panic!()
 		}
 		self.last_ids[graph_id_usize] += 1;
-		(graph_id, self.last_ids[graph_id_usize])
+		(val.1, self.last_ids[graph_id_usize])
 	}
 }
+
+type MyTranslator<From, const N: usize> = Translator<(From, GraphIdType), NodeType, NodeState<N>>;
 
 
 
 
 
 type Block = Vec<NodeType>;
-type CounterImage = HashMap<NodeType, Vec<NodeType>>;
-type NodeToBlockVec = HashMap<NodeType, Rc<RefCell<FineBlock>>>;
-type CoarsePartition = Vec<Rc<CoarseBlock>>;
-type FineBlockPointer = Rc<RefCell<FineBlock>>;
-type CoarseBlockPointer = Rc<CoarseBlock>;
-type CounterimageGrouped = HashMap<Block, CounterImageGroup>;
+type BackEdges = HashMap<NodeType, Vec<NodeType>>;
+type NodeToBlock = HashMap<NodeType, Rc<RefCell<SimpleBlock>>>;
+type CompoundPartition = Vec<Rc<CompoundBlock>>;
+type FineBlockPointer = Rc<RefCell<SimpleBlock>>;
+type CompoundBlockPointer = Rc<CompoundBlock>;
+type BackEdgesGrouped = HashMap<Block, BackEdgesGroup>;
 
-struct FineBlock {
-	values: Block,
-	coarse_block_that_supersets_self: Rc<CoarseBlock>
+struct SimpleBlock {
+	block: Block,
+	coarse_block_that_supersets_self: Rc<CompoundBlock>
 }
 
 #[derive(Clone)]
-struct CoarseBlock {
-	values: Block,
-	fine_blocks_that_are_subsets_of_self: RefCell<Vec<Rc<RefCell<FineBlock>>>>,
+struct CompoundBlock {
+	block: Block,
+	simple_blocks_subsets_of_self: RefCell<Vec<Rc<RefCell<SimpleBlock>>>>,
 }
 
-impl CoarseBlock {
-	fn add_fine_block(&self, fine_block: Rc<RefCell<FineBlock>>) {
-		self.fine_blocks_that_are_subsets_of_self
+impl CompoundBlock {
+	fn add_simple_block(&self, fine_block: Rc<RefCell<SimpleBlock>>) {
+		self.simple_blocks_subsets_of_self
 			.borrow_mut()
 			.push(fine_block);
 	}
-	fn remove_fine_block(&self, fine_block: &Rc<RefCell<FineBlock>>) {
-		self.fine_blocks_that_are_subsets_of_self
+	fn remove_simple_block(&self, fine_block: &Rc<RefCell<SimpleBlock>>) {
+		self.simple_blocks_subsets_of_self
 			.borrow_mut()
 			.retain(|x| !Rc::ptr_eq(x, fine_block));
 	}
-	fn fine_block_count(&self) -> usize {
-		self.fine_blocks_that_are_subsets_of_self.borrow().len()
+	fn simple_block_count(&self) -> usize {
+		self.simple_blocks_subsets_of_self.borrow().len()
 	}
 }
 
-struct CounterImageGroup {
-	block: Rc<RefCell<FineBlock>>,
+struct BackEdgesGroup {
+	block: Rc<RefCell<SimpleBlock>>,
 	subblock: Block,
 }
 
-trait HasValues {
-	fn values(&self) -> Block;
+trait HasBlock {
+	fn block(&self) -> Block;
 }
 
-impl HasValues for FineBlockPointer {
-	fn values(&self) -> Block {
-		(**self).borrow().values.clone()
+impl HasBlock for FineBlockPointer {
+	fn block(&self) -> Block {
+		(**self).borrow().block.clone()
 	}
 }
 
-impl HasValues for CoarseBlock {
-	fn values(&self) -> Block {
-		self.values.clone()
+impl HasBlock for CompoundBlock {
+	fn block(&self) -> Block {
+		self.block.clone()
 	}
 }
 
+#[allow(clippy::type_complexity)]
 fn initialization<const N: usize, G>(
 	graphs: &[&G; N]
 ) -> ( (FineBlockPointer, FineBlockPointer),
-	   CoarsePartition,
-	   NodeToBlockVec,
-	   Translator<G::NodeId, NodeType, NodeState<N>> )
+	   CompoundPartition,
+	   NodeToBlock,
+	   MyTranslator<G::NodeId, N> )
 where
 	G: IntoNodeReferences + IntoEdges + IntoNeighborsDirected,
 	G::NodeId: std::cmp::Eq + std::hash::Hash,
 	G::EdgeId: std::cmp::Eq + std::hash::Hash,
 	G::EdgeRef: PartialEq,
+	G::NodeId: Debug
 {
-	// we translate into unique ids
-	let mut convert_nodes: Translator<G::NodeId, NodeType, NodeState<N>>
+	// translate into unique ids
+	let mut convert_nodes: MyTranslator<G::NodeId, N>
 		= Translator::new();
 
 	let graph_node_indices = {
@@ -381,21 +377,20 @@ where
 		for (pos, graph) in graphs.iter().enumerate() {
 			tmp.extend(
 				graph.node_identifiers()
-					.map(|val| convert_nodes.encode(val, pos as u32))
+					.map(|val| convert_nodes.encode((val, pos as u32)))
 					.collect::<Vec<_>>()
 			);
 		}
 
 		tmp
 	};
-
-	let coarse_initial_block_pointer: Rc<CoarseBlock> = {
-		let coarse_initial_block = CoarseBlock {
-			values: graph_node_indices.clone(),
-			fine_blocks_that_are_subsets_of_self: RefCell::new(vec![]),
+	let compound_initial_block_pointer: Rc<CompoundBlock> = {
+		let compound_initial_block = CompoundBlock {
+			block: graph_node_indices.clone(),
+			simple_blocks_subsets_of_self: RefCell::new(vec![]),
 		};
 
-		Rc::new(coarse_initial_block)
+		Rc::new(compound_initial_block)
 	};
 
 	// minor optimization: split nodes between those that have outgoing edges
@@ -407,21 +402,26 @@ where
 			.into_iter()
 			.partition(
 				|x| {
-					graphs[x.graph() as usize]
+					let (node_id, graph_id) = convert_nodes.decode(x).unwrap();
+					graphs[*graph_id as usize]
 						.neighbors_directed(
-							*convert_nodes.decode(x).unwrap(),
+							*node_id,
 							Outgoing)
 						.count() == 0
 				}
 			);
 
-		let leaf_node_block = FineBlock {
-			values: leaf_node_indices,
-			coarse_block_that_supersets_self: Rc::clone(&coarse_initial_block_pointer),
+		let leaf_node_block = SimpleBlock {
+			block: leaf_node_indices,
+
+			coarse_block_that_supersets_self:
+			Rc::clone(&compound_initial_block_pointer),
 		};
-		let non_leaf_node_block = FineBlock {
-			values: non_leaf_node_indices,
-			coarse_block_that_supersets_self: Rc::clone(&coarse_initial_block_pointer),
+		let non_leaf_node_block = SimpleBlock {
+			block: non_leaf_node_indices,
+
+			coarse_block_that_supersets_self:
+			Rc::clone(&compound_initial_block_pointer),
 		};
 
 		(
@@ -430,20 +430,20 @@ where
 		)
 	};
 
-	coarse_initial_block_pointer
-		.fine_blocks_that_are_subsets_of_self
+	compound_initial_block_pointer
+		.simple_blocks_subsets_of_self
 		.borrow_mut()
 		.extend([
 			Rc::clone(&leaf_node_block_pointer),
 			Rc::clone(&non_leaf_node_block_pointer),
 		]);
 
-	let node_to_block_vec = {
+	let node_to_block = {
 		let mut tmp = HashMap::new();
 
 		(*non_leaf_node_block_pointer)
 			.borrow()
-			.values
+			.block
 			.iter()
 			.copied()
 			.for_each(
@@ -453,7 +453,7 @@ where
 
 		(*leaf_node_block_pointer)
 			.borrow()
-			.values
+			.block
 			.iter()
 			.copied()
 			.for_each(
@@ -465,58 +465,64 @@ where
 
 	(
 		(leaf_node_block_pointer, non_leaf_node_block_pointer),
-		vec![coarse_initial_block_pointer],
-		node_to_block_vec,
+		vec![compound_initial_block_pointer],
+		node_to_block,
 		convert_nodes
 	)
 }
 
-fn build_counterimage<IndexHolder: HasValues, const N:usize, G>(
+fn build_backedges<IndexHolder: HasBlock, const N:usize, G>(
 	graphs: &[&G; N],
-	fine_block: IndexHolder,
-	convert_nodes: &Translator<G::NodeId, NodeType, NodeState<N>>
-) -> CounterImage
+	block: IndexHolder,
+	convert_nodes: &MyTranslator<G::NodeId, N>
+) -> BackEdges
 where
 	G: IntoNodeReferences + IntoEdges + IntoNeighborsDirected,
 	G::NodeId: std::cmp::Eq + std::hash::Hash,
 	G::EdgeId: std::cmp::Eq + std::hash::Hash,
 	G::EdgeRef: PartialEq,
 {
-	let mut counterimage = HashMap::new();
+	let mut backedges = HashMap::new();
 
-	fine_block.values().iter().for_each(|node_index_pointer| {
-		counterimage.insert(
+	block.block().iter().for_each(|node_index_pointer| {
+		backedges.insert(
 			*node_index_pointer,
-			graphs[node_index_pointer.graph() as usize]
-				.neighbors_directed(
-					*convert_nodes.decode(node_index_pointer).unwrap(),
-					Incoming)
-				.collect::<HashSet<_>>()
-				.into_iter()
-				.map(|e| convert_nodes.get(&e).unwrap())
-				.copied()
-				.collect::<Vec<_>>(),
+			{
+				let (node_id, graph_id) =
+					convert_nodes.decode(node_index_pointer).unwrap();
+				graphs[*graph_id as usize]
+					.neighbors_directed(
+						*node_id,
+						Incoming)
+					.collect::<HashSet<_>>()
+					.into_iter()
+					// the back edges should be all in the same graph
+					.map(|e| convert_nodes.get(&(e, *graph_id)).unwrap())
+					.copied()
+					.collect::<Vec<_>>()
+			}
 		);
 	});
 
-	counterimage
+	backedges
 }
 
-fn group_by_counterimage(
-	counterimage: CounterImage,
-	node_to_block: &NodeToBlockVec,
-) -> CounterimageGrouped {
-	let mut counterimage_grouped: CounterimageGrouped = HashMap::new();
+fn group_by_backedges(
+	backedges: BackEdges,
+	node_to_block: &NodeToBlock,
+) -> BackEdgesGrouped {
+	let mut backedges_grouped: BackEdgesGrouped = HashMap::new();
 
-	for incoming_neighbor_group in counterimage.values() {
+	for incoming_neighbor_group in backedges.values() {
 		for node in incoming_neighbor_group {
 			let block = Rc::clone(node_to_block.get(node).unwrap());
-			let key = (*block).borrow().values.clone();
+			let key = (*block).borrow().block.clone();
 
-			match counterimage_grouped.entry(key) {
-				Entry::Occupied(mut entry) => entry.get_mut().subblock.push(*node),
+			match backedges_grouped.entry(key) {
+				Entry::Occupied(mut entry) =>
+					entry.get_mut().subblock.push(*node),
 				Entry::Vacant(entry) => {
-					entry.insert(CounterImageGroup {
+					entry.insert(BackEdgesGroup {
 						block: Rc::clone(&block),
 						subblock: Vec::from([*node]),
 					});
@@ -525,81 +531,86 @@ fn group_by_counterimage(
 		}
 	}
 
-	counterimage_grouped
+	backedges_grouped
 }
 
-fn split_blocks_with_grouped_counterimage(
-	mut counterimage_grouped: CounterimageGrouped,
-	node_to_block_vec: &mut NodeToBlockVec,
+fn split_blocks_with_grouped_backedges(
+	mut backedges_grouped: BackEdgesGrouped,
+	node_to_block: &mut NodeToBlock,
 ) -> (
 	(Vec<FineBlockPointer>, Vec<FineBlockPointer>),
-	Vec<CoarseBlockPointer>,
+	Vec<CompoundBlockPointer>,
 ) {
-	let mut all_new_fine_blocks: Vec<Rc<RefCell<FineBlock>>> = vec![];
-	let mut all_removed_fine_blocks: Vec<Rc<RefCell<FineBlock>>> = vec![];
-	let mut new_compound_coarse_blocks: Vec<Rc<CoarseBlock>> = vec![];
+	let mut all_new_simple_blocks: Vec<Rc<RefCell<SimpleBlock>>> = vec![];
+	let mut all_removed_simple_blocks: Vec<Rc<RefCell<SimpleBlock>>> = vec![];
+	let mut new_compound_blocks: Vec<Rc<CompoundBlock>> = vec![];
 
-	for (block, counter_image_group) in counterimage_grouped.iter_mut() {
-		let borrowed_coarse_block = Rc::clone(
-			&(*counter_image_group.block)
+	for (block, back_edges_group) in backedges_grouped.iter_mut() {
+		let borrowed_compound_block = Rc::clone(
+			&(*back_edges_group.block)
 				.borrow()
 				.coarse_block_that_supersets_self,
 		);
 
 		let proper_subblock = {
-			let fine_block = FineBlock {
-				values: counter_image_group.subblock.clone(),
-				coarse_block_that_supersets_self: Rc::clone(&borrowed_coarse_block),
+			let simple_block = SimpleBlock {
+				block: back_edges_group.subblock.clone(),
+
+				coarse_block_that_supersets_self:
+				Rc::clone(&borrowed_compound_block),
 			};
 
-			Rc::new(RefCell::new(fine_block))
+			Rc::new(RefCell::new(simple_block))
 		};
-		let prior_count = borrowed_coarse_block.fine_block_count();
-		borrowed_coarse_block.add_fine_block(Rc::clone(&proper_subblock));
+		let prior_count = borrowed_compound_block.simple_block_count();
+		borrowed_compound_block.add_simple_block(Rc::clone(&proper_subblock));
 
 		if prior_count == 1 {
-			new_compound_coarse_blocks.push(Rc::clone(&borrowed_coarse_block));
+			new_compound_blocks.push(Rc::clone(&borrowed_compound_block));
 		}
 
-		for node_index in counter_image_group.subblock.iter() {
-			node_to_block_vec.insert(*node_index, Rc::clone(&proper_subblock));
+		for node in back_edges_group.subblock.iter() {
+			node_to_block.insert(*node, Rc::clone(&proper_subblock));
 		}
 
 		// subtract subblock from block
-		(*counter_image_group.block).borrow_mut().values = block
+		(*back_edges_group.block).borrow_mut().block =
+			block
 			.iter()
-			.filter(|x| !(*proper_subblock).borrow().values.contains(x))
+			.filter(|x| !(*proper_subblock).borrow().block.contains(x))
 			.copied()
 			.collect();
 
-		if (*counter_image_group.block).borrow().values.is_empty() {
-			borrowed_coarse_block.remove_fine_block(&counter_image_group.block);
-			all_removed_fine_blocks.push(Rc::clone(&counter_image_group.block));
+		if (*back_edges_group.block).borrow().block.is_empty() {
+			borrowed_compound_block
+				.remove_simple_block(&back_edges_group.block);
+			all_removed_simple_blocks.push(Rc::clone(&back_edges_group.block));
 		}
-		all_new_fine_blocks.push(Rc::clone(&proper_subblock));
+		all_new_simple_blocks.push(Rc::clone(&proper_subblock));
 	}
 	(
-		(all_new_fine_blocks, all_removed_fine_blocks),
-		new_compound_coarse_blocks,
+		(all_new_simple_blocks, all_removed_simple_blocks),
+		new_compound_blocks,
 	)
 }
 
 fn maximum_bisimulation<const N: usize, G>(
 	graphs: &[&G; N]
-) -> Option<Vec<Block>>
+) -> (Option<Vec<Block>>, MyTranslator<G::NodeId, N>)
 where
 	G: IntoNodeReferences + IntoEdges + IntoNeighborsDirected,
 	G::NodeId: std::cmp::Eq + std::hash::Hash,
 	G::EdgeId: std::cmp::Eq + std::hash::Hash,
 	G::EdgeRef: PartialEq,
+	G::NodeId: Debug
 {
-	let (fine_block_tuple,
-		 initial_coarse_partition,
-		 mut node_to_block_vec,
+	let ((simple_block_0, simple_block_1),
+		 initial_compound_partition,
+		 mut node_to_block,
 		 converter) = initialization(graphs);
 
-	let mut queue: CoarsePartition = initial_coarse_partition;
-	let mut all_fine_blocks = vec![fine_block_tuple.0, fine_block_tuple.1];
+	let mut queue: CompoundPartition = initial_compound_partition;
+	let mut all_simple_blocks = vec![simple_block_0, simple_block_1];
 
 	loop {
 		let (smaller_component, simple_splitter_block) = {
@@ -607,41 +618,49 @@ where
 				Some(coarse_block) => coarse_block,
 				None => break,
 			};
-			let mut fine_blocks_in_splitter_block = splitter_block
-				.fine_blocks_that_are_subsets_of_self
+			let mut simple_blocks_in_splitter_block = splitter_block
+				.simple_blocks_subsets_of_self
 				.borrow()
 				.clone();
 
-			let smaller_component_index = fine_blocks_in_splitter_block
-				.iter()
-				.enumerate()
-				.min_by(|(_, x), (_, y)| {
-					(***x)
-						.borrow()
-						.values
-						.len()
-						.cmp(&(***y).borrow().values.len())
-				})
-				.map(|(index, _)| index)?;
+			let smaller_component_index = {
+				match simple_blocks_in_splitter_block
+					.iter()
+					.enumerate()
+					.min_by(|(_, x), (_, y)| {
+						(***x)
+							.borrow()
+							.block
+							.len()
+							.cmp(&(***y).borrow().block.len())
+					})
+					.map(|(index, _)| index) {
+						Some(v) => v,
+						None => {return (None, converter)}
+					}
+			};
 
-			let smaller_component = fine_blocks_in_splitter_block.remove(smaller_component_index);
+			let smaller_component =
+				simple_blocks_in_splitter_block.remove(smaller_component_index);
 
 			let simple_splitter_block_values: Block = splitter_block
-				.values
+				.block
 				.clone()
 				.iter()
-				.filter(|x| !(*smaller_component).borrow().values.contains(x))
+				.filter(|x| !(*smaller_component).borrow().block.contains(x))
 				.copied()
 				.collect();
 
-			let simple_splitter_block = CoarseBlock {
-				values: simple_splitter_block_values,
-				fine_blocks_that_are_subsets_of_self: RefCell::new(fine_blocks_in_splitter_block),
+			let simple_splitter_block = CompoundBlock {
+				block: simple_splitter_block_values,
+
+				simple_blocks_subsets_of_self:
+				RefCell::new(simple_blocks_in_splitter_block),
 			};
 			let simple_splitter_block_pointer = Rc::new(simple_splitter_block);
 
 			if simple_splitter_block_pointer
-				.fine_blocks_that_are_subsets_of_self
+				.simple_blocks_subsets_of_self
 				.borrow()
 				.len()
 				> 1
@@ -652,7 +671,7 @@ where
 			(smaller_component, simple_splitter_block_pointer)
 		};
 		simple_splitter_block
-			.fine_blocks_that_are_subsets_of_self
+			.simple_blocks_subsets_of_self
 			.borrow()
 			.iter()
 			.for_each(|x| {
@@ -660,42 +679,53 @@ where
 					Rc::clone(&simple_splitter_block);
 			});
 
-		let mut counterimage = build_counterimage(graphs, smaller_component, &converter);
+		let mut back_edges =
+			build_backedges(graphs, smaller_component, &converter);
 
-		let counterimage_group = group_by_counterimage(counterimage.clone(), &node_to_block_vec);
-		let ((new_fine_blocks, removeable_fine_blocks), coarse_block_that_are_now_compound) =
-			split_blocks_with_grouped_counterimage(counterimage_group, &mut node_to_block_vec);
+		let back_edges_group =
+			group_by_backedges(back_edges.clone(), &node_to_block);
+		let ((new_simple_blocks, removeable_simple_blocks),
+			 compound_block_that_are_now_compound) =
+			split_blocks_with_grouped_backedges(back_edges_group,
+												&mut node_to_block);
 
-		all_fine_blocks.extend(new_fine_blocks);
-		all_fine_blocks.retain(|x| !removeable_fine_blocks.iter().any(|y| Rc::ptr_eq(x, y)));
-		queue.extend(coarse_block_that_are_now_compound);
+		all_simple_blocks.extend(new_simple_blocks);
+		all_simple_blocks.retain(
+			|x| !removeable_simple_blocks.iter().any(|y| Rc::ptr_eq(x, y)) );
+		queue.extend(compound_block_that_are_now_compound);
 
 		// counterimage = E^{-1}(B) - E^{-1}(S-B)
 		{
 			let counterimage_splitter_complement =
-				build_counterimage(graphs, (*simple_splitter_block).clone(), &converter);
+				build_backedges(graphs,
+								(*simple_splitter_block).clone(),
+								&converter);
 
 			counterimage_splitter_complement.keys().for_each(|node| {
-				counterimage.remove(node);
+				back_edges.remove(node);
 			});
 		}
 
-		let counterimage_group = group_by_counterimage(counterimage, &node_to_block_vec);
-		let ((new_fine_blocks, removeable_fine_blocks), coarse_block_that_are_now_compound) =
-			split_blocks_with_grouped_counterimage(counterimage_group, &mut node_to_block_vec);
+		let counterimage_group = group_by_backedges(back_edges, &node_to_block);
+		let ((new_fine_blocks, removeable_fine_blocks),
+			 coarse_block_that_are_now_compound) =
+			split_blocks_with_grouped_backedges(counterimage_group,
+												&mut node_to_block);
 
-		all_fine_blocks.extend(new_fine_blocks);
-		all_fine_blocks.retain(|x| !removeable_fine_blocks.iter().any(|y| Rc::ptr_eq(x, y)));
+		all_simple_blocks.extend(new_fine_blocks);
+		all_simple_blocks.retain(
+			|x| !removeable_fine_blocks.iter().any(|y| Rc::ptr_eq(x, y)) );
 		queue.extend(coarse_block_that_are_now_compound);
 	}
 
-	Some(
-		all_fine_blocks
+	(Some(
+		all_simple_blocks
 			.iter()
-			.map(|x| (**x).borrow().values.clone())
-			.filter(|x| !x.is_empty()) // remove leaf block when there are no leaves
+			.map(|x| (**x).borrow().block.clone())
+		// remove leaf block when there are no leaves
+			.filter(|x| !x.is_empty())
 			.collect(),
-	)
+	), converter)
 }
 
 
@@ -708,6 +738,7 @@ where
 	G::NodeId: std::cmp::Eq + std::hash::Hash,
 	G::EdgeId: std::cmp::Eq + std::hash::Hash,
 	G::EdgeRef: PartialEq,
+	G::NodeId: Debug,
 {
 	if graph_a.node_count() == 0 && graph_b.node_count() == 0 {
 		return true
@@ -716,25 +747,25 @@ where
 		return false
 	}
 
-	let result =
+	let (result, _converter) =
 		match maximum_bisimulation(&[graph_a, graph_b]) {
-			None => {return false},
-			Some(val) => {
-				val.into_iter()
+			(None, _) => {return false},
+			(Some(val), converter) => {
+				(val.into_iter()
 					.find(
 						|el| {
 							let mut keep_track = [false, false];
 							for e in el {
-								keep_track[e.graph() as usize] = true;
+								let (_node_id, graph_id) =
+									converter.decode(e).unwrap();
+								keep_track[*graph_id as usize] = true;
 							}
 							!keep_track[0] || !keep_track[1]
 						}
-					)
+					), converter)
 
 			}
 		};
-
-	println!("{:?}", result);
 
 	result.is_none()
 }
