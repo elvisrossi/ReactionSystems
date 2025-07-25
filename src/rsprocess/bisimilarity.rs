@@ -3,8 +3,7 @@ use std::collections::hash_map::Entry;
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::rc::Rc;
 
-use petgraph::visit::{ EdgeRef, GraphBase, IntoEdgeReferences, IntoEdges,
-					   IntoNeighborsDirected, IntoNodeReferences, NodeCount };
+use petgraph::visit::{ EdgeCount, EdgeRef, GraphBase, IntoEdgeReferences, IntoEdges, IntoNeighborsDirected, IntoNodeReferences, NodeCount };
 use petgraph::Direction::{Incoming, Outgoing};
 
 // -----------------------------------------------------------------------------
@@ -282,7 +281,7 @@ impl<const N: usize> Default for NodeState<N> {
 impl<const N: usize, T> NextId<(T, GraphIdType), NodeType> for NodeState<N> {
 	fn next_id_of_graph(&mut self, val: (T, GraphIdType)) -> NodeType {
 		let graph_id_usize = val.1 as usize;
-		if graph_id_usize > self.last_ids.len() {
+		if graph_id_usize >= N {
 			panic!()
 		}
 		self.last_ids[graph_id_usize] += 1;
@@ -290,8 +289,38 @@ impl<const N: usize, T> NextId<(T, GraphIdType), NodeType> for NodeState<N> {
 	}
 }
 
-type MyTranslator<From, const N: usize> = Translator<(From, GraphIdType), NodeType, NodeState<N>>;
+type MyNodeTranslator<From, const N: usize> = Translator<(From, GraphIdType), NodeType, NodeState<N>>;
 
+
+
+type EdgeIdType = u32;
+type EdgeType = EdgeIdType;
+
+#[derive(Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
+struct EdgeState {
+	last_ids: u32,
+}
+
+impl EdgeState {
+	fn new() -> Self {
+		EdgeState { last_ids: 0 }
+	}
+}
+
+impl Default for EdgeState {
+	fn default() -> Self {
+		Self::new()
+	}
+}
+
+impl<T> NextId<T, EdgeType> for EdgeState {
+	fn next_id_of_graph(&mut self, _val: T) -> EdgeType {
+		self.last_ids += 1;
+		self.last_ids
+	}
+}
+
+type MyEdgeTranslator<From> = Translator<From, EdgeType, EdgeState>;
 
 
 
@@ -358,13 +387,13 @@ fn initialization<const N: usize, G>(
 ) -> ( (FineBlockPointer, FineBlockPointer),
 	   CompoundPartition,
 	   NodeToBlock,
-	   MyTranslator<G::NodeId, N> )
+	   MyNodeTranslator<G::NodeId, N> )
 where
 	G: IntoNodeReferences + IntoNeighborsDirected,
 	G::NodeId: std::cmp::Eq + std::hash::Hash
 {
 	// translate into unique ids
-	let mut convert_nodes: MyTranslator<G::NodeId, N>
+	let mut convert_nodes: MyNodeTranslator<G::NodeId, N>
 		= Translator::new();
 
 	let graph_node_indices = {
@@ -470,7 +499,7 @@ where
 fn build_backedges<IndexHolder: HasBlock, const N:usize, G>(
 	graphs: &[&G; N],
 	block: IndexHolder,
-	convert_nodes: &MyTranslator<G::NodeId, N>
+	convert_nodes: &MyNodeTranslator<G::NodeId, N>
 ) -> BackEdges
 where
 	G: IntoNeighborsDirected,
@@ -590,7 +619,7 @@ fn split_blocks_with_grouped_backedges(
 
 fn maximum_bisimulation<const N: usize, G>(
 	graphs: &[&G; N]
-) -> (Option<Vec<Block>>, MyTranslator<G::NodeId, N>)
+) -> (Option<Vec<Block>>, MyNodeTranslator<G::NodeId, N>)
 where
 	G: IntoNodeReferences + IntoNeighborsDirected,
 	G::NodeId: std::cmp::Eq + std::hash::Hash
@@ -687,20 +716,20 @@ where
 
 		// back edges = E^{-1}(B) - E^{-1}(S-B)
 		{
-			let counterimage_splitter_complement =
+			let back_edges_splitter_complement =
 				build_backedges(graphs,
 								(*simple_splitter_block).clone(),
 								&converter);
 
-			counterimage_splitter_complement.keys().for_each(|node| {
+			back_edges_splitter_complement.keys().for_each(|node| {
 				back_edges.remove(node);
 			});
 		}
 
-		let counterimage_group = group_by_backedges(back_edges, &node_to_block);
+		let back_edges_group = group_by_backedges(back_edges, &node_to_block);
 		let ((new_fine_blocks, removeable_fine_blocks),
 			 coarse_block_that_are_now_compound) =
-			split_blocks_with_grouped_backedges(counterimage_group,
+			split_blocks_with_grouped_backedges(back_edges_group,
 												&mut node_to_block);
 
 		all_simple_blocks.extend(new_fine_blocks);
@@ -720,7 +749,7 @@ where
 }
 
 
-pub fn bisimilarity_paige_tarjan<G>(
+pub fn bisimilarity_paige_tarjan_ignore_labels<G>(
 	graph_a: &G,
 	graph_b: &G
 ) -> bool
@@ -737,6 +766,128 @@ where
 
 	let (result, _converter) =
 		match maximum_bisimulation(&[graph_a, graph_b]) {
+			(None, _) => { return false },
+			(Some(val), converter) => {
+				(val.into_iter()
+					.find(
+						|el| {
+							let mut keep_track = [false, false];
+							for e in el {
+								let (_node_id, graph_id) =
+									converter.decode(e).unwrap();
+								keep_track[*graph_id as usize] = true;
+							}
+							!keep_track[0] || !keep_track[1]
+						}
+					), converter)
+
+			}
+		};
+
+	result.is_none()
+}
+
+
+/// Creates a new graph with nodes as signifiers instead of different weights on
+/// the edges.
+fn create_modified_graph<'a, G>(
+	graph: &'a G,
+	converter_edges: &'a MyEdgeTranslator<G::EdgeWeight>
+) -> petgraph::Graph<u32, u32>
+where
+	G: NodeCount + EdgeCount + IntoEdgeReferences,
+	G::NodeId: std::cmp::Eq + std::hash::Hash,
+	G::EdgeWeight: std::cmp::Eq + std::hash::Hash + Clone
+{
+	let mut new_graph_a: petgraph::Graph<_, u32> =
+		petgraph::Graph::with_capacity(graph.node_count()*20,
+									   graph.edge_count()*20);
+	let mut association_weight_id = HashMap::new();
+	let mut last_id = 0;
+
+	for edge in graph.edge_references() {
+		let source_id =
+			match association_weight_id.get(&edge.source()) {
+				Some(id) => *id,
+				None => {
+					let id = new_graph_a.add_node(last_id);
+					last_id += 1;
+					association_weight_id.insert(edge.source(), id);
+					id
+				}
+			};
+		let target_id =
+			match association_weight_id.get(&edge.target()) {
+				Some(id) => *id,
+				None => {
+					let id = new_graph_a.add_node(last_id);
+					last_id += 1;
+					association_weight_id.insert(edge.target(), id);
+					id
+				}
+			};
+		let weight = *converter_edges.get(edge.weight()).unwrap();
+
+		let middle_node_id = new_graph_a.add_node(0);
+
+		new_graph_a.add_edge(source_id, middle_node_id, weight);
+		new_graph_a.add_edge(middle_node_id, target_id, weight);
+
+		let mut previous = middle_node_id;
+		for _ in 1..weight {
+			let path = new_graph_a.add_node(0);
+			new_graph_a.add_edge(previous, path, weight);
+			previous = path;
+		}
+	}
+
+	for node in new_graph_a.node_indices() {
+		let mut previous = node;
+		for _ in 1..converter_edges.last_id.last_ids {
+			let path = new_graph_a.add_node(0);
+			new_graph_a.add_edge(previous, path, 0);
+			previous = path;
+		}
+	}
+
+	new_graph_a
+}
+
+pub fn bisimilarity_paige_tarjan<G>(
+	graph_a: &G,
+	graph_b: &G
+) -> bool
+where
+	G: IntoNodeReferences + IntoNeighborsDirected + NodeCount + EdgeCount + IntoEdgeReferences,
+	G::NodeId: std::cmp::Eq + std::hash::Hash,
+	G::EdgeWeight: std::cmp::Eq + std::hash::Hash + Clone,
+{
+	if graph_a.node_count() == 0 && graph_b.node_count() == 0 {
+		return true
+	}
+	if graph_a.node_count() == 0 || graph_b.node_count() == 0 {
+		return false
+	}
+
+	// we convert the problem into the equivalent with only one label
+	let converter_edges: MyEdgeTranslator<G::EdgeWeight> = {
+		let mut tmp = Translator::new();
+
+		for edge in graph_a.edge_references() {
+			let _ = tmp.encode(edge.weight().clone());
+		}
+		for edge in graph_b.edge_references() {
+			let _ = tmp.encode(edge.weight().clone());
+		}
+
+		tmp
+	};
+
+	let new_graph_a = create_modified_graph(graph_a, &converter_edges);
+	let new_graph_b = create_modified_graph(graph_b, &converter_edges);
+
+	let (result, _converter) =
+		match maximum_bisimulation(&[&&new_graph_a, &&new_graph_b]) {
 			(None, _) => { return false },
 			(Some(val), converter) => {
 				(val.into_iter()

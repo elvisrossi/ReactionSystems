@@ -580,6 +580,19 @@ impl PartialEq for RSlabel {
     }
 }
 
+impl Hash for RSlabel {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+	self.available_entities.hash(state);
+        self.context.hash(state);
+        // self.t.hash(state);
+        self.reactants.hash(state);
+        self.reactants_absent.hash(state);
+        self.inhibitors.hash(state);
+        self.inhibitors_present.hash(state);
+        self.products.hash(state);
+    }
+}
+
 // -----------------------------------------------------------------------------
 // RSassertOp
 // -----------------------------------------------------------------------------
