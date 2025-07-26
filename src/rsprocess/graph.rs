@@ -308,6 +308,9 @@ impl<'a> GraphMapEdgesTy<'a> {
 // -----------------------------------------------------------------------------
 //                            Color Nodes & Edges
 // -----------------------------------------------------------------------------
+
+
+// Node ------------------------------------------------------------------------
 use petgraph::visit::{IntoEdgeReferences, IntoNodeReferences};
 
 type RSdotGraph = Graph<String, String, Directed, u32>;
@@ -376,7 +379,7 @@ pub struct NodeColor {
 }
 
 #[inline(always)]
-pub fn node_formatter_base_color(
+fn node_formatter_base_color(
     base_color: String
 ) -> String
 {
@@ -385,8 +388,8 @@ pub fn node_formatter_base_color(
 
 #[inline(always)]
 fn match_node_color_conditional<'a>(
-    rule: &NodeColorConditional,
-    color: &String,
+    rule: &'a NodeColorConditional,
+    color: &'a String,
     original_graph: Rc<RSgraph>,
     star: Option<IdType>
 ) -> Box<RSformatNodeTyOpt<'a>> {
@@ -466,11 +469,19 @@ impl NodeColor {
 }
 
 
-type RSformatEdgeTy =
+// Edge ------------------------------------------------------------------------
+
+type RSformatEdgeTy<'a> =
     dyn Fn(
-	&RSdotGraph,
-	<&RSdotGraph as IntoEdgeReferences>::EdgeRef
-    ) -> Option<String>;
+	&'a RSdotGraph,
+	<&'a RSdotGraph as IntoEdgeReferences>::EdgeRef
+    ) -> String + 'a;
+type RSformatEdgeTyOpt<'a> =
+    dyn Fn(
+	&'a RSdotGraph,
+	<&'a RSdotGraph as IntoEdgeReferences>::EdgeRef
+    ) -> Option<String> + 'a;
+
 
 #[derive(Clone)]
 pub enum EdgeColorConditional {
@@ -491,45 +502,91 @@ pub struct EdgeColor {
 }
 
 
-pub fn edge_formatter_base_color(
+fn edge_formatter_base_color(
     base_color: String
 ) -> String
 {
     ", color=".to_string() + &base_color
 }
 
-
-pub fn edge_formatter(
-    original_graph: Rc<RSgraph>,
-    rule: EdgeColorConditional,
-    color: String,
-) -> Box<RSformatEdgeTy>
-{
+fn match_edge_color_conditional<'a>(
+    rule: &'a EdgeColorConditional,
+    color: &'a String,
+    original_graph: Rc<RSgraph>
+) -> Box<RSformatEdgeTyOpt<'a>> {
     use super::format_helpers::edge_formatter::*;
     match rule {
 	EdgeColorConditional::Entities(ot, set) => {
-	    format_entities(original_graph, color, ot, set)
+	    format_entities(Rc::clone(&original_graph),
+			    color.to_string(),
+			    *ot,
+			    set.clone())
 	},
 	EdgeColorConditional::Context(ot, set) => {
-	    format_context(original_graph, color, ot, set)
+	    format_context(Rc::clone(&original_graph),
+			   color.to_string(),
+			   *ot,
+			   set.clone())
 	},
 	EdgeColorConditional::T(ot, set) => {
-	    format_t(original_graph, color, ot, set)
+	    format_t(Rc::clone(&original_graph),
+		     color.to_string(),
+		     *ot,
+		     set.clone())
 	},
 	EdgeColorConditional::Reactants(ot, set) => {
-	    format_reactants(original_graph, color, ot, set)
+	    format_reactants(Rc::clone(&original_graph),
+			     color.to_string(),
+			     *ot,
+			     set.clone())
 	},
 	EdgeColorConditional::ReactantsAbsent(ot, set) => {
-	    format_reactants_absent(original_graph, color, ot, set)
+	    format_reactants_absent(Rc::clone(&original_graph),
+				    color.to_string(),
+				    *ot,
+				    set.clone())
 	},
 	EdgeColorConditional::Inhibitors(ot, set) => {
-	    format_inhibitors(original_graph, color, ot, set)
+	    format_inhibitors(Rc::clone(&original_graph),
+			      color.to_string(),
+			      *ot,
+			      set.clone())
 	},
 	EdgeColorConditional::InhibitorsPresent(ot, set) => {
-	    format_inhibitors_present(original_graph, color, ot, set)
+	    format_inhibitors_present(Rc::clone(&original_graph),
+				      color.to_string(),
+				      *ot,
+				      set.clone())
 	},
 	EdgeColorConditional::Products(ot, set) => {
-	    format_products(original_graph, color, ot, set)
+	    format_products(Rc::clone(&original_graph),
+			    color.to_string(),
+			    *ot,
+			    set.clone())
 	},
+    }
+}
+
+impl EdgeColor {
+    pub fn generate<'a>(
+	self,
+	original_graph: Rc<RSgraph>,
+    ) -> Box<RSformatEdgeTy<'a>> {
+	Box::new(
+	    move |i, n| {
+		for (rule, color) in &self.conditionals {
+		    let f = match_edge_color_conditional(
+			rule,
+			color,
+			Rc::clone(&original_graph),
+		    );
+
+		    if let Some(s) = (f)(i, n) {
+			return s
+		    }
+		}
+		edge_formatter_base_color(self.base_color.clone())
+	    }
+	)
     }
 }

@@ -8,7 +8,6 @@ use std::io::prelude::*;
 use std::rc::Rc;
 
 use lalrpop_util::ParseError;
-use petgraph::Graph;
 
 // grammar is defined in lib.rs, calling lalrpop_mod! twice, generates twice
 // the code
@@ -637,41 +636,13 @@ fn generate_edge_printing_fn<'a>(
     gmet.generate()
 }
 
-
-#[allow(clippy::type_complexity)]
-fn generate_edge_color_fn<'a>(
-    edge_color: &'a graph::EdgeColor,
-    original_graph: Rc<Graph<RSsystem, RSlabel>>,
-) -> Box<dyn Fn(
-    &Graph<String, String>,
-    <&Graph<String, String, petgraph::Directed, u32>
-     as petgraph::visit::IntoEdgeReferences>::EdgeRef
-) -> String + 'a>
-{
-    Box::new(
-	move |i, n| {
-	    let cloned_edge_color = edge_color.clone();
-	    for (rule, color) in cloned_edge_color.conditionals {
-		if let Some(s) = graph::edge_formatter(
-		    original_graph.clone(),
-		    rule,
-		    color
-		)(i, n) {
-		    return s
-		}
-	    }
-	    graph::edge_formatter_base_color(edge_color.base_color.to_string())
-	}
-    )
-}
-
 /// Writes the specified graph to a file in .dot format.
 pub fn dot(
     system: &EvaluatedSystem,
     node_display: Vec<NodeDisplay>,
     edge_display: Vec<EdgeDisplay>,
     node_color: graph::NodeColor,
-    edge_color: &graph::EdgeColor
+    edge_color: graph::EdgeColor
 ) -> Result<String, String> {
     match system {
         EvaluatedSystem::System {
@@ -697,7 +668,7 @@ pub fn dot(
 	     	node_color.generate(Rc::clone(&graph),
 				    translator.encode_not_mut("*"));
 	    let edge_formatter =
-		generate_edge_color_fn(edge_color, graph);
+		edge_color.generate(Rc::clone(&graph));
 
             let dot = rsdot::RSDot::with_attr_getters(
                 &modified_graph,
@@ -856,7 +827,7 @@ fn execute(
 			edge_color: ec,
                         so,
                     } => {
-                        save_options!(dot(system, nd, ed, nc, &ec)?, so);
+                        save_options!(dot(system, nd, ed, nc, ec)?, so);
                     }
                     GraphSaveOptions::GraphML {
                         node_display: nd,
