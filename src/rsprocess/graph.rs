@@ -142,10 +142,22 @@ impl From<(Vec<GraphMapNodes>, Rc<translator::Translator>)> for GraphMapNodesTy 
 
 impl GraphMapNodesTy {
     pub fn generate<'a>(
-	&self
+	self
     ) -> Box<dyn Fn(petgraph::prelude::NodeIndex, &'a RSsystem) -> String + 'a>
     {
-	todo!()
+	let mut accumulator:
+	Box<dyn Fn(petgraph::prelude::NodeIndex, &'a RSsystem) -> String + 'a> =
+	    super::format_helpers::graph_map_nodes_ty_from::format_hide(
+		Rc::clone(&self.translator)
+	    );
+	for f in self.functions {
+	    accumulator = Box::new(move |i, n| {
+		(accumulator)(i, n)
+		    + &f(i, n)
+	    })
+	}
+
+	accumulator
     }
 }
 
@@ -155,6 +167,7 @@ impl GraphMapNodesTy {
 /// Helper structure that specifies what information to display for edges
 #[derive(Clone)]
 pub enum GraphMapEdges {
+    String { string: String },
     Hide,
     Products,
     MaskProducts { mask: RSset },
@@ -176,7 +189,8 @@ type GraphMapEdgesFnTy = dyn Fn(petgraph::prelude::EdgeIndex, &RSlabel) -> Strin
 /// Helper structure that holds a formatting function from node as RSsystem to
 /// string
 pub struct GraphMapEdgesTy {
-    function: Box<GraphMapEdgesFnTy>
+    function: Vec<Box<GraphMapEdgesFnTy>>,
+    translator: Rc<translator::Translator>
 }
 
 impl GraphMapEdgesTy {
@@ -194,6 +208,9 @@ impl GraphMapEdgesTy {
 	// borrow to the struct, also translator needs to be in box, a reference
 	// is not enough
 	    match f {
+		String { string } => {
+		    format_string(translator, string)
+		}
 		Hide => {
 		    format_hide(translator)
 		},
@@ -249,7 +266,7 @@ impl GraphMapEdgesTy {
 }
 
 // -----------------------------------------------------------------------------
-//                          Formatting Nodes & Edges
+//                            Color Nodes & Edges
 // -----------------------------------------------------------------------------
 use petgraph::visit::{IntoEdgeReferences, IntoNodeReferences};
 

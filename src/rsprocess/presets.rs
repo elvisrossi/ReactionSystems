@@ -561,7 +561,7 @@ pub fn bisimilar(
 // -----------------------------------------------------------------------------
 
 #[allow(clippy::type_complexity)]
-fn generate_node_pringting_fn<'a>(
+fn generate_node_printing_fn<'a>(
     node_display: &[NodeDisplay],
     graph: &graph::RSgraph,
     translator: Rc<Translator>,
@@ -594,13 +594,15 @@ fn generate_node_pringting_fn<'a>(
 	}
     ).collect::<Vec<_>>();
 
-    let gmnt = graph::GraphMapNodesTy::from((node_display, Rc::clone(&translator)));
+    let gmnt = graph::GraphMapNodesTy::from(
+	(node_display, Rc::clone(&translator))
+    );
 
     gmnt.generate()
 }
 
 #[allow(clippy::type_complexity)]
-fn generate_edge_pringting_fn<'a>(
+fn generate_edge_printing_fn<'a>(
     edge_display: &'a Vec<EdgeDisplay>,
     translator: Rc<Translator>,
 ) -> Box<dyn Fn(petgraph::prelude::EdgeIndex, &'a RSlabel) -> String + 'a> {
@@ -707,10 +709,10 @@ pub fn dot(
             // this is awful but rust is not a functional language so its all
             // fine...
             let modified_graph = graph.map(
-                generate_node_pringting_fn(&node_display,
+                generate_node_printing_fn(&node_display,
 					   graph,
 					   Rc::clone(&rc_translator)),
-                generate_edge_pringting_fn(&edge_display,
+                generate_edge_printing_fn(&edge_display,
 					   Rc::clone(&rc_translator)),
             );
 
@@ -751,10 +753,10 @@ pub fn graphml(
 
             // map each value to the corresponding value we want to display
             let modified_graph = graph.map(
-                generate_node_pringting_fn(&node_display,
+                generate_node_printing_fn(&node_display,
 					   graph,
 					   Rc::clone(&rc_translator)),
-                generate_edge_pringting_fn(&edge_display,
+                generate_edge_printing_fn(&edge_display,
 					   rc_translator),
             );
 
