@@ -42,9 +42,7 @@ pub fn digraph(
 }
 
 
-pub fn common_entities(
-    graph: &RSgraph
-) -> RSset {
+pub fn common_entities(graph: &RSgraph) -> RSset {
     graph.node_references().fold(
 	None,
 	|acc, node|
@@ -73,28 +71,28 @@ pub enum GraphMapNodes {
     Context,
 }
 
-type GraphMapNodesFnTy =
-    dyn Fn(petgraph::prelude::NodeIndex, &RSsystem) -> String;
+type GraphMapNodesFnTy<'a> =
+    dyn Fn(petgraph::prelude::NodeIndex, &'a RSsystem) -> String + 'a;
 /// Helper structure that holds a formatting function from node as RSsystem to
 /// string
-pub struct GraphMapNodesTy {
-    functions: Vec<Box<GraphMapNodesFnTy>>,
+pub struct GraphMapNodesTy<'a> {
+    functions: Vec<Box<GraphMapNodesFnTy<'a>>>,
     translator: Rc<translator::Translator>
 }
 
-impl<const N: usize> From<([GraphMapNodes; N], Rc<translator::Translator>)> for GraphMapNodesTy {
+impl<'a, const N: usize> From<([GraphMapNodes; N], Rc<translator::Translator>)> for GraphMapNodesTy<'a> {
     fn from(value: ([GraphMapNodes; N], Rc<translator::Translator>)) -> Self {
 	Self::from((value.0.to_vec(), value.1))
     }
 }
 
-impl From<(&[GraphMapNodes], Rc<translator::Translator>)> for GraphMapNodesTy {
+impl<'a> From<(&[GraphMapNodes], Rc<translator::Translator>)> for GraphMapNodesTy<'a> {
     fn from(value: (&[GraphMapNodes], Rc<translator::Translator>)) -> Self {
 	Self::from((value.0.to_vec(), value.1))
     }
 }
 
-impl From<(Vec<GraphMapNodes>, Rc<translator::Translator>)> for GraphMapNodesTy {
+impl<'a> From<(Vec<GraphMapNodes>, Rc<translator::Translator>)> for GraphMapNodesTy<'a> {
     fn from(value: (Vec<GraphMapNodes>, Rc<translator::Translator>)) -> Self {
 	use GraphMapNodes::*;
 	use super::format_helpers::graph_map_nodes_ty_from::*;
@@ -140,12 +138,9 @@ impl From<(Vec<GraphMapNodes>, Rc<translator::Translator>)> for GraphMapNodesTy 
     }
 }
 
-impl GraphMapNodesTy {
-    pub fn generate<'a>(
-	self
-    ) -> Box<GraphMapNodesFnTy>
-    {
-	let mut accumulator: Box<GraphMapNodesFnTy> =
+impl<'a> GraphMapNodesTy<'a> {
+    pub fn generate(self) -> Box<GraphMapNodesFnTy<'a>> {
+	let mut accumulator: Box<GraphMapNodesFnTy<'a>> =
 	    super::format_helpers::graph_map_nodes_ty_from::format_hide(
 		Rc::clone(&self.translator)
 	    );
@@ -184,27 +179,28 @@ pub enum GraphMapEdges {
     MaskEntitiesAdded { mask: RSset },
 }
 
-type GraphMapEdgesFnTy = dyn Fn(petgraph::prelude::EdgeIndex, &RSlabel) -> String;
+type GraphMapEdgesFnTy<'a> =
+    dyn Fn(petgraph::prelude::EdgeIndex, &'a RSlabel) -> String + 'a;
 /// Helper structure that holds a formatting function from node as RSsystem to
 /// string
-pub struct GraphMapEdgesTy {
-    functions: Vec<Box<GraphMapEdgesFnTy>>,
+pub struct GraphMapEdgesTy<'a> {
+    functions: Vec<Box<GraphMapEdgesFnTy<'a>>>,
     translator: Rc<translator::Translator>
 }
 
-impl<const N: usize> From<([GraphMapEdges; N], Rc<translator::Translator>)> for GraphMapEdgesTy {
+impl<'a, const N: usize> From<([GraphMapEdges; N], Rc<translator::Translator>)> for GraphMapEdgesTy<'a> {
     fn from(value: ([GraphMapEdges; N], Rc<translator::Translator>)) -> Self {
 	Self::from((value.0.to_vec(), value.1))
     }
 }
 
-impl From<(&[GraphMapEdges], Rc<translator::Translator>)> for GraphMapEdgesTy {
+impl<'a> From<(&[GraphMapEdges], Rc<translator::Translator>)> for GraphMapEdgesTy<'a> {
     fn from(value: (&[GraphMapEdges], Rc<translator::Translator>)) -> Self {
 	Self::from((value.0.to_vec(), value.1))
     }
 }
 
-impl From<(Vec<GraphMapEdges>, Rc<translator::Translator>)> for GraphMapEdgesTy {
+impl<'a> From<(Vec<GraphMapEdges>, Rc<translator::Translator>)> for GraphMapEdgesTy<'a> {
     fn from(value: (Vec<GraphMapEdges>, Rc<translator::Translator>)) -> Self {
 	use GraphMapEdges::*;
 	use super::format_helpers::graph_map_edges_ty_from::*;
@@ -292,11 +288,9 @@ impl From<(Vec<GraphMapEdges>, Rc<translator::Translator>)> for GraphMapEdgesTy 
     }
 }
 
-impl GraphMapEdgesTy {
-    pub fn generate(
-	self
-    ) -> Box<GraphMapEdgesFnTy> {
-	let mut accumulator: Box<GraphMapEdgesFnTy> =
+impl<'a> GraphMapEdgesTy<'a> {
+    pub fn generate(self) -> Box<GraphMapEdgesFnTy<'a>> {
+	let mut accumulator: Box<GraphMapEdgesFnTy<'a>> =
 	    super::format_helpers::graph_map_edges_ty_from::format_hide(
 		Rc::clone(&self.translator)
 	    );
@@ -317,11 +311,16 @@ impl GraphMapEdgesTy {
 use petgraph::visit::{IntoEdgeReferences, IntoNodeReferences};
 
 type RSdotGraph = Graph<String, String, Directed, u32>;
-type RSformatNodeTy =
+type RSformatNodeTy<'a> =
     dyn Fn(
-	&RSdotGraph,
-	<&RSdotGraph as IntoNodeReferences>::NodeRef
-    ) -> Option<String>;
+	&'a RSdotGraph,
+	<&'a RSdotGraph as IntoNodeReferences>::NodeRef
+    ) -> String + 'a;
+type RSformatNodeTyOpt<'a> =
+    dyn Fn(
+	&'a RSdotGraph,
+	<&'a RSdotGraph as IntoNodeReferences>::NodeRef
+    ) -> Option<String> + 'a;
 
 #[derive(Clone, Copy)]
 pub enum OperationType {
@@ -373,9 +372,10 @@ pub enum NodeColorConditional {
 #[derive(Clone)]
 pub struct NodeColor {
     pub conditionals: Vec<(NodeColorConditional, String)>,
-    pub base_color: String
+    pub base_color: String,
 }
 
+#[inline(always)]
 pub fn node_formatter_base_color(
     base_color: String
 ) -> String
@@ -383,43 +383,88 @@ pub fn node_formatter_base_color(
     ", fillcolor=".to_string() + &base_color
 }
 
-
-pub fn node_formatter(
+#[inline(always)]
+fn match_node_color_conditional<'a>(
+    rule: &NodeColorConditional,
+    color: &String,
     original_graph: Rc<RSgraph>,
-    rule: NodeColorConditional,
-    color: String,
-    star: Option<IdType>,
-) -> Box<RSformatNodeTy>
-{
+    star: Option<IdType>
+) -> Box<RSformatNodeTyOpt<'a>> {
     use super::format_helpers::node_formatter::*;
     match rule {
 	NodeColorConditional::ContextConditional(ccc) => {
 	    match ccc {
 		ContextColorConditional::Nill => {
-		    format_nill(original_graph, color, star)
+		    format_nill(Rc::clone(&original_graph),
+				color.to_string(),
+				star)
 		},
 		ContextColorConditional::RecursiveIdentifier(s) => {
-		    format_recursive_identifier(original_graph, color, star, s)
+		    format_recursive_identifier(Rc::clone(&original_graph),
+						color.to_string(),
+						star,
+						*s)
 		},
 		ContextColorConditional::EntitySet(ot, set) => {
-		    format_entity_set(original_graph, color, star, ot, set)
+		    format_entity_set(Rc::clone(&original_graph),
+				      color.to_string(),
+				      star,
+				      *ot,
+				      set.clone())
 		},
 		ContextColorConditional::NonDeterministicChoice => {
-		    format_non_deterministic_choice(original_graph, color, star)
+		    format_non_deterministic_choice(Rc::clone(&original_graph),
+						    color.to_string(),
+						    star)
 		},
 		ContextColorConditional::Summation => {
-		    format_summation(original_graph, color, star)
+		    format_summation(Rc::clone(&original_graph),
+				     color.to_string(),
+				     star)
 		},
 		ContextColorConditional::WaitEntity => {
-		    format_wait_entity(original_graph, color, star)
+		    format_wait_entity(Rc::clone(&original_graph),
+				       color.to_string(),
+				       star)
 		},
 	    }
 	},
 	NodeColorConditional::EntitiesConditional(ot, set) => {
-	    format_entities_conditional(original_graph, color, star, ot, set)
+	    format_entities_conditional(Rc::clone(&original_graph),
+					color.to_string(),
+					star,
+					*ot,
+					set.clone())
 	},
     }
 }
+
+impl NodeColor {
+    pub fn generate<'a>(
+	self,
+	original_graph: Rc<RSgraph>,
+	star: Option<IdType>
+    ) -> Box<RSformatNodeTy<'a>> {
+	Box::new(
+	    move |i, n| {
+		for (rule, color) in &self.conditionals {
+		    let f = match_node_color_conditional(
+			rule,
+			color,
+			Rc::clone(&original_graph),
+			star
+		    );
+
+		    if let Some(s) = (f)(i, n) {
+			return s
+		    }
+		}
+		node_formatter_base_color(self.base_color.clone())
+	    }
+	)
+    }
+}
+
 
 type RSformatEdgeTy =
     dyn Fn(

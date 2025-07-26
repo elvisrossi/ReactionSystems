@@ -556,16 +556,21 @@ pub fn bisimilar(
     }
 }
 
+
+
+
+
 // -----------------------------------------------------------------------------
 //                              Output Functions
 // -----------------------------------------------------------------------------
 
-#[allow(clippy::type_complexity)]
+type GraphMapNodesFnTy<'a> =
+    dyn Fn(petgraph::prelude::NodeIndex, &'a RSsystem) -> String + 'a;
 fn generate_node_printing_fn<'a>(
     node_display: &[NodeDisplay],
     graph: &graph::RSgraph,
     translator: Rc<Translator>,
-) -> Box<dyn Fn(petgraph::prelude::NodeIndex, &'a RSsystem) -> String + 'a> {
+) -> Box<GraphMapNodesFnTy<'a>> {
     // The type cannot be aliased since rust doesnt like generics.
     // We are iterating over the node_display and constructing a function
     // (accumulator) that prints out our formatted nodes. So at each step we
@@ -601,11 +606,13 @@ fn generate_node_printing_fn<'a>(
     gmnt.generate()
 }
 
-#[allow(clippy::type_complexity)]
+
+type GraphMapEdgesFnTy<'a> =
+    dyn Fn(petgraph::prelude::EdgeIndex, &'a RSlabel) -> String + 'a;
 fn generate_edge_printing_fn<'a>(
     edge_display: &[EdgeDisplay],
     translator: Rc<Translator>,
-) -> Box<dyn Fn(petgraph::prelude::EdgeIndex, &'a RSlabel) -> String + 'a> {
+) -> Box<GraphMapEdgesFnTy<'a>> {
     // The type cannot be aliased since rust doesnt like generics.
     // We are iterating over the edge_display and constructing a function
     // (accumulator) that prints out our formatted nodes. So at each step we
@@ -630,34 +637,6 @@ fn generate_edge_printing_fn<'a>(
     gmet.generate()
 }
 
-use petgraph::visit::IntoNodeReferences;
-#[allow(clippy::type_complexity)]
-fn generate_node_color_fn<'a>(
-    node_color: &'a graph::NodeColor,
-    original_graph: Rc<graph::RSgraph>,
-    translator: Rc<Translator>,
-) -> Box<dyn Fn(
-    &Graph<String, String>,
-    <&Graph<String, String, petgraph::Directed, u32> as IntoNodeReferences>::NodeRef
-) -> String + 'a>
-{
-    Box::new(
-	move |i, n| {
-	    let cloned_node_color = node_color.clone();
-	    for (rule, color) in cloned_node_color.conditionals {
-		if let Some(s) = graph::node_formatter(
-		    original_graph.clone(),
-		    rule,
-		    color,
-		    translator.encode_not_mut("*")
-		)(i, n) {
-		    return s
-		}
-	    }
-	    graph::node_formatter_base_color(node_color.base_color.to_string())
-	}
-    )
-}
 
 #[allow(clippy::type_complexity)]
 fn generate_edge_color_fn<'a>(
@@ -691,7 +670,7 @@ pub fn dot(
     system: &EvaluatedSystem,
     node_display: Vec<NodeDisplay>,
     edge_display: Vec<EdgeDisplay>,
-    node_color: &graph::NodeColor,
+    node_color: graph::NodeColor,
     edge_color: &graph::EdgeColor
 ) -> Result<String, String> {
     match system {
@@ -715,9 +694,8 @@ pub fn dot(
             let graph = Rc::new(graph.to_owned());
 
             let node_formatter =
-	     	generate_node_color_fn(node_color,
-				       Rc::clone(&graph),
-				       rc_translator);
+	     	node_color.generate(Rc::clone(&graph),
+				    translator.encode_not_mut("*"));
 	    let edge_formatter =
 		generate_edge_color_fn(edge_color, graph);
 
@@ -878,7 +856,7 @@ fn execute(
 			edge_color: ec,
                         so,
                     } => {
-                        save_options!(dot(system, nd, ed, &nc, &ec)?, so);
+                        save_options!(dot(system, nd, ed, nc, &ec)?, so);
                     }
                     GraphSaveOptions::GraphML {
                         node_display: nd,
