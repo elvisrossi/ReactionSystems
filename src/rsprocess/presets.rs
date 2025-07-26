@@ -603,35 +603,31 @@ fn generate_node_printing_fn<'a>(
 
 #[allow(clippy::type_complexity)]
 fn generate_edge_printing_fn<'a>(
-    edge_display: &'a Vec<EdgeDisplay>,
+    edge_display: &[EdgeDisplay],
     translator: Rc<Translator>,
 ) -> Box<dyn Fn(petgraph::prelude::EdgeIndex, &'a RSlabel) -> String + 'a> {
     // The type cannot be aliased since rust doesnt like generics.
     // We are iterating over the edge_display and constructing a function
     // (accumulator) that prints out our formatted nodes. So at each step we
     // call the previous function and add the next string or function.
-    let mut accumulator:
-    Box<dyn Fn(petgraph::prelude::EdgeIndex, &RSlabel) -> String> =
-        Box::new(|_, _| String::new());
-    for nd in edge_display {
-        accumulator = match nd {
-            EdgeDisplay::Display(d) => {
-                // retrieve from the graph module the correct formatting
-		// function
-                let val = translator.clone();
-                Box::new(move |i, n| {
-                    (accumulator)(i, n)
-                        + &graph::GraphMapEdgesTy::from(d.clone(),
-							val.clone()).get()(i, n)
-                })
-            }
-            EdgeDisplay::Separator(s) => {
-                // we have a string so simply add it at the end
-                Box::new(move |i, n| (accumulator)(i, n) + s)
-            }
-        };
-    }
-    accumulator
+    let edge_display = edge_display.iter().map(
+	|e| {
+	    match e {
+		EdgeDisplay::Display(d) => {
+		    d.clone()
+		},
+		EdgeDisplay::Separator(s) => {
+		    graph::GraphMapEdges::String { string: s.clone() }
+		}
+	    }
+	}
+    ).collect::<Vec<_>>();
+
+    let gmet = graph::GraphMapEdgesTy::from(
+	(edge_display, Rc::clone(&translator))
+    );
+
+    gmet.generate()
 }
 
 use petgraph::visit::IntoNodeReferences;
