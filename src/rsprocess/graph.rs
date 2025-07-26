@@ -65,6 +65,7 @@ pub fn common_entities(
 /// Helper structure that specifies what information to display for nodes.
 #[derive(Clone)]
 pub enum GraphMapNodes {
+    String { string: String },
     Hide,
     Entities,
     MaskEntities { mask: RSset },
@@ -77,53 +78,77 @@ type GraphMapNodesFnTy =
 /// Helper structure that holds a formatting function from node as RSsystem to
 /// string
 pub struct GraphMapNodesTy {
-    function: Box<GraphMapNodesFnTy>
+    functions: Vec<Box<GraphMapNodesFnTy>>,
+    translator: Rc<translator::Translator>
 }
 
-impl GraphMapNodesTy {
-    pub fn from(
-	f: GraphMapNodes,
-	translator: Rc<translator::Translator>
-    ) -> Self {
+impl<const N: usize> From<([GraphMapNodes; N], Rc<translator::Translator>)> for GraphMapNodesTy {
+    fn from(value: ([GraphMapNodes; N], Rc<translator::Translator>)) -> Self {
+	Self::from((value.0.to_vec(), value.1))
+    }
+}
+
+impl<const N: usize> From<(&[GraphMapNodes; N], Rc<translator::Translator>)> for GraphMapNodesTy {
+    fn from(value: (&[GraphMapNodes; N], Rc<translator::Translator>)) -> Self {
+	Self::from((value.0.to_vec(), value.1))
+    }
+}
+
+impl From<(Vec<GraphMapNodes>, Rc<translator::Translator>)> for GraphMapNodesTy {
+    fn from(value: (Vec<GraphMapNodes>, Rc<translator::Translator>)) -> Self {
 	use GraphMapNodes::*;
 	use super::format_helpers::graph_map_nodes_ty_from::*;
 
-	let function: Box<GraphMapNodesFnTy> =
-	// rust cant unify closures (they all have different types) so box needs
-	// to happen inside the match
-	// we use move because translator is from the env, so we transfer the
-	// borrow to the struct, also translator needs to be in box, a reference
-	// is not enough
+	let mut new = GraphMapNodesTy {functions: vec![], translator: value.1};
+
+	for f in value.0 {
 	    match f {
+		String { string } => {
+		    new.functions.push(format_string(string.clone()));
+		}
 		Hide => {
-		    format_hide(translator)
+		    new.functions.push(format_hide(
+			Rc::clone(&new.translator)
+		    ));
 		},
 		Entities => {
-		    format_entities(translator)
+		    new.functions.push(format_entities(
+			Rc::clone(&new.translator)
+		    ));
 		},
 		MaskEntities { mask } => {
-		    format_mask_entities(translator, mask)
+		    new.functions.push(format_mask_entities(
+			Rc::clone(&new.translator),
+			mask.clone()
+		    ));
 		},
 		ExcludeEntities { mask } => {
-		    format_exclude_entities(translator, mask)
+		    new.functions.push(format_exclude_entities(
+			Rc::clone(&new.translator),
+			mask.clone()
+		    ));
 		}
 		Context => {
-		    format_context(translator)
+		    new.functions.push(format_context(
+			Rc::clone(&new.translator)
+		    ));
 		},
 	    };
-	GraphMapNodesTy { function }
-    }
+	}
 
-    pub fn get(&self) -> &GraphMapNodesFnTy {
-	&self.function
+	new
     }
 }
 
-impl From<GraphMapNodesTy> for Box<GraphMapNodesFnTy> {
-    fn from(g: GraphMapNodesTy) -> Self {
-	g.function
+impl GraphMapNodesTy {
+    pub fn generate<'a>(
+	&self
+    ) -> Box<dyn Fn(petgraph::prelude::NodeIndex, &'a RSsystem) -> String + 'a>
+    {
+	todo!()
     }
 }
+
 
 // Edges -----------------------------------------------------------------------
 

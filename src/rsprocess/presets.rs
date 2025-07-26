@@ -164,7 +164,7 @@ pub struct Instructions {
 }
 
 // -----------------------------------------------------------------------------
-//                              Helper Functions
+//                            IO Helper Functions
 // -----------------------------------------------------------------------------
 
 fn read_file<T, F>(
@@ -562,7 +562,7 @@ pub fn bisimilar(
 
 #[allow(clippy::type_complexity)]
 fn generate_node_pringting_fn<'a>(
-    node_display: &'a Vec<NodeDisplay>,
+    node_display: &[NodeDisplay],
     graph: &graph::RSgraph,
     translator: Rc<Translator>,
 ) -> Box<dyn Fn(petgraph::prelude::NodeIndex, &'a RSsystem) -> String + 'a> {
@@ -570,60 +570,33 @@ fn generate_node_pringting_fn<'a>(
     // We are iterating over the node_display and constructing a function
     // (accumulator) that prints out our formatted nodes. So at each step we
     // call the previous function and add the next string or function.
-    let mut accumulator:
-    Box<dyn Fn(petgraph::prelude::NodeIndex, &RSsystem) -> String> =
-        Box::new(|_, _| String::new());
-    for nd in node_display {
-        accumulator = match nd {
-            NodeDisplay::Display(d) => {
-                // retrieve from the graph module the correct formatting
-		// function
-                let val = translator.clone();
-                Box::new(move |i, n| {
-                    (accumulator)(i, n)
-                        + &graph::GraphMapNodesTy::from(d.clone(),
-							val.clone()).get()(i, n)
-                })
-            },
-            NodeDisplay::Separator(s) => {
-                // we have a string so simply add it at the end
-                Box::new(move |i, n| (accumulator)(i, n) + s)
-            },
-	    // ad hoc since graph information is not available in the graph
-	    // function generation
+    let node_display = node_display.iter().map(
+	|e|
+	match e {
+	    NodeDisplay::Display(d) => d.clone(),
+	    NodeDisplay::Separator(s) => {
+		graph::GraphMapNodes::String {
+		    string: s.clone()
+		}
+	    },
 	    NodeDisplay::UncommonEntities => {
 		let common_entities = graph::common_entities(graph);
-		let val = translator.clone();
-		Box::new(move |i, n| {
-		    (accumulator)(i, n)
-			+ &graph::GraphMapNodesTy::from(
-			    graph::GraphMapNodes::ExcludeEntities {
-				mask: common_entities.clone()
-			    },
-			    val.clone()
-			).get()(i, n)
-		    }
-		)
+		graph::GraphMapNodes::ExcludeEntities {
+		    mask: common_entities.clone()
+		}
 	    },
-	    // ad hoc since graph information is not available in the graph
-	    // function generation
 	    NodeDisplay::MaskUncommonEntities(mask) => {
 		let common_entities = graph::common_entities(graph);
-		let val = translator.clone();
-		Box::new(move |i, n| {
-		    (accumulator)(i, n)
-			+ &graph::GraphMapNodesTy::from(
-			    graph::GraphMapNodes::ExcludeEntities {
-				mask: common_entities.union(mask)
-			    },
-			    val.clone()
-			).get()(i, n)
-		    }
-		)
-	    },
-        };
-    }
-    accumulator
+		graph::GraphMapNodes::ExcludeEntities {
+		    mask: common_entities.union(mask)
+		}
+	    }
+	}
+    ).collect::<Vec<_>>();
+
+    let gmnt = graph::GraphMapNodesTy::from((node_display, Rc::clone(&translator)));
+
+    gmnt.generate()
 }
 
 #[allow(clippy::type_complexity)]
@@ -688,14 +661,14 @@ fn generate_node_color_fn<'a>(
     )
 }
 
-use petgraph::visit::IntoEdgeReferences;
 #[allow(clippy::type_complexity)]
 fn generate_edge_color_fn<'a>(
     edge_color: &'a graph::EdgeColor,
     original_graph: Rc<Graph<RSsystem, RSlabel>>,
 ) -> Box<dyn Fn(
     &Graph<String, String>,
-    <&Graph<String, String, petgraph::Directed, u32> as IntoEdgeReferences>::EdgeRef
+    <&Graph<String, String, petgraph::Directed, u32>
+     as petgraph::visit::IntoEdgeReferences>::EdgeRef
 ) -> String + 'a>
 {
     Box::new(
@@ -929,6 +902,8 @@ fn execute(
     Ok(())
 }
 
+/// Interprets file at supplied path, then executes the code specified as
+/// instructions inside the file.
 pub fn run(path: String) -> Result<(), String> {
     let mut translator = Translator::new();
 
