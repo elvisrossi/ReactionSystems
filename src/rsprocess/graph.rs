@@ -2,7 +2,7 @@
 
 use petgraph::{Graph, Directed};
 use std::collections::HashMap;
-use super::structure::{RSlabel, RSsystem, RSset, RSprocess};
+use super::structure::{RSlabel, RSsystem, RSset};
 use super::support_structures::TransitionsIterator;
 use super::translator::{self, IdType};
 use std::rc::Rc;
@@ -86,6 +86,8 @@ impl GraphMapNodesTy {
 	translator: Rc<translator::Translator>
     ) -> Self {
 	use GraphMapNodes::*;
+	use super::format_helpers::graph_map_nodes_ty_from::*;
+
 	let function: Box<GraphMapNodesFnTy> =
 	// rust cant unify closures (they all have different types) so box needs
 	// to happen inside the match
@@ -94,58 +96,19 @@ impl GraphMapNodesTy {
 	// is not enough
 	    match f {
 		Hide => {
-		    Box::new(
-			|_, _|
-			String::new()
-		    )
+		    format_hide(translator)
 		},
 		Entities => {
-		    Box::new(
-			move |_, node: &RSsystem|
-			format!("{}",
-				translator::RSsetDisplay::from(
-				    &translator,
-				    &node.available_entities)
-			)
-		    )
+		    format_entities(translator)
 		},
 		MaskEntities { mask } => {
-		    Box::new(
-			move |_, node: &RSsystem| {
-			    let masked_entities =
-				node.available_entities
-				.intersection(&mask);
-			    format!("{}",
-				    translator::RSsetDisplay::from(
-					&translator,
-					&masked_entities)
-			    )
-			}
-		    )
+		    format_mask_entities(translator, mask)
 		},
 		ExcludeEntities { mask } => {
-		    Box::new(
-			move |_, node: &RSsystem| {
-			    let masked_entities =
-				node.available_entities
-				.subtraction(&mask);
-			    format!("{}",
-				    translator::RSsetDisplay::from(
-					&translator,
-					&masked_entities)
-			    )
-			}
-		    )
+		    format_exclude_entities(translator, mask)
 		}
 		Context => {
-		    Box::new(
-			move |_, node: &RSsystem|
-			format!("{}",
-				translator::RSprocessDisplay::from(
-				    &translator,
-				    &node.context_process)
-			)
-		    )
+		    format_context(translator)
 		},
 	    };
 	GraphMapNodesTy { function }
@@ -197,6 +160,8 @@ impl GraphMapEdgesTy {
 	translator: Rc<translator::Translator>
     ) -> Self {
 	use GraphMapEdges::*;
+	use super::format_helpers::graph_map_edges_ty_from::*;
+
 	let function: Box<GraphMapEdgesFnTy> =
 	// rust cant unify closures (they all have different types) so box needs
 	// to happen inside the match
@@ -205,182 +170,49 @@ impl GraphMapEdgesTy {
 	// is not enough
 	    match f {
 		Hide => {
-		    Box::new(
-			|_, _|
-			String::new()
-		    )
+		    format_hide(translator)
 		},
 		Products => {
-		    Box::new(
-			move |_, edge: &RSlabel|
-			format!("{}",
-				translator::RSsetDisplay::from(
-				    &translator,
-				    &edge.products
-				)
-			)
-		    )
+		    format_products(translator)
 		},
 		MaskProducts { mask } => {
-		    Box::new(
-			move |_, edge: &RSlabel|
-			format!("{}",
-				translator::RSsetDisplay::from(
-				    &translator,
-				    &mask.intersection(&edge.products)
-				)
-			)
-		    )
+		    format_mask_products(translator, mask)
 		},
 		Entities => {
-		    Box::new(
-			move |_, edge: &RSlabel|
-			format!("{}",
-				translator::RSsetDisplay::from(
-				    &translator,
-				    &edge.available_entities
-				)
-			)
-		    )
+		    format_entities(translator)
 		},
 		MaskEntities { mask } => {
-		    Box::new(
-			move |_, edge: &RSlabel|
-			format!("{}",
-				translator::RSsetDisplay::from(
-				    &translator,
-				    &mask.intersection(&edge.available_entities)
-				)
-			)
-		    )
+		    format_mask_entities(translator, mask)
 		},
 		Context => {
-		    Box::new(
-			move |_, edge: &RSlabel|
-			format!("{}",
-				translator::RSsetDisplay::from(
-				    &translator,
-				    &edge.context
-				)
-			)
-		    )
+		    format_context(translator)
 		},
 		MaskContext { mask } => {
-		    Box::new(
-			move |_, edge: &RSlabel|
-			format!("{}",
-				translator::RSsetDisplay::from(
-				    &translator,
-				    &mask.intersection(&edge.context)
-				)
-			)
-		    )
+		    format_mask_context(translator, mask)
 		},
 		Union => {
-		    Box::new(
-			move |_, edge: &RSlabel|
-			format!("{}",
-				translator::RSsetDisplay::from(
-				    &translator,
-				    &edge.t
-				)
-			)
-		    )
+		    format_union(translator)
 		},
 		MaskUnion { mask } => {
-		    Box::new(
-			move |_, edge: &RSlabel|
-			format!("{}",
-				translator::RSsetDisplay::from(
-				    &translator,
-				    &mask.intersection(&edge.t)
-				)
-			)
-		    )
+		    format_mask_union(translator, mask)
 		},
 		Difference => {
-		    Box::new(
-			move |_, edge: &RSlabel|
-			format!("{}",
-				translator::RSsetDisplay::from(
-				    &translator,
-				    &edge.context.subtraction(
-					&edge.available_entities
-				    )
-				)
-			)
-		    )
+		    format_difference(translator)
 		},
 		MaskDifference { mask } => {
-		    Box::new(
-			move |_, edge: &RSlabel|
-			format!("{}",
-				translator::RSsetDisplay::from(
-				    &translator,
-				    &mask.intersection(
-					&edge.context.subtraction(
-					    &edge.available_entities
-					)
-				    )
-				)
-			)
-		    )
+		    format_mask_difference(translator, mask)
 		},
 		EntitiesDeleted => {
-		    Box::new(
-			move |_, edge: &RSlabel|
-			format!("{}",
-				translator::RSsetDisplay::from(
-				    &translator,
-				    &edge.available_entities.subtraction(
-					&edge.products
-				    )
-				)
-			)
-		    )
+		    format_entities_deleted(translator)
 		},
 		MaskEntitiesDeleted { mask } => {
-		    Box::new(
-			move |_, edge: &RSlabel|
-			format!("{}",
-				translator::RSsetDisplay::from(
-				    &translator,
-				    &mask.intersection(
-					&edge.available_entities.subtraction(
-					    &edge.products
-					)
-				    )
-				)
-			)
-		    )
+		    format_mask_entities_deleted(translator, mask)
 		},
 		EntitiesAdded => {
-		    Box::new(
-			move |_, edge: &RSlabel|
-			format!("{}",
-				translator::RSsetDisplay::from(
-				    &translator,
-				    &edge.products.subtraction(
-					&edge.available_entities
-				    )
-				)
-			)
-		    )
+		    format_entities_added(translator)
 		},
 		MaskEntitiesAdded { mask } => {
-		    Box::new(
-			move |_, edge: &RSlabel|
-			format!("{}",
-				translator::RSsetDisplay::from(
-				    &translator,
-				    &mask.intersection(
-					&edge.products.subtraction(
-					    &edge.available_entities
-					)
-				    )
-				)
-			)
-		    )
+		    format_mask_entities_added(translator, mask)
 		},
 	    };
 	GraphMapEdgesTy { function }
@@ -394,9 +226,7 @@ impl GraphMapEdgesTy {
 // -----------------------------------------------------------------------------
 //                          Formatting Nodes & Edges
 // -----------------------------------------------------------------------------
-use petgraph::visit::{ IntoEdgeReferences,
-		       IntoNodeReferences,
-		       EdgeRef };
+use petgraph::visit::{IntoEdgeReferences, IntoNodeReferences};
 
 type RSdotGraph = Graph<String, String, Directed, u32>;
 type RSformatNodeTy =
@@ -465,6 +295,7 @@ pub fn node_formatter_base_color(
     ", fillcolor=".to_string() + &base_color
 }
 
+
 pub fn node_formatter(
     original_graph: Rc<RSgraph>,
     rule: NodeColorConditional,
@@ -472,99 +303,32 @@ pub fn node_formatter(
     star: Option<IdType>,
 ) -> Box<RSformatNodeTy>
 {
+    use super::format_helpers::node_formatter::*;
     match rule {
 	NodeColorConditional::ContextConditional(ccc) => {
 	    match ccc {
 		ContextColorConditional::Nill => {
-		    Box::new(
-			move |_, n| {
-			    let rssystem = original_graph.node_weight(n.0).unwrap();
-			    if rssystem.context_process == RSprocess::Nill {
-				Some(", fillcolor=".to_string() + &color)
-			    } else {
-				None
-			    }
-			}
-		    )
+		    format_nill(original_graph, color, star)
 		},
 		ContextColorConditional::RecursiveIdentifier(s) => {
-		    Box::new(
-			move |_, n| {
-			    let rssystem = original_graph.node_weight(n.0).unwrap();
-			    match (Some(s) == star, &rssystem.context_process) {
-				(true, RSprocess::RecursiveIdentifier { identifier: _ }) => {
-				    Some(", fillcolor=".to_string() + &color)
-				},
-				(false, RSprocess::RecursiveIdentifier { identifier: id }) if id == &s => {
-				    Some(", fillcolor=".to_string() + &color)
-				},
-				_ => {None}
-			    }
-			}
-		    )
+		    format_recursive_identifier(original_graph, color, star, s)
 		},
 		ContextColorConditional::EntitySet(ot, set) => {
-		    Box::new(
-			move |_, n| {
-			    let rssystem = original_graph.node_weight(n.0).unwrap();
-			    match &rssystem.context_process {
-				RSprocess::EntitySet { entities, next_process: _ } if ot.evaluate(entities, &set) => {
-				    Some(", fillcolor=".to_string() + &color)
-				},
-				_ => {None}
-			    }
-			}
-		    )
+		    format_entity_set(original_graph, color, star, ot, set)
 		},
 		ContextColorConditional::NonDeterministicChoice => {
-		    Box::new(
-			move |_, n| {
-			    let rssystem = original_graph.node_weight(n.0).unwrap();
-			    if let RSprocess::NondeterministicChoice { children: _ } = rssystem.context_process {
-				Some(", fillcolor=".to_string() + &color)
-			    } else {
-				None
-			    }
-			}
-		    )
+		    format_non_deterministic_choice(original_graph, color, star)
 		},
 		ContextColorConditional::Summation => {
-		    Box::new(
-			move |_, n| {
-			    let rssystem = original_graph.node_weight(n.0).unwrap();
-			    if let RSprocess::Summation { children: _ } = rssystem.context_process {
-				Some(", fillcolor=".to_string() + &color)
-			    } else {
-				None
-			    }
-			}
-		    )
+		    format_summation(original_graph, color, star)
 		},
 		ContextColorConditional::WaitEntity => {
-		    Box::new(
-			move |_, n| {
-			    let rssystem = original_graph.node_weight(n.0).unwrap();
-			    if let RSprocess::WaitEntity { repeat: _, repeated_process: _, next_process: _ } = &rssystem.context_process  {
-				Some(", fillcolor=".to_string() + &color)
-			    } else {
-				None
-			    }
-			}
-		    )
+		    format_wait_entity(original_graph, color, star)
 		},
 	    }
 	},
 	NodeColorConditional::EntitiesConditional(ot, set) => {
-	    Box::new(
-		move |_, n| {
-		    let rssystem = original_graph.node_weight(n.0).unwrap();
-		    if ot.evaluate(&rssystem.available_entities, &set) {
-			Some(", fillcolor=".to_string() + &color)
-		    } else {
-			None
-		    }
-		}
-	    )
+	    format_entities_conditional(original_graph, color, star, ot, set)
 	},
     }
 }
@@ -601,108 +365,38 @@ pub fn edge_formatter_base_color(
     ", color=".to_string() + &base_color
 }
 
+
 pub fn edge_formatter(
     original_graph: Rc<RSgraph>,
     rule: EdgeColorConditional,
     color: String,
 ) -> Box<RSformatEdgeTy>
 {
+    use super::format_helpers::edge_formatter::*;
     match rule {
 	EdgeColorConditional::Entities(ot, set) => {
-	    Box::new(
-		move |_, e| {
-		    let rssystem = original_graph.edge_weight(e.id()).unwrap();
-		    if ot.evaluate(&rssystem.available_entities, &set) {
-			Some(", color=".to_string() + &color)
-		    } else {
-			None
-		    }
-		}
-	    )
+	    format_entities(original_graph, color, ot, set)
 	},
 	EdgeColorConditional::Context(ot, set) => {
-	    Box::new(
-		move |_, e| {
-		    let rssystem = original_graph.edge_weight(e.id()).unwrap();
-		    if ot.evaluate(&rssystem.context, &set) {
-			Some(", color=".to_string() + &color)
-		    } else {
-			None
-		    }
-		}
-	    )
+	    format_context(original_graph, color, ot, set)
 	},
 	EdgeColorConditional::T(ot, set) => {
-	    Box::new(
-		move |_, e| {
-		    let rssystem = original_graph.edge_weight(e.id()).unwrap();
-		    if ot.evaluate(&rssystem.t, &set) {
-			Some(", color=".to_string() + &color)
-		    } else {
-			None
-		    }
-		}
-	    )
+	    format_t(original_graph, color, ot, set)
 	},
 	EdgeColorConditional::Reactants(ot, set) => {
-	    Box::new(
-		move |_, e| {
-		    let rssystem = original_graph.edge_weight(e.id()).unwrap();
-		    if ot.evaluate(&rssystem.reactants, &set) {
-			Some(", color=".to_string() + &color)
-		    } else {
-			None
-		    }
-		}
-	    )
+	    format_reactants(original_graph, color, ot, set)
 	},
 	EdgeColorConditional::ReactantsAbsent(ot, set) => {
-	    Box::new(
-		move |_, e| {
-		    let rssystem = original_graph.edge_weight(e.id()).unwrap();
-		    if ot.evaluate(&rssystem.reactants_absent, &set) {
-			Some(", color=".to_string() + &color)
-		    } else {
-			None
-		    }
-		}
-	    )
+	    format_reactants_absent(original_graph, color, ot, set)
 	},
 	EdgeColorConditional::Inhibitors(ot, set) => {
-	    Box::new(
-		move |_, e| {
-		    let rssystem = original_graph.edge_weight(e.id()).unwrap();
-		    if ot.evaluate(&rssystem.inhibitors, &set) {
-			Some(", color=".to_string() + &color)
-		    } else {
-			None
-		    }
-		}
-	    )
+	    format_inhibitors(original_graph, color, ot, set)
 	},
 	EdgeColorConditional::InhibitorsPresent(ot, set) => {
-	    Box::new(
-		move |_, e| {
-		    let rssystem = original_graph.edge_weight(e.id()).unwrap();
-		    if ot.evaluate(&rssystem.inhibitors_present, &set) {
-			Some(", color=".to_string() + &color)
-		    } else {
-			None
-		    }
-		}
-	    )
+	    format_inhibitors_present(original_graph, color, ot, set)
 	},
 	EdgeColorConditional::Products(ot, set) => {
-	    Box::new(
-		move |_, e| {
-		    let rssystem = original_graph.edge_weight(e.id()).unwrap();
-		    if ot.evaluate(&rssystem.products, &set) {
-			Some(", color=".to_string() + &color)
-		    } else {
-			None
-		    }
-		}
-	    )
+	    format_products(original_graph, color, ot, set)
 	},
     }
 }
