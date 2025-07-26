@@ -21,12 +21,9 @@ pub fn digraph(
     association.insert(system.clone(), node);
 
     let mut stack = vec![system];
-    let mut current;
 
-
-    while !stack.is_empty() {
+    while let Some(current) = stack.pop() {
 	// depth first
-	current = stack.pop().unwrap();
 	let current_node = *association.get(&current).unwrap();
 
 	for (label, next) in TransitionsIterator::from(&current)? {
@@ -62,96 +59,96 @@ pub fn common_entities(graph: &RSgraph) -> RSset {
 
 /// Helper structure that specifies what information to display for nodes.
 #[derive(Clone)]
-pub enum GraphMapNodes {
+pub enum NodeDisplayBase {
     String { string: String },
     Hide,
     Entities,
     MaskEntities { mask: RSset },
     ExcludeEntities { mask: RSset },
     Context,
+    UncommonEntities,
+    MaskUncommonEntities { mask: RSset }
+}
+
+pub struct NodeDisplay {
+    pub base: Vec<NodeDisplayBase>
 }
 
 type GraphMapNodesFnTy<'a> =
     dyn Fn(petgraph::prelude::NodeIndex, &'a RSsystem) -> String + 'a;
-/// Helper structure that holds a formatting function from node as RSsystem to
-/// string
-pub struct GraphMapNodesTy<'a> {
-    functions: Vec<Box<GraphMapNodesFnTy<'a>>>,
+
+
+fn match_node_display<'a>(
+    base: &NodeDisplayBase,
+    common_entities: Rc<RSset>,
     translator: Rc<translator::Translator>
-}
+) -> Box<GraphMapNodesFnTy<'a>> {
+    use NodeDisplayBase::*;
+    use super::format_helpers::graph_map_nodes_ty_from::*;
 
-impl<'a, const N: usize> From<([GraphMapNodes; N], Rc<translator::Translator>)> for GraphMapNodesTy<'a> {
-    fn from(value: ([GraphMapNodes; N], Rc<translator::Translator>)) -> Self {
-	Self::from((value.0.to_vec(), value.1))
+    match base {
+	String { string } => {
+	    format_string(string.clone())
+	},
+	Hide => {
+	    format_hide(translator)
+	},
+	Entities => {
+	    format_entities(translator)
+	},
+	MaskEntities { mask } => {
+	    format_mask_entities(translator, mask.clone())
+	},
+	ExcludeEntities { mask } => {
+	    format_exclude_entities(translator, mask.clone())
+	},
+	Context => {
+	    format_context(translator)
+	},
+	UncommonEntities => {
+	    format_exclude_entities(translator, (*common_entities).clone())
+	},
+	MaskUncommonEntities { mask } => {
+	    format_exclude_entities(translator,
+				    mask.intersection(&common_entities))
+	}
     }
 }
 
-impl<'a> From<(&[GraphMapNodes], Rc<translator::Translator>)> for GraphMapNodesTy<'a> {
-    fn from(value: (&[GraphMapNodes], Rc<translator::Translator>)) -> Self {
-	Self::from((value.0.to_vec(), value.1))
+
+impl NodeDisplay {
+    fn contains_uncommon(&self) -> bool {
+	self.base.iter().any(
+	    |b|
+	    matches!(b, NodeDisplayBase::UncommonEntities |
+			NodeDisplayBase::MaskUncommonEntities { mask: _ }))
     }
-}
 
-impl<'a> From<(Vec<GraphMapNodes>, Rc<translator::Translator>)> for GraphMapNodesTy<'a> {
-    fn from(value: (Vec<GraphMapNodes>, Rc<translator::Translator>)) -> Self {
-	use GraphMapNodes::*;
-	use super::format_helpers::graph_map_nodes_ty_from::*;
-
-	let mut new = GraphMapNodesTy {functions: vec![], translator: value.1};
-
-	for f in value.0 {
-	    match f {
-		String { string } => {
-		    new.functions.push(format_string(string.clone()));
-		}
-		Hide => {
-		    new.functions.push(format_hide(
-			Rc::clone(&new.translator)
-		    ));
-		},
-		Entities => {
-		    new.functions.push(format_entities(
-			Rc::clone(&new.translator)
-		    ));
-		},
-		MaskEntities { mask } => {
-		    new.functions.push(format_mask_entities(
-			Rc::clone(&new.translator),
-			mask.clone()
-		    ));
-		},
-		ExcludeEntities { mask } => {
-		    new.functions.push(format_exclude_entities(
-			Rc::clone(&new.translator),
-			mask.clone()
-		    ));
-		}
-		Context => {
-		    new.functions.push(format_context(
-			Rc::clone(&new.translator)
-		    ));
-		},
+    pub fn generate<'a>(
+	self,
+	translator: Rc<translator::Translator>,
+	current_graph: &RSgraph
+    ) -> Box<GraphMapNodesFnTy<'a>> {
+	let common_entities =
+	    if self.contains_uncommon() {
+		Rc::new(common_entities(current_graph))
+	    } else {
+		Rc::new(RSset::new())
 	    };
-	}
 
-	new
-    }
-}
+	Box::new(
+	    move |i, n| {
+		let mut accumulator = String::new();
+		for b in &self.base {
+		    let f = match_node_display(b,
+					       Rc::clone(&common_entities),
+					       Rc::clone(&translator));
 
-impl<'a> GraphMapNodesTy<'a> {
-    pub fn generate(self) -> Box<GraphMapNodesFnTy<'a>> {
-	let mut accumulator: Box<GraphMapNodesFnTy<'a>> =
-	    super::format_helpers::graph_map_nodes_ty_from::format_hide(
-		Rc::clone(&self.translator)
-	    );
-	for f in self.functions {
-	    accumulator = Box::new(move |i, n| {
-		(accumulator)(i, n)
-		    + &f(i, n)
-	    })
-	}
-
-	accumulator
+		    accumulator.push_str(&(f)(i, n));
+		}
+		accumulator
+	    }
+	)
     }
 }
 
@@ -188,19 +185,25 @@ pub struct GraphMapEdgesTy<'a> {
     translator: Rc<translator::Translator>
 }
 
-impl<'a, const N: usize> From<([GraphMapEdges; N], Rc<translator::Translator>)> for GraphMapEdgesTy<'a> {
+impl<'a, const N: usize> From<([GraphMapEdges; N], Rc<translator::Translator>)>
+    for GraphMapEdgesTy<'a>
+{
     fn from(value: ([GraphMapEdges; N], Rc<translator::Translator>)) -> Self {
 	Self::from((value.0.to_vec(), value.1))
     }
 }
 
-impl<'a> From<(&[GraphMapEdges], Rc<translator::Translator>)> for GraphMapEdgesTy<'a> {
+impl<'a> From<(&[GraphMapEdges], Rc<translator::Translator>)>
+    for GraphMapEdgesTy<'a>
+{
     fn from(value: (&[GraphMapEdges], Rc<translator::Translator>)) -> Self {
 	Self::from((value.0.to_vec(), value.1))
     }
 }
 
-impl<'a> From<(Vec<GraphMapEdges>, Rc<translator::Translator>)> for GraphMapEdgesTy<'a> {
+impl<'a> From<(Vec<GraphMapEdges>, Rc<translator::Translator>)>
+    for GraphMapEdgesTy<'a>
+{
     fn from(value: (Vec<GraphMapEdges>, Rc<translator::Translator>)) -> Self {
 	use GraphMapEdges::*;
 	use super::format_helpers::graph_map_edges_ty_from::*;

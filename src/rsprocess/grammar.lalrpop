@@ -256,11 +256,13 @@ SaveOptions: presets::SaveOptions = {
 }
 
 /// Match for strings between nodes formatters
-LiteralSeparatorNode: presets::NodeDisplay = {
+LiteralSeparatorNode: graph::NodeDisplayBase = {
     PATH =>
-	presets::NodeDisplay::Separator(
-	    <>.trim_end_matches("\"").trim_start_matches("\"").to_string()
-	)
+	graph::NodeDisplayBase::String {
+	    string: <>.trim_end_matches("\"")
+		      .trim_start_matches("\"")
+		      .to_string()
+	}
 };
 
 /// Match for strings between edge formatters
@@ -271,34 +273,37 @@ LiteralSeparatorEdge: presets::EdgeDisplay = {
 	)
 };
 
-NodeDisplay: presets::NodeDisplay = {
+NodeDisplayBase: graph::NodeDisplayBase = {
     "Hide" =>
-	presets::NodeDisplay::Display(graph::GraphMapNodes::Hide),
+	graph::NodeDisplayBase::Hide,
     "Entities" =>
-	presets::NodeDisplay::Display(graph::GraphMapNodes::Entities),
+	graph::NodeDisplayBase::Entities,
     "MaskEntities" <mask: Set> =>
-	presets::NodeDisplay::Display(graph::GraphMapNodes::MaskEntities{mask}),
-    "Context" =>
-	presets::NodeDisplay::Display(graph::GraphMapNodes::Context),
-    "UncommonEntities" =>
-	presets::NodeDisplay::UncommonEntities,
-    "MaskUncommonentities" <mask: Set> =>
-	presets::NodeDisplay::MaskUncommonEntities(mask),
+	graph::NodeDisplayBase::MaskEntities{mask},
     "ExcludeEntities" <mask: Set> =>
-      presets::NodeDisplay::Display(graph::GraphMapNodes::ExcludeEntities{mask})
+      graph::NodeDisplayBase::ExcludeEntities{mask},
+    "Context" =>
+	graph::NodeDisplayBase::Context,
+    "UncommonEntities" =>
+	graph::NodeDisplayBase::UncommonEntities,
+    "MaskUncommonentities" <mask: Set> =>
+	graph::NodeDisplayBase::MaskUncommonEntities{mask},
 }
 
 /// Node display formatters separated by arbitrary strings in quotes
-SeparatorNode: Vec<presets::NodeDisplay> = {
-    <v: NodeDisplay> => vec![v],
-    <v:(<NodeDisplay> <LiteralSeparatorNode>)+> <e: NodeDisplay?> =>
+SeparatorNode: graph::NodeDisplay = {
+    <v: NodeDisplayBase> => graph::NodeDisplay {base: vec![v]},
+    <v:(<NodeDisplayBase> <LiteralSeparatorNode>)+> <e: NodeDisplayBase?> =>
 	match e {
-	    None => v.iter().fold(vec![],
-				  |mut acc, (a, b)| {
-				      acc.push(a.clone());
-				      acc.push(b.clone());
-				      acc.clone()
-				  }),
+	    None => graph::NodeDisplay {
+			base:
+			v.iter().fold(vec![],
+			    |mut acc, (a, b)| {
+				acc.push(a.clone());
+				acc.push(b.clone());
+				acc.clone()
+			    })
+			},
 	    Some(e) => {
 		let mut v = v.iter().fold(vec![],
 					  |mut acc, (a, b)| {
@@ -307,7 +312,7 @@ SeparatorNode: Vec<presets::NodeDisplay> = {
 					      acc.clone()
 					  });
 		v.push(e);
-		v
+		graph::NodeDisplay { base: v }
 	    }
 	}
 }

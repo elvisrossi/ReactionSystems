@@ -58,15 +58,6 @@ impl Default for SaveOptions {
     }
 }
 
-/// Describes display options for nodes (RSsystem).
-#[derive(Clone)]
-pub enum NodeDisplay {
-    Separator(String),
-    Display(graph::GraphMapNodes),
-    UncommonEntities,
-    MaskUncommonEntities(RSset)
-}
-
 // Describes display options for edges (RSlabels).
 #[derive(Clone)]
 pub enum EdgeDisplay {
@@ -77,14 +68,14 @@ pub enum EdgeDisplay {
 // Describes output options for a graph.
 pub enum GraphSaveOptions {
     Dot {
-        node_display: Vec<NodeDisplay>,
+        node_display: graph::NodeDisplay,
         edge_display: Vec<EdgeDisplay>,
 	node_color: graph::NodeColor,
 	edge_color: graph::EdgeColor,
         so: SaveOptions,
     },
     GraphML {
-        node_display: Vec<NodeDisplay>,
+        node_display: graph::NodeDisplay,
         edge_display: Vec<EdgeDisplay>,
         so: SaveOptions,
     },
@@ -563,49 +554,6 @@ pub fn bisimilar(
 //                              Output Functions
 // -----------------------------------------------------------------------------
 
-type GraphMapNodesFnTy<'a> =
-    dyn Fn(petgraph::prelude::NodeIndex, &'a RSsystem) -> String + 'a;
-fn generate_node_printing_fn<'a>(
-    node_display: &[NodeDisplay],
-    graph: &graph::RSgraph,
-    translator: Rc<Translator>,
-) -> Box<GraphMapNodesFnTy<'a>> {
-    // The type cannot be aliased since rust doesnt like generics.
-    // We are iterating over the node_display and constructing a function
-    // (accumulator) that prints out our formatted nodes. So at each step we
-    // call the previous function and add the next string or function.
-    let node_display = node_display.iter().map(
-	|e|
-	match e {
-	    NodeDisplay::Display(d) => d.clone(),
-	    NodeDisplay::Separator(s) => {
-		graph::GraphMapNodes::String {
-		    string: s.clone()
-		}
-	    },
-	    NodeDisplay::UncommonEntities => {
-		let common_entities = graph::common_entities(graph);
-		graph::GraphMapNodes::ExcludeEntities {
-		    mask: common_entities.clone()
-		}
-	    },
-	    NodeDisplay::MaskUncommonEntities(mask) => {
-		let common_entities = graph::common_entities(graph);
-		graph::GraphMapNodes::ExcludeEntities {
-		    mask: common_entities.union(mask)
-		}
-	    }
-	}
-    ).collect::<Vec<_>>();
-
-    let gmnt = graph::GraphMapNodesTy::from(
-	(node_display, Rc::clone(&translator))
-    );
-
-    gmnt.generate()
-}
-
-
 type GraphMapEdgesFnTy<'a> =
     dyn Fn(petgraph::prelude::EdgeIndex, &'a RSlabel) -> String + 'a;
 fn generate_edge_printing_fn<'a>(
@@ -639,7 +587,7 @@ fn generate_edge_printing_fn<'a>(
 /// Writes the specified graph to a file in .dot format.
 pub fn dot(
     system: &EvaluatedSystem,
-    node_display: Vec<NodeDisplay>,
+    node_display: graph::NodeDisplay,
     edge_display: Vec<EdgeDisplay>,
     node_color: graph::NodeColor,
     edge_color: graph::EdgeColor
@@ -651,13 +599,8 @@ pub fn dot(
         } => Err("Supplied system is not a graph".into()),
         EvaluatedSystem::Graph { graph, translator } => {
             let rc_translator = Rc::new(translator.clone());
-            // map each value to the corresponding value we want to display
-            // this is awful but rust is not a functional language so its all
-            // fine...
             let modified_graph = graph.map(
-                generate_node_printing_fn(&node_display,
-					   graph,
-					   Rc::clone(&rc_translator)),
+                node_display.generate(Rc::clone(&rc_translator), graph),
                 generate_edge_printing_fn(&edge_display,
 					   Rc::clone(&rc_translator)),
             );
@@ -685,7 +628,7 @@ pub fn dot(
 /// Writes the specified graph to a file in .graphml format.
 pub fn graphml(
     system: &EvaluatedSystem,
-    node_display: Vec<NodeDisplay>,
+    node_display: graph::NodeDisplay,
     edge_display: Vec<EdgeDisplay>,
 ) -> Result<String, String> {
     match system {
@@ -698,9 +641,8 @@ pub fn graphml(
 
             // map each value to the corresponding value we want to display
             let modified_graph = graph.map(
-                generate_node_printing_fn(&node_display,
-					   graph,
-					   Rc::clone(&rc_translator)),
+                node_display.generate(Rc::clone(&rc_translator),
+				      graph),
                 generate_edge_printing_fn(&edge_display,
 					   rc_translator),
             );
