@@ -546,36 +546,6 @@ pub fn bisimilar(
 //                              Output Functions
 // -----------------------------------------------------------------------------
 
-// type GraphMapEdgesFnTy<'a> =
-//     dyn Fn(petgraph::prelude::EdgeIndex, &'a RSlabel) -> String + 'a;
-// fn generate_edge_printing_fn<'a>(
-//     edge_display: graph::EdgeDisplay,
-//     translator: Rc<Translator>,
-// ) -> Box<GraphMapEdgesFnTy<'a>> {
-//     // The type cannot be aliased since rust doesnt like generics.
-//     // We are iterating over the edge_display and constructing a function
-//     // (accumulator) that prints out our formatted nodes. So at each step we
-//     // call the previous function and add the next string or function.
-//     let edge_display = edge_display.iter().map(
-// 	|e| {
-// 	    match e {
-// 		EdgeDisplay::Display(d) => {
-// 		    d.clone()
-// 		},
-// 		EdgeDisplay::Separator(s) => {
-// 		    graph::EdgeDisplayBase::String { string: s.clone() }
-// 		}
-// 	    }
-// 	}
-//     ).collect::<Vec<_>>();
-
-//     let gmet = graph::GraphMapEdgesTy::from(
-// 	(edge_display, Rc::clone(&translator))
-//     );
-
-//     gmet.generate()
-// }
-
 /// Writes the specified graph to a file in .dot format.
 pub fn dot(
     system: &EvaluatedSystem,

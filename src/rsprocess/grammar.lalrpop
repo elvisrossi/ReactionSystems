@@ -39,11 +39,17 @@ match {
     "Stats", "Target", "Run", "Loop", "Frequency", "LimitFrequency",
     "FastFrequency", "Digraph", "Bisimilarity",
     "Deserialize",
-    "Hide", "Entities", "MaskEntities", "MaskContext",
-    "Products", "MaskProducts", "Union", "MaskUnion",
+    "Hide",
+    "Entities", "MaskEntities", "UncommonEntities", "UncommonMaskEntities",
+    "MaskContext", "UncommonContext", "UncommonMaskContext",
+    "Products", "MaskProducts", "UncommonProducts", "UncommonMaskProducts",
+    "Union", "MaskUnion", "UncommonUnion", "UncommonMaskUnion",
     "Difference", "MaskDifference",
+	"UncommonDifference", "UncommonMaskDifference",
     "EntitiesDeleted", "MaskEntitiesDeleted",
-    "EntitiesAdded", "MaskEntitiesAdded"
+	"UncommonEntitiesDeleted", "UncommonMaskEntitiesDeleted",
+    "EntitiesAdded", "MaskEntitiesAdded",
+	"UncommonEntitiesAdded", "UncommonMaskEntitiesAdded",
 } else {
     r"[0-9]+" => NUMBER
 } else {
@@ -320,34 +326,97 @@ SeparatorNode: graph::NodeDisplay = {
 EdgeDisplay: graph::EdgeDisplayBase = {
     "Hide" =>
 	graph::EdgeDisplayBase::Hide,
+
     "Products" =>
-	graph::EdgeDisplayBase::Products,
+	graph::EdgeDisplayBase::Products
+	{ mask: None, filter_common: false },
     "MaskProducts" <mask: Set> =>
-	graph::EdgeDisplayBase::MaskEntities{ mask },
+	graph::EdgeDisplayBase::Entities
+	{ mask: Some(mask), filter_common: false },
+    "UncommonProducts" =>
+	graph::EdgeDisplayBase::Products
+	{ mask: None, filter_common: true },
+    "UncommonMaskProducts" <mask: Set> =>
+	graph::EdgeDisplayBase::Entities
+	{ mask: Some(mask), filter_common: true },
+
     "Entities" =>
-	graph::EdgeDisplayBase::Entities,
+	graph::EdgeDisplayBase::Entities
+	{ mask: None, filter_common: false },
     "MaskEntities" <mask: Set> =>
-	graph::EdgeDisplayBase::MaskEntities{ mask },
+	graph::EdgeDisplayBase::Entities
+	{ mask: Some(mask), filter_common: false },
+    "UncommonEntities" =>
+	graph::EdgeDisplayBase::Entities
+	{ mask: None, filter_common: true },
+    "UncommonMaskEntities" <mask: Set> =>
+	graph::EdgeDisplayBase::Entities
+	{ mask: Some(mask), filter_common: true },
+
     "Context" =>
-	graph::EdgeDisplayBase::Context,
+	graph::EdgeDisplayBase::Context
+	{ mask: None, filter_common: false },
     "MaskContext" <mask: Set> =>
-	graph::EdgeDisplayBase::MaskContext{ mask },
+	graph::EdgeDisplayBase::Context
+	{ mask: Some(mask), filter_common: false },
+    "UncommonContext" =>
+	graph::EdgeDisplayBase::Context
+	{ mask: None, filter_common: true },
+    "UncommonMaskContext" <mask: Set> =>
+	graph::EdgeDisplayBase::Context
+	{ mask: Some(mask), filter_common: true },
+
     "Union" =>
-	graph::EdgeDisplayBase::Union,
+	graph::EdgeDisplayBase::Union
+	{ mask: None, filter_common: false },
     "MaskUnion" <mask: Set> =>
-	graph::EdgeDisplayBase::MaskUnion{ mask },
+	graph::EdgeDisplayBase::Union
+	{ mask: Some(mask), filter_common: false },
+    "UncommonUnion" =>
+	graph::EdgeDisplayBase::Union
+	{ mask: None, filter_common: true },
+    "UncommonMaskUnion" <mask: Set> =>
+	graph::EdgeDisplayBase::Union
+	{ mask: Some(mask), filter_common: true },
+
     "Difference" =>
-	graph::EdgeDisplayBase::Difference,
+	graph::EdgeDisplayBase::Difference
+	{ mask: None, filter_common: false },
     "MaskDifference" <mask: Set> =>
-	graph::EdgeDisplayBase::MaskDifference{ mask },
+	graph::EdgeDisplayBase::Difference
+	{ mask: Some(mask), filter_common: false },
+    "UncommonDifference" =>
+	graph::EdgeDisplayBase::Difference
+	{ mask: None, filter_common: true },
+    "UncommonMaskDifference" <mask: Set> =>
+	graph::EdgeDisplayBase::Difference
+	{ mask: Some(mask), filter_common: true },
+
     "EntitiesDeleted" =>
-	graph::EdgeDisplayBase::EntitiesDeleted,
+	graph::EdgeDisplayBase::EntitiesDeleted
+	{ mask: None, filter_common: false },
     "MaskEntitiesDeleted" <mask: Set> =>
-	graph::EdgeDisplayBase::MaskEntitiesDeleted{ mask },
+	graph::EdgeDisplayBase::EntitiesDeleted
+	{ mask: Some(mask), filter_common: false },
+    "UncommonEntitiesDeleted" =>
+	graph::EdgeDisplayBase::EntitiesDeleted
+	{ mask: None, filter_common: true },
+    "UncommonMaskEntitiesDeleted" <mask: Set> =>
+	graph::EdgeDisplayBase::EntitiesDeleted
+	{ mask: Some(mask), filter_common: true },
+
     "EntitiesAdded" =>
-	graph::EdgeDisplayBase::EntitiesAdded,
+	graph::EdgeDisplayBase::EntitiesAdded
+	{ mask: None, filter_common: false },
     "MaskEntitiesAdded" <mask: Set> =>
-	graph::EdgeDisplayBase::MaskEntitiesAdded{ mask },
+	graph::EdgeDisplayBase::EntitiesAdded
+	{ mask: Some(mask), filter_common: false },
+    "UncommonEntitiesAdded" =>
+	graph::EdgeDisplayBase::EntitiesAdded
+	{ mask: None, filter_common: true },
+    "UncommonMaskEntitiesAdded" <mask: Set> =>
+	graph::EdgeDisplayBase::EntitiesAdded
+	{ mask: Some(mask), filter_common: true },
 }
 
 /// Edge display formatters separated by arbitrary strings in quotes

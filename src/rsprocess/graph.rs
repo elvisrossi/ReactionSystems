@@ -39,7 +39,7 @@ pub fn digraph(
 }
 
 
-pub fn common_entities(graph: &RSgraph) -> RSset {
+fn common_system_entities(graph: &RSgraph) -> RSset {
     graph.node_references().fold(
 	None,
 	|acc, node|
@@ -49,6 +49,71 @@ pub fn common_entities(graph: &RSgraph) -> RSset {
 	}
     ).unwrap_or(RSset::new())
 }
+
+macro_rules! common_label {
+    (
+	$name:ident,
+	[$edge_name:ident, $acc_name:ident],
+	$empty_expr:expr,
+	$some_expr:expr
+    ) => {
+	fn $name(graph: &RSgraph) -> RSset {
+	    graph.edge_references().fold(
+		None,
+		|$acc_name, $edge_name| {
+		    let $edge_name = $edge_name.weight();
+		    match $acc_name {
+			None => Some($empty_expr),
+			Some($acc_name) => Some($some_expr)
+		    }
+		}
+	    ).unwrap_or(RSset::new())
+	}
+    };
+}
+
+common_label!(
+    common_label_products,
+    [edge, acc],
+    edge.products.clone(),
+    edge.products.intersection(&acc)
+);
+common_label!(
+    common_label_entities,
+    [edge, acc],
+    edge.available_entities.clone(),
+    edge.available_entities.intersection(&acc)
+);
+common_label!(
+    common_label_context,
+    [edge, acc],
+    edge.context.clone(),
+    edge.context.intersection(&acc)
+);
+common_label!(
+    common_label_union,
+    [edge, acc],
+    edge.t.clone(),
+    edge.t.intersection(&acc)
+);
+common_label!(
+    common_label_difference,
+    [edge, acc],
+    edge.context.subtraction(&edge.available_entities),
+    edge.context.subtraction(&edge.available_entities).intersection(&acc)
+);
+common_label!(
+    common_label_entities_deleted,
+    [edge, acc],
+    edge.available_entities.subtraction(&edge.products),
+    edge.available_entities.subtraction(&edge.products).intersection(&acc)
+);
+common_label!(
+    common_label_entities_added,
+    [edge, acc],
+    edge.products.subtraction(&edge.available_entities),
+    edge.products.subtraction(&edge.available_entities).intersection(&acc)
+);
 
 // -----------------------------------------------------------------------------
 //                              helper functions
@@ -131,7 +196,7 @@ impl NodeDisplay {
     ) -> Box<GraphMapNodesFnTy<'a>> {
 	let common_entities =
 	    if self.contains_uncommon() {
-		Rc::new(common_entities(current_graph))
+		Rc::new(common_system_entities(current_graph))
 	    } else {
 		Rc::new(RSset::new())
 	    };
@@ -155,38 +220,41 @@ impl NodeDisplay {
 
 // Edges -----------------------------------------------------------------------
 
-/// Helper structure that specifies what information to display for edges
 #[derive(Clone)]
 pub enum EdgeDisplayBase {
     String { string: String },
     Hide,
-    Products,
-    MaskProducts { mask: RSset },
-    Entities,
-    MaskEntities { mask: RSset },
-    Context,
-    MaskContext { mask: RSset },
-    Union,
-    MaskUnion { mask: RSset },
-    Difference,
-    MaskDifference { mask: RSset },
-    EntitiesDeleted,
-    MaskEntitiesDeleted { mask: RSset },
-    EntitiesAdded,
-    MaskEntitiesAdded { mask: RSset },
+    Products { mask: Option<RSset>, filter_common: bool },
+    Entities { mask: Option<RSset>, filter_common: bool },
+    Context { mask: Option<RSset>, filter_common: bool },
+    Union { mask: Option<RSset>, filter_common: bool },
+    Difference { mask: Option<RSset>, filter_common: bool },
+    EntitiesDeleted { mask: Option<RSset>, filter_common: bool },
+    EntitiesAdded { mask: Option<RSset>, filter_common: bool },
 }
 
 pub struct EdgeDisplay {
-    pub base: Vec<EdgeDisplayBase>
+    pub base: Vec<EdgeDisplayBase>,
 }
 
 type GraphMapEdgesFnTy<'a> =
     dyn Fn(petgraph::prelude::EdgeIndex, &'a RSlabel) -> String + 'a;
 
+#[derive(Default, Clone)]
+struct CommonEntities {
+    common_products: RSset,
+    common_entities: RSset,
+    common_context: RSset,
+    common_union: RSset,
+    common_difference: RSset,
+    common_entities_deleted: RSset,
+    common_entities_added: RSset,
+}
 
 fn match_edge_display<'a>(
     base: &'a EdgeDisplayBase,
-    translator: Rc<translator::Translator>
+    translator: Rc<translator::Translator>,
+    common: CommonEntities
 ) -> Box<GraphMapEdgesFnTy<'a>> {
     use EdgeDisplayBase::*;
     use super::format_helpers::graph_map_edges_ty_from::*;
@@ -198,65 +266,144 @@ fn match_edge_display<'a>(
 	Hide => {
 	    format_hide(translator)
 	},
-	Products => {
-	    format_products(translator)
+	Products { mask, filter_common } => {
+	    if *filter_common {
+		format_products(translator, mask.clone(),
+				Some(common.common_products))
+	    } else {
+		format_products(translator, mask.clone(), None)
+	    }
 	},
-	MaskProducts { mask } => {
-	    format_mask_products(translator, mask.clone())
+	Entities { mask, filter_common } => {
+	    if *filter_common {
+		format_entities(translator, mask.clone(),
+				Some(common.common_entities))
+	    } else {
+		format_entities(translator, mask.clone(), None)
+	    }
 	},
-	Entities => {
-	    format_entities(translator)
+	Context { mask, filter_common } => {
+	    if *filter_common {
+		format_context(translator, mask.clone(),
+			       Some(common.common_context))
+	    } else {
+		format_context(translator, mask.clone(), None)
+	    }
 	},
-	MaskEntities { mask } => {
-	    format_mask_entities(translator, mask.clone())
+	Union { mask, filter_common } => {
+	    if *filter_common {
+		format_union(translator, mask.clone(),
+			     Some(common.common_union))
+	    } else {
+		format_union(translator, mask.clone(), None)
+	    }
 	},
-	Context => {
-	    format_context(translator)
+	Difference { mask, filter_common } => {
+	    if *filter_common {
+		format_difference(translator, mask.clone(),
+				  Some(common.common_difference))
+	    } else {
+		format_difference(translator, mask.clone(), None)
+	    }
 	},
-	MaskContext { mask } => {
-	    format_mask_context(translator, mask.clone())
+	EntitiesDeleted { mask, filter_common } => {
+	    if *filter_common {
+		format_entities_deleted(translator, mask.clone(),
+					Some(common.common_entities_deleted))
+	    } else {
+		format_entities_deleted(translator, mask.clone(), None)
+	    }
 	},
-	Union => {
-	    format_union(translator)
-	},
-	MaskUnion { mask } => {
-	    format_mask_union(translator, mask.clone())
-	},
-	Difference => {
-	    format_difference(translator)
-	},
-	MaskDifference { mask } => {
-	    format_mask_difference(translator, mask.clone())
-	},
-	EntitiesDeleted => {
-	    format_entities_deleted(translator)
-	},
-	MaskEntitiesDeleted { mask } => {
-	    format_mask_entities_deleted(translator, mask.clone())
-	},
-	EntitiesAdded => {
-	    format_entities_added(translator)
-	},
-	MaskEntitiesAdded { mask } => {
-	    format_mask_entities_added(translator, mask.clone())
+	EntitiesAdded { mask, filter_common } => {
+	    if *filter_common {
+		format_entities_added(translator, mask.clone(),
+				      Some(common.common_entities_added))
+	    } else {
+		format_entities_added(translator, mask.clone(), None)
+	    }
 	},
     }
 }
 
+macro_rules! common_entity {
+    ($name:ident, $match:pat, $filter_common:ident) => {
+	fn $name(&self) -> bool {
+	    self.base.iter().any(
+		|b|
+		if let $match = b {
+		    *$filter_common
+		} else {
+		    false
+		}
+	    )
+	}
+    };
+}
+
 
 impl EdgeDisplay {
+    common_entity!(common_products,
+		   EdgeDisplayBase::Products {mask: _, filter_common},
+		   filter_common);
+    common_entity!(common_entities,
+		   EdgeDisplayBase::Entities {mask: _, filter_common},
+		   filter_common);
+    common_entity!(common_context,
+		   EdgeDisplayBase::Context {mask: _, filter_common},
+		   filter_common);
+    common_entity!(common_union,
+		   EdgeDisplayBase::Union {mask: _, filter_common},
+		   filter_common);
+    common_entity!(common_difference,
+		   EdgeDisplayBase::Difference {mask: _, filter_common},
+		   filter_common);
+    common_entity!(common_entities_deleted,
+		   EdgeDisplayBase::EntitiesDeleted {mask: _, filter_common},
+		   filter_common);
+    common_entity!(common_entities_added,
+		   EdgeDisplayBase::EntitiesAdded {mask: _, filter_common},
+		   filter_common);
+
+
     pub fn generate<'a>(
 	self,
 	translator: Rc<translator::Translator>,
-	_current_graph: &RSgraph
+	current_graph: &RSgraph
     ) -> Box<GraphMapEdgesFnTy<'a>> {
+	// create the structure for common entities if required
+	let common = {
+	    let mut tmp = CommonEntities::default();
+	    if self.common_products() {
+		tmp.common_products = common_label_products(current_graph);
+	    }
+	    if self.common_entities() {
+		tmp.common_entities = common_label_entities(current_graph);
+	    }
+	    if self.common_context() {
+		tmp.common_context = common_label_context(current_graph);
+	    }
+	    if self.common_union() {
+		tmp.common_union = common_label_union(current_graph);
+	    }
+	    if self.common_difference() {
+		tmp.common_difference = common_label_difference(current_graph);
+	    }
+	    if self.common_entities_deleted() {
+		tmp.common_entities_deleted = common_label_entities_deleted(current_graph);
+	    }
+	    if self.common_entities_added() {
+		tmp.common_entities_added = common_label_entities_added(current_graph);
+	    }
+	    tmp
+	};
+
 	Box::new(
 	    move |i, n| {
 		let mut accumulator = String::new();
 		for b in &self.base {
 		    let f = match_edge_display(b,
-					       Rc::clone(&translator));
-
+					       Rc::clone(&translator),
+					       common.clone());
 		    accumulator.push_str(&(f)(i, n));
 		}
 		accumulator
