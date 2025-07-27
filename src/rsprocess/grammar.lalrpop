@@ -266,11 +266,11 @@ LiteralSeparatorNode: graph::NodeDisplayBase = {
 };
 
 /// Match for strings between edge formatters
-LiteralSeparatorEdge: presets::EdgeDisplay = {
+LiteralSeparatorEdge: graph::EdgeDisplayBase = {
     PATH =>
-	presets::EdgeDisplay::Separator(
-	    <>.trim_end_matches("\"").trim_start_matches("\"").to_string()
-	)
+	graph::EdgeDisplayBase::String {
+	    string: <>.trim_end_matches("\"").trim_start_matches("\"").to_string()
+	}
 };
 
 NodeDisplayBase: graph::NodeDisplayBase = {
@@ -317,80 +317,50 @@ SeparatorNode: graph::NodeDisplay = {
 	}
 }
 
-EdgeDisplay: presets::EdgeDisplay = {
+EdgeDisplay: graph::EdgeDisplayBase = {
     "Hide" =>
-	presets::EdgeDisplay::Display(
-	    graph::GraphMapEdges::Hide
-	),
+	graph::EdgeDisplayBase::Hide,
     "Products" =>
-	presets::EdgeDisplay::Display(
-	    graph::GraphMapEdges::Products
-	),
+	graph::EdgeDisplayBase::Products,
     "MaskProducts" <mask: Set> =>
-	presets::EdgeDisplay::Display(
-	    graph::GraphMapEdges::MaskEntities{ mask }
-	),
+	graph::EdgeDisplayBase::MaskEntities{ mask },
     "Entities" =>
-	presets::EdgeDisplay::Display(
-	    graph::GraphMapEdges::Entities
-	),
+	graph::EdgeDisplayBase::Entities,
     "MaskEntities" <mask: Set> =>
-	presets::EdgeDisplay::Display(
-	    graph::GraphMapEdges::MaskEntities{ mask }
-	),
+	graph::EdgeDisplayBase::MaskEntities{ mask },
     "Context" =>
-	presets::EdgeDisplay::Display(
-	    graph::GraphMapEdges::Context
-	),
+	graph::EdgeDisplayBase::Context,
     "MaskContext" <mask: Set> =>
-	presets::EdgeDisplay::Display(
-	    graph::GraphMapEdges::MaskContext{ mask }
-	),
+	graph::EdgeDisplayBase::MaskContext{ mask },
     "Union" =>
-	presets::EdgeDisplay::Display(
-	    graph::GraphMapEdges::Union
-	),
+	graph::EdgeDisplayBase::Union,
     "MaskUnion" <mask: Set> =>
-	presets::EdgeDisplay::Display(
-	    graph::GraphMapEdges::MaskUnion{ mask }
-	),
+	graph::EdgeDisplayBase::MaskUnion{ mask },
     "Difference" =>
-	presets::EdgeDisplay::Display(
-	    graph::GraphMapEdges::Difference
-	),
+	graph::EdgeDisplayBase::Difference,
     "MaskDifference" <mask: Set> =>
-	presets::EdgeDisplay::Display(
-	    graph::GraphMapEdges::MaskDifference{ mask }
-	),
+	graph::EdgeDisplayBase::MaskDifference{ mask },
     "EntitiesDeleted" =>
-	presets::EdgeDisplay::Display(
-	    graph::GraphMapEdges::EntitiesDeleted
-	),
+	graph::EdgeDisplayBase::EntitiesDeleted,
     "MaskEntitiesDeleted" <mask: Set> =>
-	presets::EdgeDisplay::Display(
-	    graph::GraphMapEdges::MaskEntitiesDeleted{ mask }
-	),
+	graph::EdgeDisplayBase::MaskEntitiesDeleted{ mask },
     "EntitiesAdded" =>
-	presets::EdgeDisplay::Display(
-	    graph::GraphMapEdges::EntitiesAdded
-	),
+	graph::EdgeDisplayBase::EntitiesAdded,
     "MaskEntitiesAdded" <mask: Set> =>
-	presets::EdgeDisplay::Display(
-	    graph::GraphMapEdges::MaskEntitiesAdded{ mask }
-	),
+	graph::EdgeDisplayBase::MaskEntitiesAdded{ mask },
 }
 
 /// Edge display formatters separated by arbitrary strings in quotes
-SeparatorEdge: Vec<presets::EdgeDisplay> = {
-    <v: EdgeDisplay> => vec![v],
+SeparatorEdge: graph::EdgeDisplay = {
+    <v: EdgeDisplay> => graph::EdgeDisplay{ base: vec![v] },
     <v:(<EdgeDisplay> <LiteralSeparatorEdge>)+> <e: EdgeDisplay?> =>
 	match e {
-	    None => v.iter().fold(vec![],
-				  |mut acc, (a, b)| {
-				      acc.push(a.clone());
-				      acc.push(b.clone());
-				      acc.clone()
-				  }),
+	    None => graph::EdgeDisplay{ base: v.iter().fold(vec![],
+					      |mut acc, (a, b)| {
+						  acc.push(a.clone());
+						  acc.push(b.clone());
+						  acc.clone()
+					      }) },
 	    Some(e) => {
 		let mut v = v.iter().fold(vec![],
 					  |mut acc, (a, b)| {
@@ -399,7 +369,7 @@ SeparatorEdge: Vec<presets::EdgeDisplay> = {
 					      acc.clone()
 					  });
 		v.push(e);
-		v
+		graph::EdgeDisplay{ base: v }
 	    }
 	}
 }

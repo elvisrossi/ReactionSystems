@@ -13,7 +13,6 @@ use lalrpop_util::ParseError;
 // the code
 use crate::grammar;
 
-use super::structure::RSlabel;
 use super::structure::{RSset, RSsystem};
 use super::translator::Translator;
 use super::*;
@@ -58,25 +57,18 @@ impl Default for SaveOptions {
     }
 }
 
-// Describes display options for edges (RSlabels).
-#[derive(Clone)]
-pub enum EdgeDisplay {
-    Separator(String),
-    Display(graph::GraphMapEdges),
-}
-
 // Describes output options for a graph.
 pub enum GraphSaveOptions {
     Dot {
         node_display: graph::NodeDisplay,
-        edge_display: Vec<EdgeDisplay>,
+        edge_display: graph::EdgeDisplay,
 	node_color: graph::NodeColor,
 	edge_color: graph::EdgeColor,
         so: SaveOptions,
     },
     GraphML {
         node_display: graph::NodeDisplay,
-        edge_display: Vec<EdgeDisplay>,
+        edge_display: graph::EdgeDisplay,
         so: SaveOptions,
     },
     Serialize {
@@ -554,41 +546,41 @@ pub fn bisimilar(
 //                              Output Functions
 // -----------------------------------------------------------------------------
 
-type GraphMapEdgesFnTy<'a> =
-    dyn Fn(petgraph::prelude::EdgeIndex, &'a RSlabel) -> String + 'a;
-fn generate_edge_printing_fn<'a>(
-    edge_display: &[EdgeDisplay],
-    translator: Rc<Translator>,
-) -> Box<GraphMapEdgesFnTy<'a>> {
-    // The type cannot be aliased since rust doesnt like generics.
-    // We are iterating over the edge_display and constructing a function
-    // (accumulator) that prints out our formatted nodes. So at each step we
-    // call the previous function and add the next string or function.
-    let edge_display = edge_display.iter().map(
-	|e| {
-	    match e {
-		EdgeDisplay::Display(d) => {
-		    d.clone()
-		},
-		EdgeDisplay::Separator(s) => {
-		    graph::GraphMapEdges::String { string: s.clone() }
-		}
-	    }
-	}
-    ).collect::<Vec<_>>();
+// type GraphMapEdgesFnTy<'a> =
+//     dyn Fn(petgraph::prelude::EdgeIndex, &'a RSlabel) -> String + 'a;
+// fn generate_edge_printing_fn<'a>(
+//     edge_display: graph::EdgeDisplay,
+//     translator: Rc<Translator>,
+// ) -> Box<GraphMapEdgesFnTy<'a>> {
+//     // The type cannot be aliased since rust doesnt like generics.
+//     // We are iterating over the edge_display and constructing a function
+//     // (accumulator) that prints out our formatted nodes. So at each step we
+//     // call the previous function and add the next string or function.
+//     let edge_display = edge_display.iter().map(
+// 	|e| {
+// 	    match e {
+// 		EdgeDisplay::Display(d) => {
+// 		    d.clone()
+// 		},
+// 		EdgeDisplay::Separator(s) => {
+// 		    graph::EdgeDisplayBase::String { string: s.clone() }
+// 		}
+// 	    }
+// 	}
+//     ).collect::<Vec<_>>();
 
-    let gmet = graph::GraphMapEdgesTy::from(
-	(edge_display, Rc::clone(&translator))
-    );
+//     let gmet = graph::GraphMapEdgesTy::from(
+// 	(edge_display, Rc::clone(&translator))
+//     );
 
-    gmet.generate()
-}
+//     gmet.generate()
+// }
 
 /// Writes the specified graph to a file in .dot format.
 pub fn dot(
     system: &EvaluatedSystem,
     node_display: graph::NodeDisplay,
-    edge_display: Vec<EdgeDisplay>,
+    edge_display: graph::EdgeDisplay,
     node_color: graph::NodeColor,
     edge_color: graph::EdgeColor
 ) -> Result<String, String> {
@@ -601,8 +593,7 @@ pub fn dot(
             let rc_translator = Rc::new(translator.clone());
             let modified_graph = graph.map(
                 node_display.generate(Rc::clone(&rc_translator), graph),
-                generate_edge_printing_fn(&edge_display,
-					   Rc::clone(&rc_translator)),
+                edge_display.generate(Rc::clone(&rc_translator), graph),
             );
 
             let graph = Rc::new(graph.to_owned());
@@ -629,7 +620,7 @@ pub fn dot(
 pub fn graphml(
     system: &EvaluatedSystem,
     node_display: graph::NodeDisplay,
-    edge_display: Vec<EdgeDisplay>,
+    edge_display: graph::EdgeDisplay,
 ) -> Result<String, String> {
     match system {
         EvaluatedSystem::System {
@@ -643,8 +634,8 @@ pub fn graphml(
             let modified_graph = graph.map(
                 node_display.generate(Rc::clone(&rc_translator),
 				      graph),
-                generate_edge_printing_fn(&edge_display,
-					   rc_translator),
+                edge_display.generate(rc_translator,
+				      graph),
             );
 
             use petgraph_graphml::GraphMl;

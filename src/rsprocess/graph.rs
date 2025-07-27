@@ -157,7 +157,7 @@ impl NodeDisplay {
 
 /// Helper structure that specifies what information to display for edges
 #[derive(Clone)]
-pub enum GraphMapEdges {
+pub enum EdgeDisplayBase {
     String { string: String },
     Hide,
     Products,
@@ -176,135 +176,92 @@ pub enum GraphMapEdges {
     MaskEntitiesAdded { mask: RSset },
 }
 
+pub struct EdgeDisplay {
+    pub base: Vec<EdgeDisplayBase>
+}
+
 type GraphMapEdgesFnTy<'a> =
     dyn Fn(petgraph::prelude::EdgeIndex, &'a RSlabel) -> String + 'a;
-/// Helper structure that holds a formatting function from node as RSsystem to
-/// string
-pub struct GraphMapEdgesTy<'a> {
-    functions: Vec<Box<GraphMapEdgesFnTy<'a>>>,
+
+
+fn match_edge_display<'a>(
+    base: &'a EdgeDisplayBase,
     translator: Rc<translator::Translator>
-}
+) -> Box<GraphMapEdgesFnTy<'a>> {
+    use EdgeDisplayBase::*;
+    use super::format_helpers::graph_map_edges_ty_from::*;
 
-impl<'a, const N: usize> From<([GraphMapEdges; N], Rc<translator::Translator>)>
-    for GraphMapEdgesTy<'a>
-{
-    fn from(value: ([GraphMapEdges; N], Rc<translator::Translator>)) -> Self {
-	Self::from((value.0.to_vec(), value.1))
+    match base {
+	String { string } => {
+	    format_string(translator, string.clone())
+	}
+	Hide => {
+	    format_hide(translator)
+	},
+	Products => {
+	    format_products(translator)
+	},
+	MaskProducts { mask } => {
+	    format_mask_products(translator, mask.clone())
+	},
+	Entities => {
+	    format_entities(translator)
+	},
+	MaskEntities { mask } => {
+	    format_mask_entities(translator, mask.clone())
+	},
+	Context => {
+	    format_context(translator)
+	},
+	MaskContext { mask } => {
+	    format_mask_context(translator, mask.clone())
+	},
+	Union => {
+	    format_union(translator)
+	},
+	MaskUnion { mask } => {
+	    format_mask_union(translator, mask.clone())
+	},
+	Difference => {
+	    format_difference(translator)
+	},
+	MaskDifference { mask } => {
+	    format_mask_difference(translator, mask.clone())
+	},
+	EntitiesDeleted => {
+	    format_entities_deleted(translator)
+	},
+	MaskEntitiesDeleted { mask } => {
+	    format_mask_entities_deleted(translator, mask.clone())
+	},
+	EntitiesAdded => {
+	    format_entities_added(translator)
+	},
+	MaskEntitiesAdded { mask } => {
+	    format_mask_entities_added(translator, mask.clone())
+	},
     }
 }
 
-impl<'a> From<(&[GraphMapEdges], Rc<translator::Translator>)>
-    for GraphMapEdgesTy<'a>
-{
-    fn from(value: (&[GraphMapEdges], Rc<translator::Translator>)) -> Self {
-	Self::from((value.0.to_vec(), value.1))
-    }
-}
 
-impl<'a> From<(Vec<GraphMapEdges>, Rc<translator::Translator>)>
-    for GraphMapEdgesTy<'a>
-{
-    fn from(value: (Vec<GraphMapEdges>, Rc<translator::Translator>)) -> Self {
-	use GraphMapEdges::*;
-	use super::format_helpers::graph_map_edges_ty_from::*;
+impl EdgeDisplay {
+    pub fn generate<'a>(
+	self,
+	translator: Rc<translator::Translator>,
+	_current_graph: &RSgraph
+    ) -> Box<GraphMapEdgesFnTy<'a>> {
+	Box::new(
+	    move |i, n| {
+		let mut accumulator = String::new();
+		for b in &self.base {
+		    let f = match_edge_display(b,
+					       Rc::clone(&translator));
 
-	let mut new = GraphMapEdgesTy {functions: vec![], translator: value.1};
-
-	for f in value.0 {
-	    match f {
-		String { string } => {
-		    new.functions.push(format_string(
-			Rc::clone(&new.translator), string))
+		    accumulator.push_str(&(f)(i, n));
 		}
-		Hide => {
-		    new.functions.push(format_hide(
-			Rc::clone(&new.translator)
-		    ))
-		},
-		Products => {
-		    new.functions.push(format_products(
-			Rc::clone(&new.translator)
-		    ))
-		},
-		MaskProducts { mask } => {
-		    new.functions.push(format_mask_products(
-			Rc::clone(&new.translator), mask))
-		},
-		Entities => {
-		    new.functions.push(format_entities(
-			Rc::clone(&new.translator)
-		    ))
-		},
-		MaskEntities { mask } => {
-		    new.functions.push(format_mask_entities(
-			Rc::clone(&new.translator), mask))
-		},
-		Context => {
-		    new.functions.push(format_context(
-			Rc::clone(&new.translator)
-		    ))
-		},
-		MaskContext { mask } => {
-		    new.functions.push(format_mask_context(
-			Rc::clone(&new.translator), mask))
-		},
-		Union => {
-		    new.functions.push(format_union(
-			Rc::clone(&new.translator)
-		    ))
-		},
-		MaskUnion { mask } => {
-		    new.functions.push(format_mask_union(
-			Rc::clone(&new.translator), mask))
-		},
-		Difference => {
-		    new.functions.push(format_difference(
-			Rc::clone(&new.translator)
-		    ))
-		},
-		MaskDifference { mask } => {
-		    new.functions.push(format_mask_difference(
-			Rc::clone(&new.translator), mask))
-		},
-		EntitiesDeleted => {
-		    new.functions.push(format_entities_deleted(
-			Rc::clone(&new.translator)
-		    ))
-		},
-		MaskEntitiesDeleted { mask } => {
-		    new.functions.push(format_mask_entities_deleted(
-			Rc::clone(&new.translator), mask))
-		},
-		EntitiesAdded => {
-		    new.functions.push(format_entities_added(
-			Rc::clone(&new.translator)
-		    ))
-		},
-		MaskEntitiesAdded { mask } => {
-		    new.functions.push(format_mask_entities_added(
-			Rc::clone(&new.translator), mask))
-		},
-	    };
-	}
-
-	new
-    }
-}
-
-impl<'a> GraphMapEdgesTy<'a> {
-    pub fn generate(self) -> Box<GraphMapEdgesFnTy<'a>> {
-	let mut accumulator: Box<GraphMapEdgesFnTy<'a>> =
-	    super::format_helpers::graph_map_edges_ty_from::format_hide(
-		Rc::clone(&self.translator)
-	    );
-	for f in self.functions {
-	    accumulator = Box::new(move |i, n| {
-		(accumulator)(i, n)
-		    + &f(i, n)
-	    })
-	}
-
-	accumulator
+		accumulator
+	    }
+	)
     }
 }
 
