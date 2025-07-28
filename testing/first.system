@@ -4,4 +4,9 @@ Context: [({a,b}.{a}.{a,c}.x + {a,b}.{a}.{a}.nill)]
 Reactions: ([{a,b}, {c}, {b}])
 
 
-Bisimilarity ("testing/first.system") > Print
+Bisimilarity ("testing/adversarial.system") > Print,
+Digraph > Dot
+        | Entities
+	| Entities
+	| ! "white"
+	| ! "black" > Print

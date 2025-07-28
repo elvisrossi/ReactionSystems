@@ -4,8 +4,8 @@ use std::collections::{BTreeSet, HashMap, HashSet};
 use std::rc::Rc;
 
 use petgraph::visit::{ EdgeCount, EdgeRef, GraphBase, IntoEdgeReferences,
-		       IntoEdges, IntoNeighborsDirected, IntoNodeReferences,
-		       NodeCount };
+		       IntoEdges, IntoNeighborsDirected, IntoNodeIdentifiers,
+		       IntoNodeReferences, NodeCount };
 use petgraph::Direction::{Incoming, Outgoing};
 
 // -----------------------------------------------------------------------------
@@ -104,21 +104,21 @@ where
 {
     fn reachable_blocks(
 	&self,
-	label: &G::EdgeRef,
+	label: &G::EdgeWeight,
 	s: &(usize, G::NodeId)
     ) -> Vec<u32>
-    where <G as IntoEdgeReferences>::EdgeRef: PartialEq
+    where G::EdgeWeight: PartialEq
     {
 	let mut val = vec![];
-	for el in self.graphs[s.0].edges(s.1).filter(|x| x == label) {
+	for el in self.graphs[s.0].edges(s.1).filter(|x| x.weight() == label) {
 	    let tmp = (s.0, el.target());
 	    val.push(*self.node_to_block.get(&tmp).unwrap());
 	}
 	val
     }
 
-    pub fn split(&mut self, block: u32, label: &G::EdgeRef) -> bool
-    where <G as IntoEdgeReferences>::EdgeRef: PartialEq
+    pub fn split(&mut self, block: u32, label: &G::EdgeWeight) -> bool
+    where G::EdgeWeight: PartialEq
     {
 	let Some(nodes) = self.block_to_node.get(&block)
 	else {
@@ -170,7 +170,7 @@ pub fn bisimilarity_kanellakis_smolka<'a, G>(
 where
     G: IntoNodeReferences + IntoEdges,
     G::NodeId: std::cmp::Eq + std::hash::Hash,
-    G::EdgeRef: PartialEq
+    G::EdgeWeight: std::cmp::Eq + std::hash::Hash + Clone
 {
     let graphs = [graph_a, graph_b];
 
@@ -185,7 +185,8 @@ where
     let labels =
 	graph_a.edge_references()
 	.chain(graph_b.edge_references())
-	.collect::<Vec<_>>();
+	.map(|e| e.weight().clone())
+	.collect::<HashSet<_>>();
 
     let mut changed = true;
 
@@ -202,6 +203,199 @@ where
     }
 
     partition.bisimilar()
+}
+
+
+#[test]
+fn identity_kanellakis_smolka() {
+    use petgraph::Graph;
+    let mut graph_a = Graph::new();
+
+    let node_a_1 = graph_a.add_node(1);
+    let node_a_2 = graph_a.add_node(2);
+    graph_a.add_edge(node_a_1, node_a_2, 1);
+
+    assert!(bisimilarity_kanellakis_smolka(&&graph_a, &&graph_a))
+}
+
+#[test]
+fn identity_kanellakis_smolka_2() {
+    use petgraph::Graph;
+    let mut graph_a = Graph::new();
+
+    let node_a_1 = graph_a.add_node(1);
+    let node_a_2 = graph_a.add_node(2);
+    graph_a.add_edge(node_a_1, node_a_2, 1);
+    let node_a_3 = graph_a.add_node(3);
+    graph_a.add_edge(node_a_1, node_a_3, 1);
+    let node_a_6 = graph_a.add_node(6);
+    graph_a.add_edge(node_a_2, node_a_6, 2);
+    let node_a_4 = graph_a.add_node(4);
+    graph_a.add_edge(node_a_3, node_a_4, 2);
+    let node_a_7 = graph_a.add_node(7);
+    graph_a.add_edge(node_a_6, node_a_7, 2);
+    let node_a_5 = graph_a.add_node(5);
+    graph_a.add_edge(node_a_4, node_a_5, 2);
+    let node_a_8 = graph_a.add_node(8);
+    graph_a.add_edge(node_a_7, node_a_8, 3);
+    graph_a.add_edge(node_a_8, node_a_7, 3);
+    graph_a.add_edge(node_a_8, node_a_8, 3);
+
+    assert!(bisimilarity_kanellakis_smolka(&&graph_a, &&graph_a))
+}
+
+#[test]
+fn identity_different_weights_kanellakis_smolka() {
+    use petgraph::Graph;
+    let mut graph_a = Graph::new();
+
+    let node_a_1 = graph_a.add_node(1);
+    let node_a_2 = graph_a.add_node(2);
+    graph_a.add_edge(node_a_1, node_a_2, 1);
+
+    let mut graph_b = Graph::new();
+
+    let node_b_1 = graph_b.add_node(1);
+    let node_b_2 = graph_b.add_node(2);
+    graph_b.add_edge(node_b_1, node_b_2, 2);
+
+    assert!(!bisimilarity_kanellakis_smolka(&&graph_a, &&graph_b))
+}
+
+#[test]
+fn not_bisimilar_kanellakis_smolka() {
+    use petgraph::Graph;
+    let mut graph_a = Graph::new();
+
+    let node_a_1 = graph_a.add_node(1);
+    let node_a_2 = graph_a.add_node(2);
+    graph_a.add_edge(node_a_1, node_a_2, 1);
+
+    let mut graph_b = Graph::new();
+
+    let node_b_1 = graph_b.add_node(1);
+    let node_b_2 = graph_b.add_node(2);
+    graph_b.add_edge(node_b_1, node_b_2, 1);
+    let node_b_3 = graph_b.add_node(3);
+    graph_b.add_edge(node_b_1, node_b_3, 2);
+
+    assert!(!bisimilarity_kanellakis_smolka(&&graph_a, &&graph_b))
+}
+
+#[test]
+fn not_bisimilar_kanellakis_smolka_2() {
+    use petgraph::Graph;
+    let mut graph_a = Graph::new();
+
+    let node_a_1 = graph_a.add_node(1);
+    let node_a_2 = graph_a.add_node(2);
+    graph_a.add_edge(node_a_1, node_a_2, 1);
+    let node_a_3 = graph_a.add_node(3);
+    graph_a.add_edge(node_a_1, node_a_3, 1);
+    let node_a_6 = graph_a.add_node(6);
+    graph_a.add_edge(node_a_2, node_a_6, 2);
+    let node_a_4 = graph_a.add_node(4);
+    graph_a.add_edge(node_a_3, node_a_4, 2);
+    let node_a_7 = graph_a.add_node(7);
+    graph_a.add_edge(node_a_6, node_a_7, 2);
+    let node_a_5 = graph_a.add_node(5);
+    graph_a.add_edge(node_a_4, node_a_5, 2);
+    let node_a_8 = graph_a.add_node(8);
+    graph_a.add_edge(node_a_7, node_a_8, 3);
+    graph_a.add_edge(node_a_8, node_a_7, 3);
+    graph_a.add_edge(node_a_8, node_a_8, 3);
+
+    let mut graph_b = Graph::new();
+
+    let node_b_1 = graph_b.add_node(1);
+    let node_b_2 = graph_b.add_node(2);
+    graph_b.add_edge(node_b_1, node_b_2, 1);
+    let node_b_3 = graph_b.add_node(3);
+    graph_b.add_edge(node_b_2, node_b_3, 2);
+    let node_b_4 = graph_b.add_node(4);
+    graph_b.add_edge(node_b_3, node_b_4, 2);
+
+    assert!(!bisimilarity_kanellakis_smolka(&&graph_a, &&graph_b))
+}
+
+#[test]
+fn not_bisimilar_kanellakis_smolka_3() {
+    use petgraph::Graph;
+    let mut graph_b = Graph::new();
+
+    let node_b_1 = graph_b.add_node(1);
+    let node_b_2 = graph_b.add_node(2);
+    graph_b.add_edge(node_b_1, node_b_2, 1);
+    let node_b_3 = graph_b.add_node(3);
+    graph_b.add_edge(node_b_2, node_b_3, 2);
+    let node_b_4 = graph_b.add_node(4);
+    graph_b.add_edge(node_b_3, node_b_4, 2);
+
+    let mut graph_c = Graph::new();
+
+    let node_c_1 = graph_c.add_node(1);
+    let node_c_2 = graph_c.add_node(2);
+    graph_c.add_edge(node_c_1, node_c_2, 1);
+    let node_c_3 = graph_c.add_node(3);
+    graph_c.add_edge(node_c_1, node_c_3, 2);
+    graph_c.add_edge(node_c_2, node_c_3, 2);
+
+    assert!(!bisimilarity_kanellakis_smolka(&&graph_b, &&graph_c))
+}
+
+#[test]
+fn bisimilar_kanellakis_smolka() {
+    use petgraph::Graph;
+    let mut graph_b = Graph::new();
+
+    let node_b_1 = graph_b.add_node(1);
+    let node_b_2 = graph_b.add_node(2);
+    graph_b.add_edge(node_b_1, node_b_2, 1);
+    let node_b_3 = graph_b.add_node(3);
+    graph_b.add_edge(node_b_2, node_b_3, 2);
+    let node_b_4 = graph_b.add_node(4);
+    graph_b.add_edge(node_b_3, node_b_4, 2);
+
+    let mut graph_c = Graph::new();
+
+    let node_c_1 = graph_c.add_node(1);
+    let node_c_2 = graph_c.add_node(2);
+    graph_c.add_edge(node_c_1, node_c_2, 1);
+    let node_c_3 = graph_c.add_node(3);
+    graph_c.add_edge(node_c_2, node_c_3, 2);
+    let node_c_4 = graph_c.add_node(4);
+    graph_c.add_edge(node_c_3, node_c_4, 2);
+    let node_c_5 = graph_c.add_node(5);
+    graph_c.add_edge(node_c_1, node_c_5, 1);
+    let node_c_6 = graph_c.add_node(6);
+    graph_c.add_edge(node_c_5, node_c_6, 2);
+    let node_c_7 = graph_c.add_node(7);
+    graph_c.add_edge(node_c_6, node_c_7, 2);
+
+    assert!(bisimilarity_kanellakis_smolka(&&graph_b, &&graph_c))
+}
+
+#[test]
+fn bisimilar_kanellakis_smolka_2() {
+    use petgraph::Graph;
+    let mut graph_a = Graph::new();
+
+    let node_a_1 = graph_a.add_node(1);
+    let node_a_2 = graph_a.add_node(2);
+    graph_a.add_edge(node_a_1, node_a_2, 1);
+    let node_a_3 = graph_a.add_node(3);
+    graph_a.add_edge(node_a_1, node_a_3, 1);
+    graph_a.add_edge(node_a_2, node_a_3, 2);
+    graph_a.add_edge(node_a_3, node_a_3, 2);
+
+    let mut graph_b = Graph::new();
+
+    let node_b_1 = graph_b.add_node(1);
+    let node_b_2 = graph_b.add_node(2);
+    graph_b.add_edge(node_b_1, node_b_2, 1);
+    graph_b.add_edge(node_b_2, node_b_2, 2);
+
+    assert!(bisimilarity_kanellakis_smolka(&&graph_a, &&graph_b))
 }
 
 // -----------------------------------------------------------------------------
@@ -283,9 +477,7 @@ impl<const N: usize> Default for NodeState<N> {
 impl<const N: usize, T> NextId<(T, GraphIdType), NodeType> for NodeState<N> {
     fn next_id_of_graph(&mut self, val: (T, GraphIdType)) -> NodeType {
 	let graph_id_usize = val.1 as usize;
-	if graph_id_usize >= N {
-	    panic!()
-	}
+	assert!(graph_id_usize < N);
 	self.last_ids[graph_id_usize] += 1;
 	(val.1, self.last_ids[graph_id_usize])
     }
@@ -464,7 +656,7 @@ where
 	]);
 
     let node_to_block = {
-	let mut tmp = HashMap::new();
+	let mut node_to_block = HashMap::new();
 
 	(*non_leaf_node_block_pointer)
 	    .borrow()
@@ -473,7 +665,9 @@ where
 	    .copied()
 	    .for_each(
 		|value|
-		{ tmp.insert(value, Rc::clone(&non_leaf_node_block_pointer)); }
+		{ node_to_block.insert(value,
+				       Rc::clone(&non_leaf_node_block_pointer));
+		}
 	    );
 
 	(*leaf_node_block_pointer)
@@ -483,9 +677,11 @@ where
 	    .copied()
 	    .for_each(
 		|value|
-		{ tmp.insert(value, Rc::clone(&leaf_node_block_pointer)); }
+		{ node_to_block.insert(value,
+				       Rc::clone(&leaf_node_block_pointer));
+		}
 	    );
-	tmp
+	node_to_block
     };
 
     (
@@ -748,6 +944,180 @@ where
     ), converter)
 }
 
+/// Creates a new graph with nodes as signifiers instead of different weights on
+/// the edges.
+fn create_modified_graph<G>(
+    graph: &G,
+    converter_edges: &MyEdgeTranslator<G::EdgeWeight>
+) -> (petgraph::Graph<u32, u32>, HashSet<u32>)
+where
+    G: NodeCount + EdgeCount + IntoEdgeReferences + IntoNodeIdentifiers,
+    G::NodeId: std::cmp::Eq + std::hash::Hash,
+    G::EdgeWeight: std::cmp::Eq + std::hash::Hash + Clone
+{
+    let mut new_graph_a: petgraph::Graph<_, u32> =
+	petgraph::Graph::with_capacity(graph.node_count()*4,
+				       graph.edge_count()*4);
+    let mut association_weight_id = HashMap::new();
+    let mut original_nodes = HashSet::new();
+    let mut last_id = 0;
+
+    for edge in graph.edge_references() {
+	let source_id =
+	    match association_weight_id.get(&edge.source()) {
+		Some(id) => *id,
+		None => {
+		    let id = new_graph_a.add_node(last_id);
+		    original_nodes.insert(last_id);
+		    last_id += 1;
+		    association_weight_id.insert(edge.source(), id);
+		    id
+		}
+	    };
+	let target_id =
+	    match association_weight_id.get(&edge.target()) {
+		Some(id) => *id,
+		None => {
+		    let id = new_graph_a.add_node(last_id);
+		    original_nodes.insert(last_id);
+		    last_id += 1;
+		    association_weight_id.insert(edge.target(), id);
+		    id
+		}
+	    };
+	let weight = *converter_edges.get(edge.weight()).unwrap();
+
+	let middle_node_id = new_graph_a.add_node(0);
+
+	new_graph_a.add_edge(source_id, middle_node_id, weight);
+	new_graph_a.add_edge(middle_node_id, target_id, weight);
+
+
+	let mut previous = middle_node_id;
+	for _ in 0..weight {
+	    let path = new_graph_a.add_node(0);
+	    new_graph_a.add_edge(previous, path, weight);
+	    previous = path;
+	}
+    }
+
+    for node in graph.node_identifiers() {
+	let mut previous = *association_weight_id.get(&node).unwrap();
+	for _ in 0..converter_edges.last_id.last_ids+2 {
+	    let path = new_graph_a.add_node(0);
+	    new_graph_a.add_edge(previous, path, 0);
+	    previous = path;
+	}
+    }
+
+    (new_graph_a, original_nodes)
+}
+
+#[allow(clippy::type_complexity)]
+fn modify_graph<G>(
+    graph_a: &G,
+    graph_b: &G
+) -> ( (petgraph::Graph<u32, u32>, HashSet<u32>),
+       (petgraph::Graph<u32, u32>, HashSet<u32>), )
+where
+    G: IntoNodeReferences + IntoNeighborsDirected + NodeCount + EdgeCount,
+    G: IntoEdgeReferences,
+    G::NodeId: std::cmp::Eq + std::hash::Hash,
+    G::EdgeWeight: std::cmp::Eq + std::hash::Hash + Clone,
+{
+    let converter_edges: MyEdgeTranslator<G::EdgeWeight> = {
+	let mut converter_edges = Translator::new();
+	let mut labels: HashMap<G::EdgeWeight, u32> = HashMap::new();
+
+	for edge in graph_a.edge_references() {
+	    *labels.entry(edge.weight().clone()).or_default() += 1;
+	}
+	for edge in graph_b.edge_references() {
+	    *labels.entry(edge.weight().clone()).or_default() += 1;
+	}
+	// slight optimization: we reorder the edges such that edges with the
+	// most occurrences have smaller index
+	let mut labels: Vec<(G::EdgeWeight, u32)> =
+	    labels.into_iter().collect();
+	labels.sort_by(|a, b| b.1.cmp(&a.1));
+
+	for (label, _) in labels.into_iter() {
+	    let _ = converter_edges.encode(label);
+	}
+	converter_edges
+    };
+
+    let new_graph_a = create_modified_graph(graph_a, &converter_edges);
+    let new_graph_b = create_modified_graph(graph_b, &converter_edges);
+
+    (new_graph_a, new_graph_b)
+}
+
+
+/// check if every block contains either no original nodes or nodes from both
+/// graphs
+fn check_bisimilarity<G>(
+    val: Vec<Vec<NodeType>>,
+    converter_bisimulated_graph:
+	&MyNodeTranslator<<petgraph::Graph<u32, u32> as GraphBase>::NodeId, 2>,
+    original_nodes: [HashSet<u32>; 2]
+) -> bool
+where
+    G: IntoEdgeReferences,
+    G::EdgeWeight: std::cmp::Eq + std::hash::Hash + Clone,
+{
+    val.into_iter()
+	.all(
+	    |el| {
+		let mut keep_track = [false, false];
+		for e in el {
+		    let (_node_id, graph_id) =
+			converter_bisimulated_graph.decode(&e).unwrap();
+		    if original_nodes[*graph_id as usize].contains(&e.0) {
+			keep_track[*graph_id as usize] = true;
+		    }
+		}
+		!(keep_track[0] ^ keep_track[1])
+	    }
+	)
+}
+
+// -----------------------------------------------------------------------------
+
+pub fn bisimilarity_paige_tarjan<G>(
+    graph_a: &G,
+    graph_b: &G
+) -> bool
+where
+    G: IntoNodeReferences + IntoNeighborsDirected + NodeCount + EdgeCount,
+    G: IntoEdgeReferences,
+    G::NodeId: std::cmp::Eq + std::hash::Hash,
+    G::EdgeWeight: std::cmp::Eq + std::hash::Hash + Clone,
+{
+    if graph_a.node_count() == 0 && graph_b.node_count() == 0 {
+	return true
+    }
+    if graph_a.node_count() == 0 || graph_b.node_count() == 0 {
+	return false
+    }
+
+    let ((new_graph_a, original_nodes_a), (new_graph_b, original_nodes_b)) =
+	modify_graph(graph_a, graph_b);
+
+    let (result, _converter) =
+	match maximum_bisimulation(&[&&new_graph_a, &&new_graph_b]) {
+	    (None, _) => { return false },
+	    (Some(val), converter) => {
+		(check_bisimilarity::<G>(val,
+					 &converter,
+					 [original_nodes_a, original_nodes_b]),
+		converter)
+
+	    }
+	};
+
+    result
+}
 
 pub fn bisimilarity_paige_tarjan_ignore_labels<G>(
     graph_a: &G,
@@ -788,131 +1158,202 @@ where
 }
 
 
-/// Creates a new graph with nodes as signifiers instead of different weights on
-/// the edges.
-fn create_modified_graph<'a, G>(
-    graph: &'a G,
-    converter_edges: &'a MyEdgeTranslator<G::EdgeWeight>
-) -> petgraph::Graph<u32, u32>
-where
-    G: NodeCount + EdgeCount + IntoEdgeReferences,
-    G::NodeId: std::cmp::Eq + std::hash::Hash,
-    G::EdgeWeight: std::cmp::Eq + std::hash::Hash + Clone
-{
-    let mut new_graph_a: petgraph::Graph<_, u32> =
-	petgraph::Graph::with_capacity(graph.node_count()*20,
-				       graph.edge_count()*20);
-    let mut association_weight_id = HashMap::new();
-    let mut last_id = 0;
+#[test]
+fn identity_paige_tarjan() {
+    use petgraph::Graph;
+    let mut graph_a = Graph::new();
 
-    for edge in graph.edge_references() {
-	let source_id =
-	    match association_weight_id.get(&edge.source()) {
-		Some(id) => *id,
-		None => {
-		    let id = new_graph_a.add_node(last_id);
-		    last_id += 1;
-		    association_weight_id.insert(edge.source(), id);
-		    id
-		}
-	    };
-	let target_id =
-	    match association_weight_id.get(&edge.target()) {
-		Some(id) => *id,
-		None => {
-		    let id = new_graph_a.add_node(last_id);
-		    last_id += 1;
-		    association_weight_id.insert(edge.target(), id);
-		    id
-		}
-	    };
-	let weight = *converter_edges.get(edge.weight()).unwrap();
+    let node_a_1 = graph_a.add_node(1);
+    let node_a_2 = graph_a.add_node(2);
+    graph_a.add_edge(node_a_1, node_a_2, 1);
 
-	let middle_node_id = new_graph_a.add_node(0);
-
-	new_graph_a.add_edge(source_id, middle_node_id, weight);
-	new_graph_a.add_edge(middle_node_id, target_id, weight);
-
-	let mut previous = middle_node_id;
-	for _ in 1..weight {
-	    let path = new_graph_a.add_node(0);
-	    new_graph_a.add_edge(previous, path, weight);
-	    previous = path;
-	}
-    }
-
-    for node in new_graph_a.node_indices() {
-	let mut previous = node;
-	for _ in 1..converter_edges.last_id.last_ids {
-	    let path = new_graph_a.add_node(0);
-	    new_graph_a.add_edge(previous, path, 0);
-	    previous = path;
-	}
-    }
-
-    new_graph_a
+    assert!(bisimilarity_paige_tarjan(&&graph_a, &&graph_a));
+    assert!(bisimilarity_paige_tarjan_ignore_labels(&&graph_a, &&graph_a))
 }
 
-pub fn bisimilarity_paige_tarjan<G>(
-    graph_a: &G,
-    graph_b: &G
-) -> bool
-where
-    G: IntoNodeReferences + IntoNeighborsDirected + NodeCount + EdgeCount + IntoEdgeReferences,
-    G::NodeId: std::cmp::Eq + std::hash::Hash,
-    G::EdgeWeight: std::cmp::Eq + std::hash::Hash + Clone,
-{
-    if graph_a.node_count() == 0 && graph_b.node_count() == 0 {
-	return true
-    }
-    if graph_a.node_count() == 0 || graph_b.node_count() == 0 {
-	return false
-    }
+#[test]
+fn identity_paige_tarjan_2() {
+    use petgraph::Graph;
+    let mut graph_a = Graph::new();
 
-    // we convert the problem into the equivalent with only one label
-    let converter_edges: MyEdgeTranslator<G::EdgeWeight> = {
-	let mut labels: HashMap<G::EdgeWeight, u32> = HashMap::new();
+    let node_a_1 = graph_a.add_node(1);
+    let node_a_2 = graph_a.add_node(2);
+    graph_a.add_edge(node_a_1, node_a_2, 1);
+    let node_a_3 = graph_a.add_node(3);
+    graph_a.add_edge(node_a_1, node_a_3, 1);
+    let node_a_6 = graph_a.add_node(6);
+    graph_a.add_edge(node_a_2, node_a_6, 2);
+    let node_a_4 = graph_a.add_node(4);
+    graph_a.add_edge(node_a_3, node_a_4, 2);
+    let node_a_7 = graph_a.add_node(7);
+    graph_a.add_edge(node_a_6, node_a_7, 2);
+    let node_a_5 = graph_a.add_node(5);
+    graph_a.add_edge(node_a_4, node_a_5, 2);
+    let node_a_8 = graph_a.add_node(8);
+    graph_a.add_edge(node_a_7, node_a_8, 3);
+    graph_a.add_edge(node_a_8, node_a_7, 3);
+    graph_a.add_edge(node_a_8, node_a_8, 3);
 
-	for edge in graph_a.edge_references() {
-	    *labels.entry(edge.weight().clone()).or_default() += 1;
-	}
-	for edge in graph_b.edge_references() {
-	    *labels.entry(edge.weight().clone()).or_default() += 1;
-	}
-	// slight optimization: we reorder the edges such that edges with the
-	// most occurrences have smaller index
-	let mut labels: Vec<(G::EdgeWeight, u32)> = labels.into_iter().collect();
-	labels.sort_by(|a, b| b.1.cmp(&a.1));
+    assert!(bisimilarity_paige_tarjan(&&graph_a, &&graph_a));
+    assert!(bisimilarity_paige_tarjan_ignore_labels(&&graph_a, &&graph_a))
+}
 
-	let mut tmp = Translator::new();
-	for (label, _) in labels.into_iter() {
-	    let _ = tmp.encode(label);
-	}
-	tmp
-    };
+#[test]
+fn identity_different_weights_paige_tarjan() {
+    use petgraph::Graph;
+    let mut graph_a = Graph::new();
 
-    let new_graph_a = create_modified_graph(graph_a, &converter_edges);
-    let new_graph_b = create_modified_graph(graph_b, &converter_edges);
+    let node_a_1 = graph_a.add_node(1);
+    let node_a_2 = graph_a.add_node(2);
+    graph_a.add_edge(node_a_1, node_a_2, 1);
 
-    let (result, _converter) =
-	match maximum_bisimulation(&[&&new_graph_a, &&new_graph_b]) {
-	    (None, _) => { return false },
-	    (Some(val), converter) => {
-		(val.into_iter()
-		 .find(
-		     |el| {
-			 let mut keep_track = [false, false];
-			 for e in el {
-			     let (_node_id, graph_id) =
-				 converter.decode(e).unwrap();
-			     keep_track[*graph_id as usize] = true;
-			 }
-			 !keep_track[0] || !keep_track[1]
-		     }
-		 ), converter)
+    let mut graph_b = Graph::new();
 
-	    }
-	};
+    let node_b_1 = graph_b.add_node(1);
+    let node_b_2 = graph_b.add_node(2);
+    graph_b.add_edge(node_b_1, node_b_2, 2);
 
-    result.is_none()
+    assert!(!bisimilarity_paige_tarjan(&&graph_a, &&graph_b));
+    assert!(bisimilarity_paige_tarjan_ignore_labels(&&graph_a, &&graph_b))
+}
+
+#[test]
+fn not_bisimilar_paige_tarjan() {
+    use petgraph::Graph;
+    let mut graph_a = Graph::new();
+
+    let node_a_1 = graph_a.add_node(1);
+    let node_a_2 = graph_a.add_node(2);
+    graph_a.add_edge(node_a_1, node_a_2, 1);
+
+    let mut graph_b = Graph::new();
+
+    let node_b_1 = graph_b.add_node(1);
+    let node_b_2 = graph_b.add_node(2);
+    graph_b.add_edge(node_b_1, node_b_2, 1);
+    let node_b_3 = graph_b.add_node(3);
+    graph_b.add_edge(node_b_1, node_b_3, 2);
+
+    assert!(!bisimilarity_paige_tarjan(&&graph_a, &&graph_b));
+    assert!(bisimilarity_paige_tarjan_ignore_labels(&&graph_a, &&graph_b))
+}
+
+#[test]
+fn not_bisimilar_paige_tarjan_2() {
+    use petgraph::Graph;
+    let mut graph_a = Graph::new();
+
+    let node_a_1 = graph_a.add_node(1);
+    let node_a_2 = graph_a.add_node(2);
+    graph_a.add_edge(node_a_1, node_a_2, 1);
+    let node_a_3 = graph_a.add_node(3);
+    graph_a.add_edge(node_a_1, node_a_3, 1);
+    let node_a_6 = graph_a.add_node(6);
+    graph_a.add_edge(node_a_2, node_a_6, 2);
+    let node_a_4 = graph_a.add_node(4);
+    graph_a.add_edge(node_a_3, node_a_4, 2);
+    let node_a_7 = graph_a.add_node(7);
+    graph_a.add_edge(node_a_6, node_a_7, 2);
+    let node_a_5 = graph_a.add_node(5);
+    graph_a.add_edge(node_a_4, node_a_5, 2);
+    let node_a_8 = graph_a.add_node(8);
+    graph_a.add_edge(node_a_7, node_a_8, 3);
+    graph_a.add_edge(node_a_8, node_a_7, 3);
+    graph_a.add_edge(node_a_8, node_a_8, 3);
+
+    let mut graph_b = Graph::new();
+
+    let node_b_1 = graph_b.add_node(1);
+    let node_b_2 = graph_b.add_node(2);
+    graph_b.add_edge(node_b_1, node_b_2, 1);
+    let node_b_3 = graph_b.add_node(3);
+    graph_b.add_edge(node_b_2, node_b_3, 2);
+    let node_b_4 = graph_b.add_node(4);
+    graph_b.add_edge(node_b_3, node_b_4, 2);
+
+    assert!(!bisimilarity_paige_tarjan(&&graph_a, &&graph_b));
+    assert!(!bisimilarity_paige_tarjan_ignore_labels(&&graph_a, &&graph_b))
+}
+
+#[test]
+fn not_bisimilar_paige_tarjan_3() {
+    use petgraph::Graph;
+    let mut graph_b = Graph::new();
+
+    let node_b_1 = graph_b.add_node(1);
+    let node_b_2 = graph_b.add_node(2);
+    graph_b.add_edge(node_b_1, node_b_2, 1);
+    let node_b_3 = graph_b.add_node(3);
+    graph_b.add_edge(node_b_2, node_b_3, 2);
+    let node_b_4 = graph_b.add_node(4);
+    graph_b.add_edge(node_b_3, node_b_4, 2);
+
+    let mut graph_c = Graph::new();
+
+    let node_c_1 = graph_c.add_node(1);
+    let node_c_2 = graph_c.add_node(2);
+    graph_c.add_edge(node_c_1, node_c_2, 1);
+    let node_c_3 = graph_c.add_node(3);
+    graph_c.add_edge(node_c_1, node_c_3, 2);
+    graph_c.add_edge(node_c_2, node_c_3, 2);
+
+    assert!(!bisimilarity_paige_tarjan(&&graph_b, &&graph_c));
+    assert!(!bisimilarity_paige_tarjan_ignore_labels(&&graph_b, &&graph_c))
+}
+
+#[test]
+fn bisimilar_paige_tarjan() {
+    use petgraph::Graph;
+    let mut graph_b = Graph::new();
+
+    let node_b_1 = graph_b.add_node(1);
+    let node_b_2 = graph_b.add_node(2);
+    graph_b.add_edge(node_b_1, node_b_2, 1);
+    let node_b_3 = graph_b.add_node(3);
+    graph_b.add_edge(node_b_2, node_b_3, 2);
+    let node_b_4 = graph_b.add_node(4);
+    graph_b.add_edge(node_b_3, node_b_4, 2);
+
+    let mut graph_c = Graph::new();
+
+    let node_c_1 = graph_c.add_node(1);
+    let node_c_2 = graph_c.add_node(2);
+    graph_c.add_edge(node_c_1, node_c_2, 1);
+    let node_c_3 = graph_c.add_node(3);
+    graph_c.add_edge(node_c_2, node_c_3, 2);
+    let node_c_4 = graph_c.add_node(4);
+    graph_c.add_edge(node_c_3, node_c_4, 2);
+    let node_c_5 = graph_c.add_node(5);
+    graph_c.add_edge(node_c_1, node_c_5, 1);
+    let node_c_6 = graph_c.add_node(6);
+    graph_c.add_edge(node_c_5, node_c_6, 2);
+    let node_c_7 = graph_c.add_node(7);
+    graph_c.add_edge(node_c_6, node_c_7, 2);
+
+    assert!(bisimilarity_paige_tarjan(&&graph_b, &&graph_c));
+    assert!(bisimilarity_paige_tarjan_ignore_labels(&&graph_b, &&graph_c))
+}
+
+#[test]
+fn bisimilar_paige_tarjan_2() {
+    use petgraph::Graph;
+    let mut graph_a = Graph::new();
+
+    let node_a_1 = graph_a.add_node(1);
+    let node_a_2 = graph_a.add_node(2);
+    graph_a.add_edge(node_a_1, node_a_2, 1);
+    let node_a_3 = graph_a.add_node(3);
+    graph_a.add_edge(node_a_1, node_a_3, 1);
+    graph_a.add_edge(node_a_2, node_a_3, 2);
+    graph_a.add_edge(node_a_3, node_a_3, 2);
+
+    let mut graph_b = Graph::new();
+
+    let node_b_1 = graph_b.add_node(1);
+    let node_b_2 = graph_b.add_node(2);
+    graph_b.add_edge(node_b_1, node_b_2, 1);
+    graph_b.add_edge(node_b_2, node_b_2, 2);
+
+    assert!(bisimilarity_paige_tarjan(&&graph_a, &&graph_b));
+    assert!(bisimilarity_paige_tarjan_ignore_labels(&&graph_a, &&graph_b))
 }
