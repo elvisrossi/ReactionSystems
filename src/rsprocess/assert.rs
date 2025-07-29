@@ -1,5 +1,8 @@
 #![allow(dead_code)]
 
+// If changing IntegerType in assert.rs, also change from Num to another
+// similar parser with different return type in grammar.lalrpop in
+// AssertExpression
 type IntegerType = i64;
 
 #[derive(Debug, Clone)]
@@ -10,126 +13,65 @@ pub struct RSassert {
 #[derive(Debug, Clone)]
 pub enum Tree {
     Concat(Box<Tree>, Box<Tree>),
-    If(Box<Boolean>, Box<Tree>),
-    IfElse(Box<Boolean>, Box<Tree>, Box<Tree>),
-    Assignment(AssignmentVar, Box<Expression>),
+    If(Box<Expression>, Box<Tree>),
+    IfElse(Box<Expression>, Box<Tree>, Box<Tree>),
+    Assignment(AssignmentVariable, Box<Expression>),
     Return(Box<Expression>),
     For(Variable, Range, Box<Tree>),
 }
 
 #[derive(Debug, Clone)]
-pub enum Expression {
-    B(Boolean),
-    A(Arithmetic),
-    Lab(Label),
-    Set(Set),
-    El(Element),
-    Str(Str),
+pub struct Variable {
+    data: String,
+}
 
-    Var(Variable), // for when the type should just be passed through
+impl Variable {
+    pub fn from(data: String) -> Self {
+	Self { data }
+    }
 }
 
 #[derive(Debug, Clone)]
-pub enum Boolean {
-    Var(Variable), // should be of type boolean
+pub enum AssignmentVariable {
+    Var(Variable),
+    QualifiedVar(Variable, QualifierRestricted)
+}
+
+#[derive(Debug, Clone)]
+pub enum Expression {
     True,
     False,
-    Not(Box<Boolean>),
-    And(Box<Boolean>, Box<Boolean>),
-    Or(Box<Boolean>, Box<Boolean>),
-    Xor(Box<Boolean>, Box<Boolean>),
-
-    Less(Arithmetic, Arithmetic),
-    LessEq(Arithmetic, Arithmetic),
-    More(Arithmetic, Arithmetic),
-    MoreEq(Arithmetic, Arithmetic),
-    Eq(Arithmetic, Arithmetic),
-    NotEq(Arithmetic, Arithmetic),
-
-    LabelEq(Label, Label),
-    LabelNotEq(Label, Label),
-
-    SetSub(Set, Set),
-    SetSubEq(Set, Set),
-    SetSuper(Set, Set),
-    SetSuperEq(Set, Set),
-    SetEq(Set, Set),
-    SetEmpty(Set),
-
-    ElEq(Element, Element),
-    ElNotEq(Element, Element),
-
-    StrEq(Str, Str),
-    StrNotEq(Str, Str),
-    StrSubstring(Str, Str),
-}
-
-#[derive(Debug, Clone)]
-pub enum Arithmetic {
-    Var(Variable), // should be of type arithmetic
     Integer(IntegerType),
-    Plus(Box<Arithmetic>, Box<Arithmetic>),
-    Minus(Box<Arithmetic>, Box<Arithmetic>),
-    Times(Box<Arithmetic>, Box<Arithmetic>),
-    Quotient(Box<Arithmetic>, Box<Arithmetic>),
-    Reminder(Box<Arithmetic>, Box<Arithmetic>),
-    Exponential(Box<Arithmetic>, Box<Arithmetic>),
-    Rand(Box<Arithmetic>, Box<Arithmetic>),
-    Min(Box<Arithmetic>, Box<Arithmetic>),
-    Max(Box<Arithmetic>, Box<Arithmetic>),
+    Label(Box<super::structure::RSlabel>),
+    Set(super::structure::RSset),
+    Element(super::translator::IdType),
+    String(String),
+    Var(AssignmentVariable),
 
-    SetLength(Set),
-    StrLength(Str),
+    Unary(Unary, Box<Expression>),
+    Binary(Binary, Box<Expression>, Box<Expression>),
 }
 
 #[derive(Debug, Clone)]
-pub enum Label {
-    Var(Variable), // should be of type label
-    Literal(Box<super::structure::RSlabel>),
-}
-
-#[derive(Debug, Clone)]
-pub enum Set {
-    Var(Variable), // should be of type set
-    Literal(super::structure::RSset),
-    Append(Box<Set>, Element),
-    Union(Box<Set>, Box<Set>),
-    Intersection(Box<Set>, Box<Set>),
-    Difference(Box<Set>, Box<Set>),
-    SimmetricDifference(Box<Set>, Box<Set>),
-    ValueOfLabel(Label, Qualifier),
-}
-
-#[derive(Debug, Clone)]
-pub enum Element {
-    Var(Variable), // should be of type element
-    Literal(super::translator::IdType),
-}
-
-#[derive(Debug, Clone)]
-pub enum Str {
-    Var(Variable), // should be of type string
-    Literal(String),
-    Concat(Box<Str>, Box<Str>),
-    ArithmeticToString(Box<Arithmetic>),
-    BooleanToString(Box<Boolean>),
-    ElementToString(Element),
-    CommonSubstring(Box<Str>, Box<Str>),
-}
-
-#[derive(Debug, Clone)]
-pub enum AssignmentVar {
-    Var(Variable),
-    ValueOfVariable(Variable, QualifierAssignment),
-}
-
-#[derive(Debug, Clone)]
-pub struct Variable {
-    name: String,
+pub enum Range {
+    IterateOverSet(Box<Expression>),
+    IterateInRange(Box<Expression>, Box<Expression>),
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum QualifierAssignment {
+pub enum Unary {
+    Not,
+    Rand,
+
+    Empty,
+    Length,
+    ToStr,
+    Qualifier(Qualifier)
+}
+
+
+#[derive(Debug, Clone, Copy)]
+pub enum QualifierRestricted {
     Entities,
     Context,
     Reactants,
@@ -141,23 +83,33 @@ pub enum QualifierAssignment {
 
 #[derive(Debug, Clone, Copy)]
 pub enum Qualifier {
-    Entities,
-    Context,
     AvailableEntities,
-
-    Reactants,
-    ReactantsAbsent,
     AllReactants,
-
-    Inhibitors,
-    InhibitorsPresent,
     AllInhibitors,
-
-    Products,
+    Restricted(QualifierRestricted),
 }
 
-#[derive(Debug, Clone)]
-pub enum Range {
-    IterateOverSet(Set),
-    IterateInRange(Box<Arithmetic>, Box<Arithmetic>),
+#[derive(Debug, Clone, Copy)]
+pub enum Binary {
+    And,
+    Or,
+    Xor,
+    Less,
+    LessEq,
+    More,
+    MoreEq,
+    Eq,
+    NotEq,
+    Plus,
+    Minus,
+    Times,
+    Exponential,
+    Quotient,
+    Reminder,
+    Concat,
+
+    SubStr,
+    Min,
+    Max,
+    CommonSubStr,
 }

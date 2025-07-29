@@ -551,6 +551,28 @@ impl RSlabel {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
+    pub fn create(
+        available_entities: RSset,
+        context: RSset,
+        reactants: RSset,
+        reactants_absent: RSset,
+        inhibitors: RSset,
+        inhibitors_present: RSset,
+        products: RSset,
+    ) -> Self {
+        RSlabel {
+            available_entities: available_entities.clone(),
+            context: context.clone(),
+            t: available_entities.union(&context),
+            reactants,
+            reactants_absent,
+            inhibitors,
+            inhibitors_present,
+            products,
+        }
+    }
+
     pub fn get_context(&self) -> (&RSset, &RSset, &RSset) {
         (
             &self.available_entities,
