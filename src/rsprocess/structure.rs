@@ -594,28 +594,15 @@ impl Hash for RSlabel {
 }
 
 // -----------------------------------------------------------------------------
-// RSassertOp
-// -----------------------------------------------------------------------------
-#[derive(Clone, Debug)]
-pub enum RSassertOp {
-    InW,
-    InR,
-    InI,
-    InP,
-}
-
-// -----------------------------------------------------------------------------
 // RSassert
 // -----------------------------------------------------------------------------
-#[derive(Clone, Debug)]
-pub enum RSassert {
-    Not(Box<RSassert>),
-    Xor(Box<RSassert>, Box<RSassert>),
-    Or(Vec<RSassert>),
-    And(Vec<RSassert>),
-    Sub(RSset, RSassertOp),
-    NonEmpty(RSassertOp),
+
+pub use crate::rsprocess::assert::RSassert;
+
+pub mod assert {
+    pub use crate::rsprocess::assert::*;
 }
+
 
 // -----------------------------------------------------------------------------
 // RSBHML

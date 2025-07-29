@@ -16,3 +16,4 @@ pub mod presets;
 pub mod bisimilarity;
 
 mod format_helpers;
+mod assert;

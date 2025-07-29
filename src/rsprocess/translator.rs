@@ -76,7 +76,7 @@ impl Translator {
 use super::{
     frequency::Frequency,
     structure::{
-        RSBHML, RSassert, RSassertOp, RSchoices, RSenvironment, RSlabel,
+        RSBHML, RSassert, RSchoices, RSenvironment, RSlabel,
 	RSprocess, RSreaction, RSset, RSsystem,
     },
 };
@@ -359,36 +359,6 @@ fn print_label(
 }
 
 translator_structure!(RSlabelDisplay, RSlabel, label, print_label);
-
-
-
-// RSassertOp
-
-fn print_assert_op(
-    f: &mut fmt::Formatter,
-    _translator: &Translator,
-    assert_op: &RSassertOp,
-) -> fmt::Result {
-    use super::structure::RSassertOp::*;
-    match assert_op {
-        InW => {
-            write!(f, "InW")
-        }
-        InR => {
-            write!(f, "InR")
-        }
-        InI => {
-            write!(f, "InI")
-        }
-        InP => {
-            write!(f, "InP")
-        }
-    }
-}
-
-translator_structure!(RSassertOpDisplay, RSassertOp, assert_op, print_assert_op);
-
-
 
 // RSassert
 

@@ -4,9 +4,6 @@ use lalrpop_util::ParseError;
 use crate::rsprocess::structure::{RSset,
 				  RSprocess,
 				  RSenvironment,
-				  RSassert,
-				  RSassertOp,
-				  RSBHML,
 				  RSsystem,
 				  RSreaction};
 use crate::rsprocess::translator::{Translator, IdType};
@@ -171,43 +168,43 @@ Env_term: (IdType, RSprocess) = {
 // -----------------------------------------------------------------------------
 //                                AssertParser
 // -----------------------------------------------------------------------------
-pub Assert: Box<RSassert> = {
-    <f: Formula_Assert> => Box::new(f)
-};
+// pub Assert: Box<RSassert> = {
+//     <f: Formula_Assert> => Box::new(f)
+// };
 
-Formula_Assert: RSassert = {
-    "-" <f: Formula_Assert> => RSassert::Not(Box::new(f)),
-    "(" <f1: Formula_Assert> "^" <f2: Formula_Assert> ")" =>
-	RSassert::Xor(Box::new(f1), Box::new(f2)),
-    "(" <f: Separated<Formula_Assert, "\\/">> ")" => RSassert::Or(f),
-    "(" <f: Separated<Formula_Assert, "/\\">> ")" => RSassert::And(f),
-    <c: Set_of_entities> "inW" => RSassert::Sub(c, RSassertOp::InW),
-    <c: Set_of_entities> "inR" => RSassert::Sub(c, RSassertOp::InR),
-    <c: Set_of_entities> "inI" => RSassert::Sub(c, RSassertOp::InI),
-    <c: Set_of_entities> "inP" => RSassert::Sub(c, RSassertOp::InP),
-    "?" "inW" => RSassert::NonEmpty(RSassertOp::InW),
-    "?" "inR" => RSassert::NonEmpty(RSassertOp::InR),
-    "?" "inI" => RSassert::NonEmpty(RSassertOp::InI),
-    "?" "inP" => RSassert::NonEmpty(RSassertOp::InP),
-};
+// Formula_Assert: RSassert = {
+//     "-" <f: Formula_Assert> => RSassert::Not(Box::new(f)),
+//     "(" <f1: Formula_Assert> "^" <f2: Formula_Assert> ")" =>
+//	RSassert::Xor(Box::new(f1), Box::new(f2)),
+//     "(" <f: Separated<Formula_Assert, "\\/">> ")" => RSassert::Or(f),
+//     "(" <f: Separated<Formula_Assert, "/\\">> ")" => RSassert::And(f),
+//     <c: Set_of_entities> "inW" => RSassert::Sub(c, RSassertOp::InW),
+//     <c: Set_of_entities> "inR" => RSassert::Sub(c, RSassertOp::InR),
+//     <c: Set_of_entities> "inI" => RSassert::Sub(c, RSassertOp::InI),
+//     <c: Set_of_entities> "inP" => RSassert::Sub(c, RSassertOp::InP),
+//     "?" "inW" => RSassert::NonEmpty(RSassertOp::InW),
+//     "?" "inR" => RSassert::NonEmpty(RSassertOp::InR),
+//     "?" "inI" => RSassert::NonEmpty(RSassertOp::InI),
+//     "?" "inP" => RSassert::NonEmpty(RSassertOp::InP),
+// };
 
 // -----------------------------------------------------------------------------
 //                                 BHMLParser
 // -----------------------------------------------------------------------------
-pub BHML: Box<RSBHML> = {
-    <g: Formula_BHML> => Box::new(g)
-};
+// pub BHML: Box<RSBHML> = {
+//     <g: Formula_BHML> => Box::new(g)
+// };
 
-Formula_BHML: RSBHML = {
-    "true" => RSBHML::True,
-    "false" => RSBHML::False,
-    "(" <g: Separated<Formula_BHML, "\\/">> ")" => RSBHML::Or(g),
-    "(" <g: Separated<Formula_BHML, "/\\">> ")" => RSBHML::And(g),
-    "<" <f: Formula_Assert> ">" <g: Formula_BHML> =>
-	RSBHML::Diamond(Box::new(f), Box::new(g)),
-    "[" <f: Formula_Assert> "]" <g: Formula_BHML> =>
-	RSBHML::Box(Box::new(f), Box::new(g)),
-};
+// Formula_BHML: RSBHML = {
+//     "true" => RSBHML::True,
+//     "false" => RSBHML::False,
+//     "(" <g: Separated<Formula_BHML, "\\/">> ")" => RSBHML::Or(g),
+//     "(" <g: Separated<Formula_BHML, "/\\">> ")" => RSBHML::And(g),
+//     "<" <f: Formula_Assert> ">" <g: Formula_BHML> =>
+//	RSBHML::Diamond(Box::new(f), Box::new(g)),
+//     "[" <f: Formula_Assert> "]" <g: Formula_BHML> =>
+//	RSBHML::Box(Box::new(f), Box::new(g)),
+// };
 
 
 // ----------------------------------------------------------------------------
