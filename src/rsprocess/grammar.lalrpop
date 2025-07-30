@@ -211,7 +211,7 @@ AssertAssignmentVar: assert::AssignmentVariable = {
 }
 
 AssertVariable: assert::Variable = {
-    <v: Literal> => assert::Variable::from(v)
+    <v: Literal> => v
 }
 
 AssertExpression: assert::Expression = {
