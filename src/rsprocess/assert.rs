@@ -20,21 +20,16 @@ pub enum Tree {
     For(Variable, Range, Box<Tree>),
 }
 
-pub type Variable = String;
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum Variable  {
+    Id(String),
+    Label
+}
 
 #[derive(Debug, Clone)]
 pub enum AssignmentVariable {
     Var(Variable),
     QualifiedVar(Variable, QualifierRestricted)
-}
-
-impl fmt::Display for AssignmentVariable {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-	match self {
-	    Self::Var(v) => write!(f, "{v}"),
-	    Self::QualifiedVar(v, q) => write!(f, "{v}.{q}"),
-	}
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -67,9 +62,26 @@ pub enum Unary {
     Length,
     ToStr,
     Qualifier(Qualifier),
+    ToEl
 }
 
 impl Unary {
+    fn is_prefix(&self) -> bool {
+	match self {
+	    Self::Not |
+	    Self::Rand => {true},
+	    Self::Empty |
+	    Self::Length |
+	    Self::ToStr |
+	    Self::Qualifier(_) |
+	    Self::ToEl => {false}
+	}
+    }
+
+    fn is_suffix(&self) -> bool {
+	!self.is_prefix()
+    }
+
     fn associated_types_unary(&self) -> Vec<AssertionTypes> {
 	match self {
 	    Unary::Not          => vec![AssertionTypes::Boolean],
@@ -80,24 +92,11 @@ impl Unary {
 	    Unary::ToStr        => vec![AssertionTypes::Boolean,
 					AssertionTypes::Integer,
 					AssertionTypes::Element],
-	    Unary::Qualifier(_) => vec![AssertionTypes::Set]
+	    Unary::Qualifier(_) => vec![AssertionTypes::Set],
+	    Unary::ToEl         => vec![AssertionTypes::String]
 	}
     }
 }
-
-impl fmt::Display for Unary {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-	match self {
-	    Unary::Not => write!(f, "not"),
-	    Unary::Rand => write!(f, "rand"),
-	    Unary::Empty => write!(f, ".empty"),
-	    Unary::Length => write!(f, ".length"),
-	    Unary::ToStr => write!(f, ".tostr"),
-	    Unary::Qualifier(q) => write!(f, ".{q}"),
-	}
-    }
-}
-
 
 #[derive(Debug, Clone, Copy)]
 pub enum QualifierRestricted {
@@ -110,27 +109,6 @@ pub enum QualifierRestricted {
     Products,
 }
 
-impl fmt::Display for QualifierRestricted {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-	match self {
-	    QualifierRestricted::Entities =>
-		write!(f, "Entities"),
-	    QualifierRestricted::Context =>
-		write!(f, "Context"),
-	    QualifierRestricted::Reactants =>
-		write!(f, "Reactants"),
-	    QualifierRestricted::ReactantsAbsent =>
-		write!(f, "ReactantsAbsent"),
-	    QualifierRestricted::Inhibitors =>
-		write!(f, "Inhibitors"),
-	    QualifierRestricted::InhibitorsPresent =>
-		write!(f, "InhibitorsPresent"),
-	    QualifierRestricted::Products =>
-		write!(f, "Products"),
-	}
-    }
-}
-
 #[derive(Debug, Clone, Copy)]
 pub enum Qualifier {
     AvailableEntities,
@@ -138,18 +116,6 @@ pub enum Qualifier {
     AllInhibitors,
     Restricted(QualifierRestricted),
 }
-
-impl fmt::Display for Qualifier {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-	match self {
-	    Self::AvailableEntities => write!(f, "AvailableEntities"),
-	    Self::AllReactants => write!(f, "AllReactants"),
-	    Self::AllInhibitors => write!(f, "AllInhibitors"),
-	    Self::Restricted(q) => write!(f, "{q}"),
-	}
-    }
-}
-
 
 #[derive(Debug, Clone, Copy)]
 pub enum Binary {
@@ -177,6 +143,60 @@ pub enum Binary {
 }
 
 impl Binary {
+    fn is_prefix(&self) -> bool {
+	match self {
+	    Self::And |
+	    Self::Or |
+	    Self::Xor |
+	    Self::Less |
+	    Self::LessEq |
+	    Self::More |
+	    Self::MoreEq |
+	    Self::Eq |
+	    Self::NotEq |
+	    Self::Plus |
+	    Self::Minus |
+	    Self::Times |
+	    Self::Exponential |
+	    Self::Quotient |
+	    Self::Reminder |
+	    Self::Concat => false,
+	    Self::SubStr |
+	    Self::Min |
+	    Self::Max |
+	    Self::CommonSubStr => true,
+	}
+    }
+
+    fn is_suffix(&self) -> bool {
+	false
+    }
+
+    fn is_infix(&self) -> bool {
+	match self {
+	    Self::And |
+	    Self::Or |
+	    Self::Xor |
+	    Self::Less |
+	    Self::LessEq |
+	    Self::More |
+	    Self::MoreEq |
+	    Self::Eq |
+	    Self::NotEq |
+	    Self::Plus |
+	    Self::Minus |
+	    Self::Times |
+	    Self::Exponential |
+	    Self::Quotient |
+	    Self::Reminder |
+	    Self::Concat => true,
+	    Self::SubStr |
+	    Self::Min |
+	    Self::Max |
+	    Self::CommonSubStr => false,
+	}
+    }
+
     fn associate(
 	&self,
 	t1: &AssertionTypes,
@@ -274,40 +294,13 @@ impl Binary {
     }
 }
 
-impl fmt::Display for Binary {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-	match self {
-	    Self::And => write!(f, "&&"),
-	    Self::Or => write!(f, "||"),
-	    Self::Xor => write!(f, "^^"),
-	    Self::Less => write!(f, "<"),
-	    Self::LessEq => write!(f, "<="),
-	    Self::More => write!(f, ">"),
-	    Self::MoreEq => write!(f, ">="),
-	    Self::Eq => write!(f, "=="),
-	    Self::NotEq => write!(f, "!="),
-	    Self::Plus => write!(f, "+"),
-	    Self::Minus => write!(f, "-"),
-	    Self::Times => write!(f, "*"),
-	    Self::Exponential => write!(f, "^"),
-	    Self::Quotient => write!(f, "/"),
-	    Self::Reminder => write!(f, "%"),
-	    Self::Concat => write!(f, "::"),
-	    Self::SubStr => write!(f, "substr"),
-	    Self::Min => write!(f, "min"),
-	    Self::Max => write!(f, "max"),
-	    Self::CommonSubStr => write!(f, "commonsubstr"),
-	}
-    }
-}
-
 
 use core::fmt;
 // -----------------------------------------------------------------------------
 use std::collections::HashMap;
 
 struct Context {
-    data: HashMap<Variable, AssertionTypes>,
+    data: HashMap<String, AssertionTypes>,
     ty_return: Option<AssertionTypes>
 }
 
@@ -326,10 +319,13 @@ impl Context {
     ) -> Result<(), String> {
 	match v {
 	    AssignmentVariable::Var(v) => {
-		self.data.insert(v.clone(), ty);
+		if let Variable::Id(v) = v {
+		    self.data.insert(v.clone(), ty);
+		}
 		Ok(())
 	    },
-	    AssignmentVariable::QualifiedVar(v, q) => {
+	    AssignmentVariable::QualifiedVar(Variable::Label, _) => Ok(()),
+	    AssignmentVariable::QualifiedVar(Variable::Id(v), q) => {
 		if let Some(AssertionTypes::Label) = self.data.get(v) {
 		    Ok(())
 		} else {
@@ -362,6 +358,11 @@ impl Context {
 	v: &Variable,
 	ty: AssertionTypes
     ) -> Result<(), String> {
+	let v = match v {
+	    Variable::Label => return Err("Protected word label used in for \
+					   assignment.".into()),
+	    Variable::Id(v) => v
+	};
 	match ty {
 	    AssertionTypes::RangeSet => {
 		self.data.insert(v.clone(), AssertionTypes::Element);
@@ -383,13 +384,22 @@ impl Context {
     ) -> Result<AssertionTypes, String> {
 	match v {
 	    AssignmentVariable::Var(v) => {
-		if let Some(ty) = self.data.get(v) {
-		    Ok(*ty)
-		} else {
-		    Err(format!("Could not find variable {v}."))
+		match v {
+		    Variable::Label => Ok(AssertionTypes::Label),
+		    Variable::Id(v) => {
+			if let Some(ty) = self.data.get(v) {
+			    Ok(*ty)
+			} else {
+			    Err(format!("Could not find variable {v}."))
+			}
+		    }
 		}
 	    },
 	    AssignmentVariable::QualifiedVar(var, _) => {
+		let var = match var {
+		    Variable::Id(v) => v,
+		    Variable::Label => return Ok(AssertionTypes::Set),
+		};
 		if let Some(ty) = self.data.get(var) {
 		    if *ty == AssertionTypes::Label {
 			Ok(AssertionTypes::Set)
@@ -557,5 +567,166 @@ impl RSassert {
 	let mut context = Context::new();
 	typecheck(&self.tree, &mut context)?;
 	Ok(())
+    }
+}
+
+
+// -----------------------------------------------------------------------------
+//                    Display Implementation for all types
+// -----------------------------------------------------------------------------
+
+impl fmt::Display for RSassert {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+	write!(f, "label {{\n{}\n}}", self.tree)
+    }
+}
+
+impl fmt::Display for Tree {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+	match self {
+	    Self::Concat(t1, t2) => {write!(f, "{t1};\n{t2}")},
+	    Self::If(exp, t) => {write!(f, "if {exp} {{\n{t}\n}}")},
+	    Self::IfElse(exp, t1, t2) => {
+		write!(f, "if {exp} {{\n{t1}\n}} else {{\n{t2}\n}}")
+	    },
+	    Self::Assignment(v, exp) => {write!(f, "{v} = {exp}")},
+	    Self::Return(exp) => {write!(f, "return {exp}")},
+	    Self::For(v, r, t) => {write!(f, "for {v} in {r} {{\n{t}\n}}")},
+	}
+    }
+}
+
+impl fmt::Display for Variable {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+	match self {
+	    Self::Label => {write!(f, "label")},
+	    Self::Id(s) => {write!(f, "{s}")}
+	}
+    }
+}
+
+impl fmt::Display for AssignmentVariable {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+	match self {
+	    Self::Var(v) => write!(f, "{v}"),
+	    Self::QualifiedVar(v, q) => write!(f, "{v}.{q}"),
+	}
+    }
+}
+
+impl fmt::Display for Expression {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+	match self {
+	    Self::True => {write!(f, "True")},
+	    Self::False => {write!(f, "False")},
+	    Self::Integer(i) => {write!(f, "{i}")},
+	    Self::Label(rslabel) => {write!(f, "{rslabel:?}")},
+	    Self::Set(set) => {write!(f, "{set:?}")},
+	    Self::Element(el) => {write!(f, "'{el}'")},
+	    Self::String(s) => {write!(f, r#""{s}""#)},
+	    Self::Var(v) => {write!(f, "{v}")},
+	    Self::Unary(u, exp) => {
+		if u.is_prefix() {
+		    write!(f, "{u}({exp})")
+		} else if u.is_suffix() {
+		    write!(f, "{exp}{u}")
+		} else {
+		    unreachable!()
+		}
+	    },
+	    Self::Binary(b, exp1, exp2) => {
+		if b.is_prefix() {
+		    write!(f, "{b}({exp1}, {exp2})")
+		} else if b.is_suffix() {
+		    write!(f, "({exp1}, {exp2}){b}")
+		} else if b.is_infix() {
+		    write!(f, "({exp1} {b} {exp2})")
+		} else {
+		    unreachable!()
+		}
+	    },
+	}
+    }
+}
+
+impl fmt::Display for Range {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+	match self {
+	    Self::IterateOverSet(exp) => {write!(f, "{{{exp}}}")},
+	    Self::IterateInRange(exp1, exp2) => {write!(f, "{exp1}..{exp2}")}
+	}
+    }
+}
+
+impl fmt::Display for Unary {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+	match self {
+	    Unary::Not => write!(f, "not"),
+	    Unary::Rand => write!(f, "rand"),
+	    Unary::Empty => write!(f, ".empty"),
+	    Unary::Length => write!(f, ".length"),
+	    Unary::ToStr => write!(f, ".tostr"),
+	    Unary::Qualifier(q) => write!(f, ".{q}"),
+	    Unary::ToEl => write!(f, ".toel")
+	}
+    }
+}
+
+impl fmt::Display for QualifierRestricted {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+	match self {
+	    QualifierRestricted::Entities =>
+		write!(f, "Entities"),
+	    QualifierRestricted::Context =>
+		write!(f, "Context"),
+	    QualifierRestricted::Reactants =>
+		write!(f, "Reactants"),
+	    QualifierRestricted::ReactantsAbsent =>
+		write!(f, "ReactantsAbsent"),
+	    QualifierRestricted::Inhibitors =>
+		write!(f, "Inhibitors"),
+	    QualifierRestricted::InhibitorsPresent =>
+		write!(f, "InhibitorsPresent"),
+	    QualifierRestricted::Products =>
+		write!(f, "Products"),
+	}
+    }
+}
+
+impl fmt::Display for Qualifier {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+	match self {
+	    Self::AvailableEntities => write!(f, "AvailableEntities"),
+	    Self::AllReactants => write!(f, "AllReactants"),
+	    Self::AllInhibitors => write!(f, "AllInhibitors"),
+	    Self::Restricted(q) => write!(f, "{q}"),
+	}
+    }
+}
+
+impl fmt::Display for Binary {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+	match self {
+	    Self::And => write!(f, "&&"),
+	    Self::Or => write!(f, "||"),
+	    Self::Xor => write!(f, "^^"),
+	    Self::Less => write!(f, "<"),
+	    Self::LessEq => write!(f, "<="),
+	    Self::More => write!(f, ">"),
+	    Self::MoreEq => write!(f, ">="),
+	    Self::Eq => write!(f, "=="),
+	    Self::NotEq => write!(f, "!="),
+	    Self::Plus => write!(f, "+"),
+	    Self::Minus => write!(f, "-"),
+	    Self::Times => write!(f, "*"),
+	    Self::Exponential => write!(f, "^"),
+	    Self::Quotient => write!(f, "/"),
+	    Self::Reminder => write!(f, "%"),
+	    Self::Concat => write!(f, "::"),
+	    Self::SubStr => write!(f, "substr"),
+	    Self::Min => write!(f, "min"),
+	    Self::Max => write!(f, "max"),
+	    Self::CommonSubStr => write!(f, "commonsubstr"),
+	}
     }
 }

@@ -30,7 +30,6 @@ match {
     "r:", "i:", "p:",
     "-", "^",
     "true", "false",
-    "inW", "inR", "inI", "inP",
     "Environment", "Initial Entities", "Context", "Reactions",
     "Weights", "Sets",
     "Print", "Save",
@@ -38,6 +37,7 @@ match {
     "Stats", "Target", "Run", "Loop", "Frequency", "LimitFrequency",
     "FastFrequency", "Digraph", "Bisimilarity",
     "Deserialize",
+    "?",
     "Hide",
     "Entities", "MaskEntities", "UncommonEntities", "UncommonMaskEntities",
     "MaskContext", "UncommonContext", "UncommonMaskContext",
@@ -49,6 +49,11 @@ match {
 	"UncommonEntitiesDeleted", "UncommonMaskEntitiesDeleted",
     "EntitiesAdded", "MaskEntitiesAdded",
 	"UncommonEntitiesAdded", "UncommonMaskEntitiesAdded",
+    "label", "if", "then", "else", "let", "=", "return", "for", "in",
+    "not", "rand", ".empty", ".length", ".tostr",
+    "&&", "||", "^^", "<=", ">=", "==", "!=", "+", "*", "/", "%",
+    "::", "substr", "min", "max", "commonsubstr",
+    "AvailableEntities", "AllReactants", "AllInhibitors",
 } else {
     r"[0-9]+" => NUMBER
 } else {
@@ -174,7 +179,7 @@ Env_term: (IdType, RSprocess) = {
 //                                AssertParser
 // -----------------------------------------------------------------------------
 pub Assert: Box<assert::RSassert> = {
-    "fn" "{" <f: AssertTree> "}" =>
+    "label" "{" <f: AssertTree> "}" =>
 	Box::new(assert::RSassert{tree: f}),
 };
 
@@ -211,13 +216,27 @@ AssertAssignmentVar: assert::AssignmentVariable = {
 }
 
 AssertVariable: assert::Variable = {
-    <v: Literal> => v
+    "label" => assert::Variable::Label,
+    <v: Literal> => assert::Variable::Id(v),
 }
 
 AssertExpression: assert::Expression = {
+    <unp: AssertUnaryPrefix> <e: AssertExpression> =>
+	assert::Expression::Unary(unp, Box::new(e)),
+    "(" <e: AssertExpression> ")" <uns: AssertUnarySuffix> =>
+	assert::Expression::Unary(uns, Box::new(e)),
+
+    "(" <e1: AssertExpression> <b: AssertBinary> <e2: AssertExpression> ")" =>
+	assert::Expression::Binary(b, Box::new(e1), Box::new(e2)),
+    <b: AssertBinaryPrefix>
+    "(" <e1: AssertExpression> "," <e2: AssertExpression> ")" =>
+	assert::Expression::Binary(b, Box::new(e1), Box::new(e2)),
+
     "(" <e: AssertExpression> ")" => e,
-    "True" => assert::Expression::True,
-    "False" => assert::Expression::False,
+    "true" => assert::Expression::True,
+    "false" => assert::Expression::False,
+
+    <v: AssertAssignmentVar> => assert::Expression::Var(v),
 
     // If changing IntegerType in assert.rs, also change from Num to another
     // similar parser with different return type
@@ -231,17 +250,6 @@ AssertExpression: assert::Expression = {
     PATH => assert::Expression::String(<>.trim_end_matches("\"")
 					 .trim_start_matches("\"")
 					 .to_string()),
-
-    <unp: AssertUnaryPrefix> <e: AssertExpression> =>
-	assert::Expression::Unary(unp, Box::new(e)),
-    "(" <e: AssertExpression> ")" <uns: AssertUnarySuffix> =>
-	assert::Expression::Unary(uns, Box::new(e)),
-
-    "(" <e1: AssertExpression> <b: AssertBinary> <e2: AssertExpression> ")" =>
-	assert::Expression::Binary(b, Box::new(e1), Box::new(e2)),
-    <b: AssertBinaryPrefix>
-    "(" <e1: AssertExpression> "," <e2: AssertExpression> ")" =>
-	assert::Expression::Binary(b, Box::new(e1), Box::new(e2)),
 }
 
 AssertUnaryPrefix: assert::Unary = {
