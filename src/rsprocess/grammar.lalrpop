@@ -261,6 +261,7 @@ AssertUnarySuffix: assert::Unary = {
     ".empty" => assert::Unary::Empty,
     ".length" => assert::Unary::Length,
     ".tostr" => assert::Unary::ToStr,
+    ".toel" => assert::Unary::ToEl,
     "." <q: AssertQualifier> => assert::Unary::Qualifier(q),
 }
 
