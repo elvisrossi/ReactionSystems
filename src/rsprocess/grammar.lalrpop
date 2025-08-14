@@ -53,6 +53,7 @@ match {
     "not", "rand", ".empty", ".length", ".tostr", ".source", ".target",
     "&&", "||", "^^", "<=", ">=", "==", "!=", "+", "*", "/", "%",
     "::", "substr", "min", "max", "commonsubstr",
+    "SystemEntities", "SystemContext",
     "AvailableEntities", "AllReactants", "AllInhibitors",
 } else {
     r"[0-9]+" => NUMBER
@@ -266,7 +267,9 @@ AssertUnarySuffix: assert::Unary = {
     ".source" => assert::Unary::Source,
     ".target" => assert::Unary::Target,
     ".neighbours" => assert::Unary::Neighbours,
-    "." <q: AssertQualifier> => assert::Unary::Qualifier(q),
+    ".system" => assert::Unary::System,
+    "." <q: AssertQualifierLabel> => assert::Unary::QualifierLabel(q),
+    "." <q: AssertQualifierSystem> => assert::Unary::QualifierSystem(q),
 }
 
 AssertBinary: assert::Binary = {
@@ -295,11 +298,16 @@ AssertBinaryPrefix: assert::Binary = {
     "commonsubstr" => assert::Binary::CommonSubStr,
 }
 
-AssertQualifier: assert::Qualifier = {
-    "AvailableEntities" => assert::Qualifier::AvailableEntities,
-    "AllReactants" => assert::Qualifier::AllReactants,
-    "AllInhibitors" => assert::Qualifier::AllInhibitors,
-    <q: AssertQualifierRestricted> => assert::Qualifier::Restricted(q),
+AssertQualifierSystem: assert::QualifierSystem = {
+    "SystemEntities" => assert::QualifierSystem::Entities,
+    "SystemContext" => assert::QualifierSystem::Context,
+}
+
+AssertQualifierLabel: assert::QualifierLabel = {
+    "AvailableEntities" => assert::QualifierLabel::AvailableEntities,
+    "AllReactants" => assert::QualifierLabel::AllReactants,
+    "AllInhibitors" => assert::QualifierLabel::AllInhibitors,
+    <q: AssertQualifierRestricted> => assert::QualifierLabel::Restricted(q),
 }
 
 AssertQualifierRestricted: assert::QualifierRestricted = {

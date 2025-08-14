@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 // If changing IntegerType in assert.rs, also change from Num to another
 // similar parser with different return type in grammar.lalrpop in
 // AssertExpression
@@ -62,11 +60,13 @@ pub enum Unary {
     Empty,
     Length,
     ToStr,
-    Qualifier(Qualifier),
+    QualifierLabel(QualifierLabel),
+    QualifierSystem(QualifierSystem),
     ToEl,
     Source,
     Target,
     Neighbours,
+    System,
 }
 
 impl Unary {
@@ -77,11 +77,13 @@ impl Unary {
 	    Self::Empty |
 	    Self::Length |
 	    Self::ToStr |
-	    Self::Qualifier(_) |
+	    Self::QualifierLabel(_) |
+	    Self::QualifierSystem(_) |
 	    Self::ToEl |
 	    Self::Source |
 	    Self::Target |
-	    Self::Neighbours => false,
+	    Self::Neighbours |
+	    Self::System => false,
 	}
     }
 
@@ -112,7 +114,7 @@ impl Unary {
 	    (Self::ToStr, AssertionTypes::Integer) => {
 		Ok(AssertionTypes::String)
 	    },
-	    (Self::Qualifier(_), AssertionTypes::Label) => {
+	    (Self::QualifierLabel(_), AssertionTypes::Label) => {
 		Ok(AssertionTypes::Set)
 	    },
 	    (Self::ToEl, AssertionTypes::String) => {
@@ -127,28 +129,21 @@ impl Unary {
 	    (Self::Neighbours, AssertionTypes::Node) => {
 		Ok(AssertionTypes::RangeNeighbours)
 	    },
+	    (Self::QualifierSystem(QualifierSystem::Entities),
+	     AssertionTypes::System) => {
+		Ok(AssertionTypes::Set)
+	    },
+	    (Self::QualifierSystem(QualifierSystem::Context),
+	     AssertionTypes::System) => {
+		Ok(AssertionTypes::Context)
+	    },
+	    (Self::System, AssertionTypes::Node) => {
+		Ok(AssertionTypes::System)
+	    },
 	    (op, type_exp) => {
 		Err(format!("Expression has incompatible type with operation: \
 			     {type_exp} with operation {op}."))
 	    }
-	}
-    }
-
-    fn associated_types_unary(&self) -> Vec<AssertionTypes> {
-	match self {
-	    Unary::Not          => vec![AssertionTypes::Boolean],
-	    Unary::Rand         => vec![AssertionTypes::Integer],
-	    Unary::Empty        => vec![AssertionTypes::Set],
-	    Unary::Length       => vec![AssertionTypes::String,
-					AssertionTypes::Set],
-	    Unary::ToStr        => vec![AssertionTypes::Boolean,
-					AssertionTypes::Integer,
-					AssertionTypes::Element],
-	    Unary::Qualifier(_) => vec![AssertionTypes::Set],
-	    Unary::ToEl         => vec![AssertionTypes::String],
-	    Unary::Source       => vec![AssertionTypes::Edge],
-	    Unary::Target       => vec![AssertionTypes::Edge],
-	    Unary::Neighbours   => vec![AssertionTypes::Node],
 	}
     }
 }
@@ -197,30 +192,53 @@ impl QualifierRestricted {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum Qualifier {
+pub enum QualifierLabel {
     AvailableEntities,
     AllReactants,
     AllInhibitors,
     Restricted(QualifierRestricted),
 }
 
-impl Qualifier {
+impl QualifierLabel {
     pub fn get(
 	&self,
 	l: &super::structure::RSlabel,
-    ) -> super::structure::RSset {
+    ) -> AssertReturnValue {
 	match self {
-	    Qualifier::AvailableEntities => {
-		l.t.clone()
+	    QualifierLabel::AvailableEntities => {
+		AssertReturnValue::Set(l.t.clone())
 	    },
-	    Qualifier::AllReactants => {
-		l.reactants.union(&l.reactants_absent)
+	    QualifierLabel::AllReactants => {
+		AssertReturnValue::Set(l.reactants.union(&l.reactants_absent))
 	    },
-	    Qualifier::AllInhibitors => {
-		l.inhibitors.union(&l.inhibitors_present)
+	    QualifierLabel::AllInhibitors => {
+		AssertReturnValue::Set(
+		    l.inhibitors.union(&l.inhibitors_present))
 	    },
-	    Qualifier::Restricted(q) => {
-		q.referenced(l).clone()
+	    QualifierLabel::Restricted(q) => {
+		AssertReturnValue::Set(q.referenced(l).clone())
+	    }
+	}
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum QualifierSystem {
+    Entities,
+    Context,
+}
+
+impl QualifierSystem {
+    pub fn get(
+	&self,
+	l: &super::structure::RSsystem,
+    ) -> AssertReturnValue {
+	match self {
+	    Self::Context => {
+		AssertReturnValue::Context(l.context_process.clone())
+	    },
+	    Self::Entities => {
+		AssertReturnValue::Set(l.available_entities.clone())
 	    }
 	}
     }
@@ -311,95 +329,74 @@ impl Binary {
 	t1: &AssertionTypes,
 	t2: &AssertionTypes
     ) -> Result<AssertionTypes, String> {
-	//
-	match self {
-	    Self::And |
-	    Self::Or => {
-		if let (AssertionTypes::Boolean, AssertionTypes::Boolean) =
-		    (t1, t2)
-		{
-		    return Ok(AssertionTypes::Boolean)
-		}
+	match (self, t1, t2) {
+	    (Self::And, AssertionTypes::Boolean, AssertionTypes::Boolean) |
+	    (Self::Or, AssertionTypes::Boolean, AssertionTypes::Boolean) => {
+		Ok(AssertionTypes::Boolean)
 	    },
-	    Self::Xor => {
-		match (t1, t2) {
-		    (AssertionTypes::Boolean, AssertionTypes::Boolean) =>
-			return Ok(AssertionTypes::Boolean),
-		    (AssertionTypes::Set, AssertionTypes::Set) =>
-			return Ok(AssertionTypes::Set),
-		    _ => {}
-		}
+	    (Self::Xor, AssertionTypes::Boolean, AssertionTypes::Boolean) => {
+		Ok(AssertionTypes::Boolean)
+	    },
+	    (Self::Xor, AssertionTypes::Set, AssertionTypes::Set)=> {
+		Ok(AssertionTypes::Set)
+	    },
+	    (Self::Less,   AssertionTypes::Integer, AssertionTypes::Integer) |
+	    (Self::Less,   AssertionTypes::Set,     AssertionTypes::Set)     |
+	    (Self::LessEq, AssertionTypes::Integer, AssertionTypes::Integer) |
+	    (Self::LessEq, AssertionTypes::Set,     AssertionTypes::Set)     |
+	    (Self::More,   AssertionTypes::Integer, AssertionTypes::Integer) |
+	    (Self::More,   AssertionTypes::Set,     AssertionTypes::Set)     |
+	    (Self::MoreEq, AssertionTypes::Integer, AssertionTypes::Integer) |
+	    (Self::MoreEq, AssertionTypes::Set,     AssertionTypes::Set ) => {
+		Ok(AssertionTypes::Boolean)
+	    },
+	    (Self::Eq,    AssertionTypes::Integer, AssertionTypes::Integer) |
+	    (Self::Eq,    AssertionTypes::Boolean, AssertionTypes::Boolean) |
+	    (Self::Eq,    AssertionTypes::Element, AssertionTypes::Element) |
+	    (Self::Eq,    AssertionTypes::Label,   AssertionTypes::Label)   |
+	    (Self::Eq,    AssertionTypes::String,  AssertionTypes::String)  |
+	    (Self::Eq,    AssertionTypes::Set,     AssertionTypes::Set)     |
+	    (Self::NotEq, AssertionTypes::Integer, AssertionTypes::Integer) |
+	    (Self::NotEq, AssertionTypes::Boolean, AssertionTypes::Boolean) |
+	    (Self::NotEq, AssertionTypes::Element, AssertionTypes::Element) |
+	    (Self::NotEq, AssertionTypes::Label,   AssertionTypes::Label)   |
+	    (Self::NotEq, AssertionTypes::String,  AssertionTypes::String)  |
+	    (Self::NotEq, AssertionTypes::Set,     AssertionTypes::Set) => {
+		Ok(AssertionTypes::Boolean)
+	    },
+	    (Self::Plus, AssertionTypes::Integer, AssertionTypes::Integer) |
+	    (Self::Minus, AssertionTypes::Integer, AssertionTypes::Integer) |
+	    (Self::Times, AssertionTypes::Integer, AssertionTypes::Integer) => {
+		Ok(AssertionTypes::Integer)
+	    },
+	    (Self::Plus, AssertionTypes::Set, AssertionTypes::Set) |
+	    (Self::Minus, AssertionTypes::Set, AssertionTypes::Set) |
+	    (Self::Times, AssertionTypes::Set, AssertionTypes::Set) => {
+		Ok(AssertionTypes::Set)
+	    },
+	    (Self::Exponential, AssertionTypes::Integer, AssertionTypes::Integer) |
+	    (Self::Quotient, AssertionTypes::Integer, AssertionTypes::Integer) |
+	    (Self::Reminder, AssertionTypes::Integer, AssertionTypes::Integer) => {
+		Ok(AssertionTypes::Integer)
+	    },
+	    (Self::Concat, AssertionTypes::String, AssertionTypes::String) => {
+		Ok(AssertionTypes::String)
+	    },
+	    (Self::SubStr, AssertionTypes::String, AssertionTypes::String) => {
+		Ok(AssertionTypes::Boolean)
+	    },
+	    (Self::Min, AssertionTypes::Integer, AssertionTypes::Integer) |
+	    (Self::Max, AssertionTypes::Integer, AssertionTypes::Integer) => {
+		Ok(AssertionTypes::Integer)
+	    },
+	    (Self::CommonSubStr, AssertionTypes::String, AssertionTypes::String) => {
+		Ok(AssertionTypes::String)
+	    },
+	    _ => {
+		Err(format!("Expressions have incompatible types: {t1} and \
+			     {t2} with operation {self}."))
 	    }
-	    Self::Less |
-	    Self::LessEq |
-	    Self::More |
-	    Self::MoreEq =>
-		match (t1, t2) {
-		    (AssertionTypes::Integer, AssertionTypes::Integer) |
-		    (AssertionTypes::Set,     AssertionTypes::Set    ) =>
-			return Ok(AssertionTypes::Boolean),
-		    _ => {}
-		}
-	    Self::Eq |
-	    Self::NotEq => {
-		match (t1, t2) {
-		    (AssertionTypes::Integer, AssertionTypes::Integer) |
-		    (AssertionTypes::Boolean, AssertionTypes::Boolean) |
-		    (AssertionTypes::Element, AssertionTypes::Element) |
-		    (AssertionTypes::Label,   AssertionTypes::Label)   |
-		    (AssertionTypes::String,  AssertionTypes::String)  |
-		    (AssertionTypes::Set,     AssertionTypes::Set    ) =>
-			return Ok(AssertionTypes::Boolean),
-		    _ => {}
-		}
-	    },
-	    Self::Plus |
-	    Self::Minus |
-	    Self::Times => {
-		match (t1, t2) {
-		    (AssertionTypes::Integer, AssertionTypes::Integer) =>
-			return Ok(AssertionTypes::Integer),
-		    (AssertionTypes::Set,     AssertionTypes::Set    ) =>
-			return Ok(AssertionTypes::Set),
-		    _ => {}
-		}
-	    },
-	    Self::Exponential |
-	    Self::Quotient |
-	    Self::Reminder => {
-		if let (AssertionTypes::Integer, AssertionTypes::Integer) =
-		    (t1, t2) {
-			return Ok(AssertionTypes::Integer)
-		    }
-	    },
-	    Self::Concat => {
-		if let (AssertionTypes::String, AssertionTypes::String) =
-		    (t1, t2) {
-			return Ok(AssertionTypes::String)
-		    }
-	    },
-	    Self::SubStr => {
-		if let (AssertionTypes::String, AssertionTypes::String) =
-		    (t1, t2) {
-			return Ok(AssertionTypes::Boolean)
-		    }
-	    },
-	    Self::Min |
-	    Self::Max => {
-		if let (AssertionTypes::Integer, AssertionTypes::Integer) =
-		    (t1, t2) {
-			return Ok(AssertionTypes::Integer)
-		    }
-	    },
-	    Self::CommonSubStr => {
-		if let (AssertionTypes::String, AssertionTypes::String) =
-		    (t1, t2) {
-			return Ok(AssertionTypes::String)
-		    }
-	    },
 	}
-	Err(format!("Expressions have incompatible types: {t1} and {t2} with \
-		     operation {self}."))
     }
 }
 
@@ -652,8 +649,6 @@ impl<'a> Context<'a> {
     }
 }
 
-
-
 #[derive(Copy, Clone, PartialEq, Eq)]
 enum AssertionTypes {
     Boolean,
@@ -662,6 +657,8 @@ enum AssertionTypes {
     Label,
     Set,
     Element,
+    System,
+    Context,
     NoType,
     RangeInteger,
     RangeSet,
@@ -682,6 +679,8 @@ pub enum AssertReturnValue {
     Node(petgraph::graph::NodeIndex),
     Edge(petgraph::graph::EdgeIndex),
     Neighbours(petgraph::graph::NodeIndex),
+    System(super::structure::RSsystem),
+    Context(super::structure::RSprocess),
 }
 
 impl AssertReturnValue {
@@ -723,8 +722,8 @@ impl AssertReturnValue {
 		    )?
 		))
 	    },
-	    (AssertReturnValue::Label(l), Unary::Qualifier(q)) => {
-		Ok(AssertReturnValue::Set(q.get(&l)))
+	    (AssertReturnValue::Label(l), Unary::QualifierLabel(q)) => {
+		Ok(q.get(&l))
 	    },
 	    (AssertReturnValue::String(s), Unary::ToEl) => {
 		Ok(AssertReturnValue::Element(translator.encode(s)))
@@ -740,6 +739,14 @@ impl AssertReturnValue {
 	    (AssertReturnValue::Node(node), Unary::Neighbours) => {
 		Ok(AssertReturnValue::Neighbours(node))
 	    },
+	    (AssertReturnValue::Node(node), Unary::System) => {
+		Ok(AssertReturnValue::System(
+		    graph.node_weight(node).unwrap().clone()
+		))
+	    },
+	    (AssertReturnValue::System(sys), Unary::QualifierSystem(q)) => {
+		Ok(q.get(&sys))
+	    }
 	    (val, u) => {
 		Err(format!("Incompatible unary operation {u} on value {val}."))
 	    }
@@ -1079,7 +1086,9 @@ impl RSassert {
 	    AssertionTypes::Set |
 	    AssertionTypes::Element |
 	    AssertionTypes::Edge |
-	    AssertionTypes::Node =>
+	    AssertionTypes::Node |
+	    AssertionTypes::System |
+	    AssertionTypes::Context =>
 		Ok(()),
 	    AssertionTypes::NoType |
 	    AssertionTypes::RangeInteger |
@@ -1202,11 +1211,13 @@ impl fmt::Display for Unary {
 	    Self::Empty => write!(f, ".empty"),
 	    Self::Length => write!(f, ".length"),
 	    Self::ToStr => write!(f, ".tostr"),
-	    Self::Qualifier(q) => write!(f, ".{q}"),
+	    Self::QualifierLabel(q) => write!(f, ".{q}"),
+	    Self::QualifierSystem(q) => write!(f, ".{q}"),
 	    Self::ToEl => write!(f, ".toel"),
 	    Self::Source => write!(f, ".source"),
 	    Self::Target => write!(f, ".target"),
 	    Self::Neighbours => write!(f, ".neighbours"),
+	    Self::System => write!(f, ".system"),
 	}
     }
 }
@@ -1225,13 +1236,22 @@ impl fmt::Display for QualifierRestricted {
     }
 }
 
-impl fmt::Display for Qualifier {
+impl fmt::Display for QualifierLabel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 	match self {
 	    Self::AvailableEntities => write!(f, "AvailableEntities"),
 	    Self::AllReactants => write!(f, "AllReactants"),
 	    Self::AllInhibitors => write!(f, "AllInhibitors"),
 	    Self::Restricted(q) => write!(f, "{q}"),
+	}
+    }
+}
+
+impl fmt::Display for QualifierSystem {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+	match self {
+	    Self::Context => write!(f, "context"),
+	    Self::Entities => write!(f, "entities"),
 	}
     }
 }
@@ -1266,15 +1286,18 @@ impl fmt::Display for Binary {
 impl fmt::Display for AssertReturnValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 	match self {
-	    Self::Boolean(b) => {write!(f, "{b}")},
-	    Self::Integer(i) => {write!(f, "{i}")},
-	    Self::String(s) => {write!(f, r#""{s}""#)},
-	    Self::Label(l) => {write!(f, "{{debug: {l:?}}}")},
-	    Self::Set(set) => {write!(f, "{{debug: {set:?}}}")},
-	    Self::Element(el) => {write!(f, "{{debug: {el:?}}}")},
-	    Self::Edge(edge) => {write!(f, "{{debug: {edge:?}}}")},
-	    Self::Node(node) => {write!(f, "{{debug: {node:?}}}")},
-	    Self::Neighbours(node) => {write!(f, "{{debug: {node:?}}}.neighbours")}
+	    Self::Boolean(b) => write!(f, "{b}"),
+	    Self::Integer(i) => write!(f, "{i}"),
+	    Self::String(s) => write!(f, r#""{s}""#),
+	    Self::Label(l) => write!(f, "{{debug: {l:?}}}"),
+	    Self::Set(set) => write!(f, "{{debug: {set:?}}}"),
+	    Self::Element(el) => write!(f, "{{debug: {el:?}}}"),
+	    Self::Edge(edge) => write!(f, "{{debug: {edge:?}}}"),
+	    Self::Node(node) => write!(f, "{{debug: {node:?}}}"),
+	    Self::Neighbours(node) =>
+		write!(f, "{{debug: {node:?}}}.neighbours"),
+	    Self::System(sys) => write!(f, "{{debug: {sys:?}}}"),
+	    Self::Context(ctx) => write!(f, "{{debug: {ctx:?}}}"),
 	}
     }
 }
@@ -1288,6 +1311,8 @@ impl fmt::Display for AssertionTypes {
 	    Self::Label => write!(f, "label"),
 	    Self::Set => write!(f, "set"),
 	    Self::Element => write!(f, "element"),
+	    Self::System => write!(f, "system"),
+	    Self::Context => write!(f, "context"),
 	    Self::NoType => write!(f, "no type"),
 	    Self::RangeInteger => write!(f, "range of integers"),
 	    Self::RangeSet => write!(f, "range of set"),
@@ -2184,8 +2209,7 @@ fn assert_tycheck_for_1() {
     let node_2 = graph.add_node(RSsystem::new());
     let edge = graph.add_edge(node_1, node_2, RSlabel::new());
 
-    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
-		     Err(_)));
+    assert!(tree.execute(&graph, &edge, &mut translator).is_err());
 }
 
 
@@ -2332,7 +2356,7 @@ fn assert_tycheck_for_4() {
 		Range::IterateOverSet(
 		    Box::new(
 			Expression::Unary(
-			    Unary::Qualifier(Qualifier::AvailableEntities),
+			    Unary::QualifierLabel(QualifierLabel::AvailableEntities),
 			    Box::new(Expression::Var(
 				AssignmentVariable::Var(
 				    Variable::Id("a".into())
@@ -2398,7 +2422,7 @@ fn assert_tycheck_for_5() {
 		    Range::IterateOverSet(
 			Box::new(
 			    Expression::Unary(
-				Unary::Qualifier(Qualifier::AvailableEntities),
+				Unary::QualifierLabel(QualifierLabel::AvailableEntities),
 				Box::new(Expression::Var(
 				    AssignmentVariable::Var(
 					Variable::Id("a".into())
@@ -2662,4 +2686,61 @@ fn assert_tycheck_for_8() {
 
     assert!(matches!(tree.execute(&graph, &edge, &mut translator),
 		     Ok(AssertReturnValue::Integer(2))));
+}
+
+#[test]
+fn assert_tycheck_system() {
+    use super::translator::Translator;
+    use super::structure::{RSsystem, RSlabel, RSset, RSenvironment, RSprocess};
+    use std::rc::Rc;
+
+    let tree = RSassert {
+	tree: Tree::Concat(
+	    Box::new(Tree::Assignment(
+		AssignmentVariable::Var(Variable::Id("a".into())),
+		Box::new(Expression::Unary(
+		    Unary::QualifierSystem(QualifierSystem::Entities),
+		    Box::new(Expression::Unary(
+			Unary::System,
+			Box::new(Expression::Unary(
+			    Unary::Target,
+			    Box::new(Expression::Var(
+				AssignmentVariable::Var(Variable::Edge)
+			    ))
+			))
+		    ))
+		))
+	    )),
+	    Box::new(Tree::Return(
+		Box::new(Expression::Binary(
+		    Binary::Less,
+		    Box::new(Expression::Var(
+			AssignmentVariable::Var(Variable::Id("a".into()))
+		    )),
+		    Box::new(Expression::Set(RSset::from([1, 2])))
+		))
+	    )),
+	)
+    };
+    assert!(tree.typecheck().is_ok());
+
+
+    let mut translator = Translator::new();
+
+    let mut graph = petgraph::Graph::new();
+    let node_1 = graph.add_node(RSsystem::new());
+    let node_2 = graph.add_node(
+	RSsystem::from(
+	    Rc::new(RSenvironment::new()),
+	    RSset::from([2]),
+	    RSprocess::Nill,
+	    Rc::new(vec![])
+	)
+    );
+    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+
+    println!("{:?}", tree.execute(&graph, &edge, &mut translator));
+
+    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+		     Ok(AssertReturnValue::Boolean(true))));
 }
