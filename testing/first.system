@@ -6,7 +6,13 @@ Reactions: ([{a,b}, {c}, {b}])
 
 Bisimilarity ("testing/adversarial.system") > Print,
 Digraph > Dot
-        | Entities
+        | Entities " - " Context " - entities masked: " MaskEntities {a}
 	| Entities
-	| ! "white"
-	| ! "black" > Print
+	| EntitiesDeleted {a} ? "blue" ! "white"
+	| ! "black"
+	> Print,
+
+Digraph > GraphML
+	| Entities
+	| Entities
+	> Print

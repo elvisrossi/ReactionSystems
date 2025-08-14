@@ -49,8 +49,8 @@ match {
 	"UncommonEntitiesDeleted", "UncommonMaskEntitiesDeleted",
     "EntitiesAdded", "MaskEntitiesAdded",
 	"UncommonEntitiesAdded", "UncommonMaskEntitiesAdded",
-    "label", "if", "then", "else", "let", "=", "return", "for", "in",
-    "not", "rand", ".empty", ".length", ".tostr",
+    "label", "edge", "if", "then", "else", "let", "=", "return", "for", "in",
+    "not", "rand", ".empty", ".length", ".tostr", ".source", ".target",
     "&&", "||", "^^", "<=", ">=", "==", "!=", "+", "*", "/", "%",
     "::", "substr", "min", "max", "commonsubstr",
     "AvailableEntities", "AllReactants", "AllInhibitors",
@@ -217,6 +217,7 @@ AssertAssignmentVar: assert::AssignmentVariable = {
 
 AssertVariable: assert::Variable = {
     "label" => assert::Variable::Label,
+    "edge" => assert::Variable::Edge,
     <v: Literal> => assert::Variable::Id(v),
 }
 
@@ -262,6 +263,9 @@ AssertUnarySuffix: assert::Unary = {
     ".length" => assert::Unary::Length,
     ".tostr" => assert::Unary::ToStr,
     ".toel" => assert::Unary::ToEl,
+    ".source" => assert::Unary::Source,
+    ".target" => assert::Unary::Target,
+    ".neighbours" => assert::Unary::Neighbours,
     "." <q: AssertQualifier> => assert::Unary::Qualifier(q),
 }
 

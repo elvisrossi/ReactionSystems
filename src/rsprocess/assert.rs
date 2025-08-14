@@ -23,7 +23,8 @@ pub enum Tree {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Variable  {
     Id(String),
-    Label
+    Label, // special label that is the input of the function
+    Edge, // special edge that is the input of the function
 }
 
 #[derive(Debug, Clone)]
@@ -53,7 +54,6 @@ pub enum Range {
     IterateInRange(Box<Expression>, Box<Expression>),
 }
 
-
 #[derive(Debug, Clone, Copy)]
 pub enum Unary {
     Not,
@@ -63,19 +63,25 @@ pub enum Unary {
     Length,
     ToStr,
     Qualifier(Qualifier),
-    ToEl
+    ToEl,
+    Source,
+    Target,
+    Neighbours,
 }
 
 impl Unary {
     fn is_prefix(&self) -> bool {
 	match self {
 	    Self::Not |
-	    Self::Rand => {true},
+	    Self::Rand => true,
 	    Self::Empty |
 	    Self::Length |
 	    Self::ToStr |
 	    Self::Qualifier(_) |
-	    Self::ToEl => {false}
+	    Self::ToEl |
+	    Self::Source |
+	    Self::Target |
+	    Self::Neighbours => false,
 	}
     }
 
@@ -87,54 +93,45 @@ impl Unary {
 	&self,
 	type_exp: &AssertionTypes
     ) -> Result<AssertionTypes, String> {
-	match self {
-	    Self::Not => {
-		if let AssertionTypes::Boolean = type_exp {
-		    return Ok(AssertionTypes::Boolean)
-		}
+	match (self, type_exp) {
+	    (Self::Not, AssertionTypes::Boolean) => {
+		Ok(AssertionTypes::Boolean)
 	    },
-	    Self::Rand => {
-		if let AssertionTypes::Integer = type_exp {
-		    return Ok(AssertionTypes::Integer)
-		}
+	    (Self::Rand, AssertionTypes::Integer) => {
+		Ok(AssertionTypes::Integer)
 	    },
-	    Self::Empty => {
-		if let AssertionTypes::Set = type_exp {
-		    return Ok(AssertionTypes::Boolean)
-		}
+	    (Self::Empty, AssertionTypes::Set) => {
+		Ok(AssertionTypes::Boolean)
 	    },
-	    Self::Length => {
-		match type_exp {
-		    AssertionTypes::Set |
-		    AssertionTypes::String => {
-			return Ok(AssertionTypes::Integer)
-		    }
-		    _ => {}
-		}
+	    (Self::Length, AssertionTypes::Set) |
+	    (Self::Length, AssertionTypes::String) => {
+		Ok(AssertionTypes::Integer)
 	    },
-	    Self::ToStr => {
-		match type_exp {
-		    AssertionTypes::Boolean |
-		    AssertionTypes::Element |
-		    AssertionTypes::Integer => {
-			return Ok(AssertionTypes::String)
-		    }
-		    _ => {}
-		}
+	    (Self::ToStr, AssertionTypes::Boolean) |
+	    (Self::ToStr, AssertionTypes::Element) |
+	    (Self::ToStr, AssertionTypes::Integer) => {
+		Ok(AssertionTypes::String)
 	    },
-	    Self::Qualifier(_) => {
-		if let AssertionTypes::Label = type_exp {
-		    return Ok(AssertionTypes::Set)
-		}
+	    (Self::Qualifier(_), AssertionTypes::Label) => {
+		Ok(AssertionTypes::Set)
 	    },
-	    Self::ToEl => {
-		if let AssertionTypes::String = type_exp {
-		    return Ok(AssertionTypes::Element)
-		}
+	    (Self::ToEl, AssertionTypes::String) => {
+		Ok(AssertionTypes::Element)
+	    },
+	    (Self::Source, AssertionTypes::Edge) => {
+		Ok(AssertionTypes::Node)
+	    },
+	    (Self::Target, AssertionTypes::Edge) => {
+		Ok(AssertionTypes::Node)
+	    },
+	    (Self::Neighbours, AssertionTypes::Node) => {
+		Ok(AssertionTypes::RangeNeighbours)
+	    },
+	    (op, type_exp) => {
+		Err(format!("Expression has incompatible type with operation: \
+			     {type_exp} with operation {op}."))
 	    }
 	}
-	Err(format!("Expression has incompatible type with operation: \
-		     {type_exp} with operation {self}."))
     }
 
     fn associated_types_unary(&self) -> Vec<AssertionTypes> {
@@ -148,7 +145,10 @@ impl Unary {
 					AssertionTypes::Integer,
 					AssertionTypes::Element],
 	    Unary::Qualifier(_) => vec![AssertionTypes::Set],
-	    Unary::ToEl         => vec![AssertionTypes::String]
+	    Unary::ToEl         => vec![AssertionTypes::String],
+	    Unary::Source       => vec![AssertionTypes::Edge],
+	    Unary::Target       => vec![AssertionTypes::Edge],
+	    Unary::Neighbours   => vec![AssertionTypes::Node],
 	}
     }
 }
@@ -369,33 +369,33 @@ impl Binary {
 	    Self::Reminder => {
 		if let (AssertionTypes::Integer, AssertionTypes::Integer) =
 		    (t1, t2) {
-		    return Ok(AssertionTypes::Integer)
-		}
+			return Ok(AssertionTypes::Integer)
+		    }
 	    },
 	    Self::Concat => {
 		if let (AssertionTypes::String, AssertionTypes::String) =
 		    (t1, t2) {
-		    return Ok(AssertionTypes::String)
-		}
+			return Ok(AssertionTypes::String)
+		    }
 	    },
 	    Self::SubStr => {
 		if let (AssertionTypes::String, AssertionTypes::String) =
 		    (t1, t2) {
-		    return Ok(AssertionTypes::Boolean)
-		}
+			return Ok(AssertionTypes::Boolean)
+		    }
 	    },
 	    Self::Min |
 	    Self::Max => {
 		if let (AssertionTypes::Integer, AssertionTypes::Integer) =
 		    (t1, t2) {
-		    return Ok(AssertionTypes::Integer)
-		}
+			return Ok(AssertionTypes::Integer)
+		    }
 	    },
 	    Self::CommonSubStr => {
 		if let (AssertionTypes::String, AssertionTypes::String) =
 		    (t1, t2) {
-		    return Ok(AssertionTypes::String)
-		}
+			return Ok(AssertionTypes::String)
+		    }
 	    },
 	}
 	Err(format!("Expressions have incompatible types: {t1} and {t2} with \
@@ -407,6 +407,8 @@ impl Binary {
 // -----------------------------------------------------------------------------
 use std::collections::HashMap;
 use std::fmt;
+
+use petgraph::visit::EdgeRef;
 
 struct TypeContext {
     data: HashMap<String, AssertionTypes>,
@@ -427,13 +429,21 @@ impl TypeContext {
 	ty: AssertionTypes
     ) -> Result<(), String> {
 	match v {
-	    AssignmentVariable::Var(v) => {
-		if let Variable::Id(v) = v {
-		    self.data.insert(v.clone(), ty);
-		}
+	    AssignmentVariable::Var(Variable::Id(v)) => {
+		self.data.insert(v.clone(), ty);
 		Ok(())
 	    },
-	    AssignmentVariable::QualifiedVar(Variable::Label, _) => Ok(()),
+	    AssignmentVariable::Var(Variable::Label) |
+	    AssignmentVariable::Var(Variable::Edge) => {
+		Ok(())
+	    }
+	    AssignmentVariable::QualifiedVar(Variable::Label, _) => {
+		Ok(())
+	    },
+	    AssignmentVariable::QualifiedVar(Variable::Edge, q) =>
+		Err(format!("Variable does not have type label while trying to \
+			     assign to qualification {q}, it's an edge instead.\
+			     ")),
 	    AssignmentVariable::QualifiedVar(Variable::Id(v), q) => {
 		if let Some(AssertionTypes::Label) = self.data.get(v) {
 		    Ok(())
@@ -468,8 +478,9 @@ impl TypeContext {
 	ty: AssertionTypes
     ) -> Result<(), String> {
 	let v = match v {
-	    Variable::Label => return Err("Protected word label used in for \
-					   assignment.".into()),
+	    Variable::Label |
+	    Variable::Edge => return Err("Protected word label used in for \
+					  assignment.".into()),
 	    Variable::Id(v) => v
 	};
 	match ty {
@@ -481,9 +492,13 @@ impl TypeContext {
 		self.data.insert(v.clone(), AssertionTypes::Integer);
 		Ok(())
 	    },
+	    AssertionTypes::RangeNeighbours => {
+		self.data.insert(v.clone(), AssertionTypes::Edge);
+		Ok(())
+	    },
 	    _ => {
 		Err(format!("Range has incorrect type {ty}."))
-	    }
+	    },
 	}
     }
 
@@ -495,6 +510,9 @@ impl TypeContext {
 	    AssignmentVariable::Var(Variable::Label) => {
 		Ok(AssertionTypes::Label)
 	    },
+	    AssignmentVariable::Var(Variable::Edge) => {
+		Ok(AssertionTypes::Edge)
+	    },
 	    AssignmentVariable::Var(Variable::Id(v)) => {
 		if let Some(ty) = self.data.get(v) {
 		    Ok(*ty)
@@ -504,6 +522,9 @@ impl TypeContext {
 	    },
 	    AssignmentVariable::QualifiedVar(Variable::Label, _) => {
 		Ok(AssertionTypes::Set)
+	    },
+	    AssignmentVariable::QualifiedVar(Variable::Edge, _) => {
+		Err("Variable edge is not a label.".into())
 	    },
 	    AssignmentVariable::QualifiedVar(Variable::Id(var), _) => {
 		if let Some(ty) = self.data.get(var) {
@@ -523,11 +544,15 @@ impl TypeContext {
 struct Context<'a> {
     data: HashMap<String, AssertReturnValue>,
     label: &'a super::structure::RSlabel,
+    edge: &'a petgraph::graph::EdgeIndex,
 }
 
 impl<'a> Context<'a> {
-    pub fn new(label: &'a super::structure::RSlabel) -> Self {
-	Self { data: HashMap::new(), label }
+    pub fn new(
+	label: &'a super::structure::RSlabel,
+	edge: &'a petgraph::graph::EdgeIndex,
+    ) -> Self {
+	Self { data: HashMap::new(), label, edge }
     }
 
     pub fn assign(
@@ -543,6 +568,9 @@ impl<'a> Context<'a> {
 		Ok(())
 	    },
 	    AssignmentVariable::QualifiedVar(Variable::Label, _) => Ok(()),
+	    AssignmentVariable::QualifiedVar(Variable::Edge, q) =>
+		Err(format!("Variable edge does not have type label while \
+			     trying to assign to qualification {q}")),
 	    AssignmentVariable::QualifiedVar(Variable::Id(v), q) => {
 		match self.data.entry(v.clone()) {
 		    std::collections::hash_map::Entry::Vacant(_ve) =>
@@ -612,7 +640,14 @@ impl<'a> Context<'a> {
 	    },
 	    AssignmentVariable::QualifiedVar(Variable::Label, q) => {
 		Ok(AssertReturnValue::Set(q.referenced(self.label).clone()))
-	    }
+	    },
+	    AssignmentVariable::Var(Variable::Edge) => {
+		Ok(AssertReturnValue::Edge(*self.edge))
+	    },
+	    AssignmentVariable::QualifiedVar(Variable::Edge, q) => {
+		Err(format!("Variable edge is not a label but was quantified \
+			     with {q}."))
+	    },
 	}
     }
 }
@@ -630,6 +665,10 @@ enum AssertionTypes {
     NoType,
     RangeInteger,
     RangeSet,
+    RangeNeighbours,
+
+    Node,
+    Edge,
 }
 
 #[derive(Debug, Clone)]
@@ -640,13 +679,17 @@ pub enum AssertReturnValue {
     Label(super::structure::RSlabel),
     Set(super::structure::RSset),
     Element(super::translator::IdType),
+    Node(petgraph::graph::NodeIndex),
+    Edge(petgraph::graph::EdgeIndex),
+    Neighbours(petgraph::graph::NodeIndex),
 }
 
 impl AssertReturnValue {
     pub fn unary(
 	self,
 	u: &Unary,
-	translator: &mut super::translator::Translator
+	translator: &mut super::translator::Translator,
+	graph: &super::graph::RSgraph,
     ) -> Result<AssertReturnValue, String> {
 	match (self, u) {
 	    (AssertReturnValue::Boolean(b), Unary::Not) => {
@@ -686,8 +729,19 @@ impl AssertReturnValue {
 	    (AssertReturnValue::String(s), Unary::ToEl) => {
 		Ok(AssertReturnValue::Element(translator.encode(s)))
 	    },
+	    (AssertReturnValue::Edge(edge), Unary::Source) => {
+		Ok(AssertReturnValue::Node(
+		    graph.edge_endpoints(edge).unwrap().0))
+	    },
+	    (AssertReturnValue::Edge(edge), Unary::Target) => {
+		Ok(AssertReturnValue::Node(
+		    graph.edge_endpoints(edge).unwrap().1))
+	    },
+	    (AssertReturnValue::Node(node), Unary::Neighbours) => {
+		Ok(AssertReturnValue::Neighbours(node))
+	    },
 	    (val, u) => {
-		Err(format!("Incompatible unary operation {u} on value {val}"))
+		Err(format!("Incompatible unary operation {u} on value {val}."))
 	    }
 	}
     }
@@ -744,7 +798,7 @@ impl AssertReturnValue {
 		    Integer(0)
 		} else {
 		    Integer(i1.pow(i2 as u32))}
-		},
+	    },
 	    (Binary::Quotient, Integer(i1), Integer(i2)) => {
 		Integer(i1.div_euclid(i2))},
 	    (Binary::Reminder, Integer(i1), Integer(i2)) => {
@@ -876,11 +930,13 @@ fn typecheck_range(
 	},
 	Range::IterateOverSet(exp) => {
 	    let type_exp = typecheck_expression(exp, c)?;
-	    if let AssertionTypes::Set = type_exp {
-		Ok(AssertionTypes::RangeSet)
-	    } else {
-		Err(format!("Expressions in range is not a set, but is: \
-			     {type_exp}."))
+	    match type_exp {
+		AssertionTypes::Set =>
+		    Ok(AssertionTypes::RangeSet),
+		AssertionTypes::RangeNeighbours =>
+		    Ok(AssertionTypes::RangeNeighbours),
+		_ => Err(format!("Expressions in range is not a set or \
+				  neighbours of a node, but is: {type_exp}."))
 	    }
 	}
     }
@@ -890,43 +946,49 @@ fn execute(
     tree: &Tree,
     c: &mut Context,
     translator: &mut super::translator::Translator,
-) -> Result<AssertReturnValue, String> {
+    graph: &super::graph::RSgraph,
+) -> Result<Option<AssertReturnValue>, String> {
     match tree {
 	Tree::Concat(t1, t2) => {
-	    execute(t1, c, translator)?;
-	    execute(t2, c, translator)
+	    if let Some(val) = execute(t1, c, translator, graph)? {
+		Ok(Some(val))
+	    } else {
+		execute(t2, c, translator, graph)
+	    }
 	},
 	Tree::If(exp, t) => {
-	    let guard = execute_exp(exp, c, translator)?;
+	    let guard = execute_exp(exp, c, translator, graph)?;
 	    if let AssertReturnValue::Boolean(true) = guard {
-		execute(t, c, translator)
+		execute(t, c, translator, graph)
 	    } else {
-		Ok(AssertReturnValue::Boolean(true))
+		Ok(None)
 	    }
 	},
 	Tree::IfElse(exp, t1, t2) => {
-	    let guard = execute_exp(exp, c, translator)?;
+	    let guard = execute_exp(exp, c, translator, graph)?;
 	    if let AssertReturnValue::Boolean(true) = guard {
-		execute(t1, c, translator)
+		execute(t1, c, translator, graph)
 	    } else {
-		execute(t2, c, translator)
+		execute(t2, c, translator, graph)
 	    }
 	},
 	Tree::Assignment(v, exp) => {
-	    let val = execute_exp(exp, c, translator)?;
+	    let val = execute_exp(exp, c, translator, graph)?;
 	    c.assign(v, val)?;
-	    Ok(AssertReturnValue::Boolean(true))
+	    Ok(None)
 	},
 	Tree::Return(exp) => {
-	    execute_exp(exp, c, translator)
+	    Ok(Some(execute_exp(exp, c, translator, graph)?))
 	},
 	Tree::For(v, r, t) => {
-	    let range = range_into_iter(r, c, translator)?;
+	    let range = range_into_iter(r, c, translator, graph)?;
 	    for val in range {
 		c.assign(&AssignmentVariable::Var(v.clone()), val)?;
-		execute(t, c, translator)?;
+		if let Some(v) = execute(t, c, translator, graph)? {
+		    return Ok(Some(v))
+		}
 	    }
-	    Ok(AssertReturnValue::Boolean(true))
+	    Ok(None)
 	},
     }
 }
@@ -937,23 +999,35 @@ fn range_into_iter(
     range: &Range,
     c: &mut Context,
     translator: &mut super::translator::Translator,
+    graph: &super::graph::RSgraph,
 ) -> Result<RangeIterator, String> {
     match range {
 	Range::IterateOverSet(exp) => {
-	    let val = execute_exp(exp, c, translator)?;
-	    if let AssertReturnValue::Set(set) = val {
-		Ok(set.into_iter().map(AssertReturnValue::Element)
-		   .collect::<Vec<_>>().into_iter())
-	    } else {
-		Err(format!("{val} is not a set in for cycle."))
+	    let val = execute_exp(exp, c, translator, graph)?;
+	    match val {
+		AssertReturnValue::Set(set) => {
+		    Ok(set
+		       .into_iter()
+		       .map(AssertReturnValue::Element)
+		       .collect::<Vec<_>>()
+		       .into_iter())
+		},
+		AssertReturnValue::Neighbours(node) => {
+		    Ok(graph
+		       .edges(node)
+		       .map(|x| AssertReturnValue::Edge(x.id()))
+		       .collect::<Vec<_>>()
+		       .into_iter())
+		}
+		_ => Err(format!("{val} is not a set in for cycle."))
 	    }
 	},
 	Range::IterateInRange(exp1, exp2) => {
-	    let val1 = execute_exp(exp1, c, translator)?;
-	    let val2 = execute_exp(exp2, c, translator)?;
+	    let val1 = execute_exp(exp1, c, translator, graph)?;
+	    let val2 = execute_exp(exp2, c, translator, graph)?;
 	    match (val1, val2) {
 		(AssertReturnValue::Integer(i1),
-		    AssertReturnValue::Integer(i2)) =>
+		 AssertReturnValue::Integer(i2)) =>
 		    Ok((i1..i2).map(AssertReturnValue::Integer)
 		       .collect::<Vec<_>>().into_iter()),
 		(val1, val2) =>
@@ -968,6 +1042,7 @@ fn execute_exp(
     exp: &Expression,
     c: &Context,
     translator: &mut super::translator::Translator,
+    graph: &super::graph::RSgraph,
 ) -> Result<AssertReturnValue, String> {
     match exp {
 	Expression::True => Ok(AssertReturnValue::Boolean(true)),
@@ -980,12 +1055,12 @@ fn execute_exp(
 	Expression::String(s) => Ok(AssertReturnValue::String(s.clone())),
 	Expression::Var(var) => c.get(var),
 	Expression::Unary(u, exp) => {
-	    let val = execute_exp(exp, c, translator)?;
-	    val.unary(u, translator)
+	    let val = execute_exp(exp, c, translator, graph)?;
+	    val.unary(u, translator, graph)
 	},
 	Expression::Binary(b, exp1, exp2) => {
-	    let val1 = execute_exp(exp1, c, translator)?;
-	    let val2 = execute_exp(exp2, c, translator)?;
+	    let val1 = execute_exp(exp1, c, translator, graph)?;
+	    let val2 = execute_exp(exp2, c, translator, graph)?;
 	    val1.binary(b, val2, translator)
 	},
     }
@@ -1002,21 +1077,31 @@ impl RSassert {
 	    AssertionTypes::String |
 	    AssertionTypes::Label |
 	    AssertionTypes::Set |
-	    AssertionTypes::Element => Ok(()),
+	    AssertionTypes::Element |
+	    AssertionTypes::Edge |
+	    AssertionTypes::Node =>
+		Ok(()),
 	    AssertionTypes::NoType |
 	    AssertionTypes::RangeInteger |
-	    AssertionTypes::RangeSet =>
+	    AssertionTypes::RangeSet |
+	    AssertionTypes::RangeNeighbours =>
 		Err(format!("Returned type {ty} is not a valid return type.")),
 	}
     }
 
     pub fn execute(
 	&self,
-	label: &super::structure::RSlabel,
+	graph: &super::graph::RSgraph,
+	edge: &<super::graph::RSgraph as petgraph::visit::GraphBase>::EdgeId,
 	translator: &mut super::translator::Translator,
     ) -> Result<AssertReturnValue, String> {
-	let mut context = Context::new(label);
-	execute(&self.tree, &mut context, translator)
+	let label = graph.edge_weight(*edge).unwrap();
+	let mut context = Context::new(label, edge);
+	if let Some(v) = execute(&self.tree, &mut context, translator, graph)? {
+	    Ok(v)
+	} else {
+	    Err("No value returned.".into())
+	}
     }
 }
 
@@ -1050,6 +1135,7 @@ impl fmt::Display for Variable {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 	match self {
 	    Self::Label => {write!(f, "label")},
+	    Self::Edge => {write!(f, "edge")},
 	    Self::Id(s) => {write!(f, "{s}")}
 	}
     }
@@ -1117,7 +1203,10 @@ impl fmt::Display for Unary {
 	    Self::Length => write!(f, ".length"),
 	    Self::ToStr => write!(f, ".tostr"),
 	    Self::Qualifier(q) => write!(f, ".{q}"),
-	    Self::ToEl => write!(f, ".toel")
+	    Self::ToEl => write!(f, ".toel"),
+	    Self::Source => write!(f, ".source"),
+	    Self::Target => write!(f, ".target"),
+	    Self::Neighbours => write!(f, ".neighbours"),
 	}
     }
 }
@@ -1183,6 +1272,9 @@ impl fmt::Display for AssertReturnValue {
 	    Self::Label(l) => {write!(f, "{{debug: {l:?}}}")},
 	    Self::Set(set) => {write!(f, "{{debug: {set:?}}}")},
 	    Self::Element(el) => {write!(f, "{{debug: {el:?}}}")},
+	    Self::Edge(edge) => {write!(f, "{{debug: {edge:?}}}")},
+	    Self::Node(node) => {write!(f, "{{debug: {node:?}}}")},
+	    Self::Neighbours(node) => {write!(f, "{{debug: {node:?}}}.neighbours")}
 	}
     }
 }
@@ -1199,6 +1291,1375 @@ impl fmt::Display for AssertionTypes {
 	    Self::NoType => write!(f, "no type"),
 	    Self::RangeInteger => write!(f, "range of integers"),
 	    Self::RangeSet => write!(f, "range of set"),
+	    Self::RangeNeighbours => write!(f, "range of edges"),
+	    Self::Edge => write!(f, "edge"),
+	    Self::Node => write!(f, "node"),
 	}
     }
+}
+
+// -----------------------------------------------------------------------------
+//                                  Testing
+// -----------------------------------------------------------------------------
+
+#[test]
+fn assert_tycheck_true() {
+    use super::translator::Translator;
+    use super::structure::{RSsystem, RSlabel};
+
+    let tree = RSassert {tree: Tree::Return(Box::new(Expression::True))};
+    assert!(tree.typecheck().is_ok());
+
+
+    let mut translator = Translator::new();
+
+    let mut graph = petgraph::Graph::new();
+    let node_1 = graph.add_node(RSsystem::new());
+    let node_2 = graph.add_node(RSsystem::new());
+    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+
+    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+		     Ok(AssertReturnValue::Boolean(true))));
+}
+
+#[test]
+fn assert_tycheck_concat_1() {
+    use super::translator::Translator;
+    use super::structure::{RSsystem, RSlabel};
+
+    let tree = RSassert {
+	tree: Tree::Concat(
+	    Box::new(Tree::Assignment(
+		AssignmentVariable::Var(Variable::Id("a".into())),
+		Box::new(Expression::True))),
+	    Box::new(Tree::Return(Box::new(Expression::True))),
+	)
+    };
+    assert!(tree.typecheck().is_ok());
+
+
+    let mut translator = Translator::new();
+
+    let mut graph = petgraph::Graph::new();
+    let node_1 = graph.add_node(RSsystem::new());
+    let node_2 = graph.add_node(RSsystem::new());
+    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+
+    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+		     Ok(AssertReturnValue::Boolean(true))));
+}
+
+#[test]
+fn assert_tycheck_concat_2() {
+    use super::translator::Translator;
+    use super::structure::{RSsystem, RSlabel};
+
+    let tree = RSassert {
+	tree: Tree::Concat(
+	    Box::new(Tree::Return(Box::new(Expression::True))),
+	    Box::new(Tree::Assignment(
+		AssignmentVariable::Var(Variable::Id("a".into())),
+		Box::new(Expression::Integer(10)))),
+	)
+    };
+    assert!(tree.typecheck().is_ok());
+
+
+    let mut translator = Translator::new();
+
+    let mut graph = petgraph::Graph::new();
+    let node_1 = graph.add_node(RSsystem::new());
+    let node_2 = graph.add_node(RSsystem::new());
+    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+
+    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+		     Ok(AssertReturnValue::Boolean(true))));
+}
+
+#[test]
+fn assert_tycheck_return_1() {
+    use super::translator::Translator;
+    use super::structure::{RSsystem, RSlabel};
+
+    let tree = RSassert {
+	tree: Tree::Concat(
+	    Box::new(Tree::Return(Box::new(Expression::True))),
+	    Box::new(Tree::Return(Box::new(Expression::False))),
+	)
+    };
+    assert!(tree.typecheck().is_ok());
+
+
+    let mut translator = Translator::new();
+
+    let mut graph = petgraph::Graph::new();
+    let node_1 = graph.add_node(RSsystem::new());
+    let node_2 = graph.add_node(RSsystem::new());
+    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+
+    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+		     Ok(AssertReturnValue::Boolean(true))));
+}
+
+#[test]
+fn assert_tycheck_return_incompatible_1() {
+    let tree = RSassert {
+	tree: Tree::Concat(
+	    Box::new(Tree::Return(Box::new(Expression::True))),
+	    Box::new(Tree::Return(Box::new(Expression::Integer(10)))),
+	)
+    };
+    assert!(tree.typecheck().is_err());
+}
+
+#[test]
+fn assert_tycheck_return_incompatible_2() {
+    let tree = RSassert {
+	tree: Tree::Concat(
+	    Box::new(Tree::Return(Box::new(Expression::True))),
+	    Box::new(
+		Tree::Concat(
+		    Box::new(Tree::Assignment(
+			AssignmentVariable::Var(Variable::Id("a".into())),
+			Box::new(Expression::Integer(10)))),
+		    Box::new(Tree::Return(
+			Box::new(
+			    Expression::Var(AssignmentVariable::Var(
+				Variable::Id("a".into())
+			    ))
+			)
+		    ))),
+	    )
+	)
+    };
+    assert!(tree.typecheck().is_err());
+}
+
+#[test]
+fn assert_tycheck_return_2() {
+    use super::translator::Translator;
+    use super::structure::{RSsystem, RSlabel};
+
+    let tree = RSassert {
+	tree: Tree::Concat(
+	    Box::new(Tree::Return(Box::new(Expression::True))),
+	    Box::new(
+		Tree::Concat(
+		    Box::new(Tree::Assignment(
+			AssignmentVariable::Var(Variable::Id("a".into())),
+			Box::new(Expression::False))),
+		    Box::new(Tree::Return(
+			Box::new(
+			    Expression::Var(AssignmentVariable::Var(
+				Variable::Id("a".into())
+			    ))
+			)
+		    ))),
+	    )
+	)
+    };
+    assert!(tree.typecheck().is_ok());
+
+
+    let mut translator = Translator::new();
+
+    let mut graph = petgraph::Graph::new();
+    let node_1 = graph.add_node(RSsystem::new());
+    let node_2 = graph.add_node(RSsystem::new());
+    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+
+    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+		     Ok(AssertReturnValue::Boolean(true))));
+}
+
+
+#[test]
+fn assert_tycheck_return_3() {
+    use super::translator::Translator;
+    use super::structure::{RSsystem, RSlabel};
+
+    let tree = RSassert {
+	tree: Tree::Concat(
+	    Box::new(
+		Tree::Concat(
+		    Box::new(Tree::Assignment(
+			AssignmentVariable::Var(Variable::Id("a".into())),
+			Box::new(Expression::False))),
+		    Box::new(Tree::Return(
+			Box::new(
+			    Expression::Var(AssignmentVariable::Var(
+				Variable::Id("a".into())
+			    ))
+			)
+		    ))),
+	    ),
+	    Box::new(Tree::Return(Box::new(Expression::True))),
+	)
+    };
+    assert!(tree.typecheck().is_ok());
+
+
+    let mut translator = Translator::new();
+
+    let mut graph = petgraph::Graph::new();
+    let node_1 = graph.add_node(RSsystem::new());
+    let node_2 = graph.add_node(RSsystem::new());
+    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+
+    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+		     Ok(AssertReturnValue::Boolean(false))));
+}
+
+#[test]
+fn assert_tycheck_if_1() {
+    use super::translator::Translator;
+    use super::structure::{RSsystem, RSlabel};
+
+    let tree = RSassert {
+	tree: Tree::Concat(
+	    Box::new(Tree::Return(Box::new(Expression::True))),
+	    Box::new(
+		Tree::If(
+		    Box::new(
+			Expression::True
+		    ),
+		    Box::new(Tree::Return(
+			Box::new(
+			    Expression::True)
+		    )
+		    )
+		),
+	    )
+	)
+    };
+    assert!(tree.typecheck().is_ok());
+
+
+    let mut translator = Translator::new();
+
+    let mut graph = petgraph::Graph::new();
+    let node_1 = graph.add_node(RSsystem::new());
+    let node_2 = graph.add_node(RSsystem::new());
+    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+
+    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+		     Ok(AssertReturnValue::Boolean(true))));
+}
+
+#[test]
+fn assert_tycheck_if_2() {
+    use super::translator::Translator;
+    use super::structure::{RSsystem, RSlabel};
+
+    let tree = RSassert {
+	tree: Tree::Concat(
+	    Box::new(
+		Tree::If(
+		    Box::new(
+			Expression::True
+		    ),
+		    Box::new(Tree::Return(
+			Box::new(
+			    Expression::False)
+		    )
+		    )
+		),
+	    ),
+	    Box::new(Tree::Return(Box::new(Expression::True))),
+	)
+    };
+    assert!(tree.typecheck().is_ok());
+
+    let mut translator = Translator::new();
+
+    let mut graph = petgraph::Graph::new();
+    let node_1 = graph.add_node(RSsystem::new());
+    let node_2 = graph.add_node(RSsystem::new());
+    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+
+    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+		     Ok(AssertReturnValue::Boolean(false))));
+}
+
+#[test]
+fn assert_tycheck_if_3() {
+    use super::translator::Translator;
+    use super::structure::{RSsystem, RSlabel};
+
+    let tree = RSassert {
+	tree: Tree::Concat(
+	    Box::new(
+		Tree::If(
+		    Box::new(
+			Expression::False
+		    ),
+		    Box::new(Tree::Return(
+			Box::new(
+			    Expression::False)
+		    )
+		    )
+		),
+	    ),
+	    Box::new(Tree::Return(Box::new(Expression::True))),
+	)
+    };
+    assert!(tree.typecheck().is_ok());
+
+
+    let mut translator = Translator::new();
+
+    let mut graph = petgraph::Graph::new();
+    let node_1 = graph.add_node(RSsystem::new());
+    let node_2 = graph.add_node(RSsystem::new());
+    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+
+    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+		     Ok(AssertReturnValue::Boolean(true))));
+}
+
+#[test]
+fn assert_tycheck_if_4() {
+    let tree = RSassert {
+	tree: Tree::Concat(
+	    Box::new(
+		Tree::If(
+		    Box::new(
+			Expression::Integer(10)
+		    ),
+		    Box::new(Tree::Return(
+			Box::new(
+			    Expression::True)
+		    )
+		    )
+		),
+	    ),
+	    Box::new(Tree::Return(Box::new(Expression::True))),
+	)
+    };
+    assert!(tree.typecheck().is_err());
+}
+
+#[test]
+fn assert_tycheck_if_else_1() {
+    use super::translator::Translator;
+    use super::structure::{RSsystem, RSlabel};
+
+    let tree = RSassert {
+	tree: Tree::Concat(
+	    Box::new(Tree::Return(Box::new(Expression::True))),
+	    Box::new(
+		Tree::IfElse(
+		    Box::new(
+			Expression::True
+		    ),
+		    Box::new(Tree::Return(
+			Box::new(
+			    Expression::True)
+		    )),
+		    Box::new(Tree::Return(
+			Box::new(
+			    Expression::False)
+		    )),
+		),
+	    )
+	)
+    };
+    assert!(tree.typecheck().is_ok());
+
+
+    let mut translator = Translator::new();
+
+    let mut graph = petgraph::Graph::new();
+    let node_1 = graph.add_node(RSsystem::new());
+    let node_2 = graph.add_node(RSsystem::new());
+    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+
+    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+		     Ok(AssertReturnValue::Boolean(true))));
+}
+
+#[test]
+fn assert_tycheck_if_else_2() {
+    use super::translator::Translator;
+    use super::structure::{RSsystem, RSlabel};
+
+    let tree = RSassert {
+	tree: Tree::Concat(
+	    Box::new(
+		Tree::IfElse(
+		    Box::new(
+			Expression::False
+		    ),
+		    Box::new(Tree::Return(
+			Box::new(
+			    Expression::True)
+		    )),
+		    Box::new(Tree::Return(
+			Box::new(
+			    Expression::False)
+		    )),
+		),
+	    ),
+	    Box::new(Tree::Return(Box::new(Expression::True))),
+	)
+    };
+    assert!(tree.typecheck().is_ok());
+
+
+    let mut translator = Translator::new();
+
+    let mut graph = petgraph::Graph::new();
+    let node_1 = graph.add_node(RSsystem::new());
+    let node_2 = graph.add_node(RSsystem::new());
+    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+
+    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+		     Ok(AssertReturnValue::Boolean(false))));
+}
+
+#[test]
+fn assert_tycheck_if_else_3() {
+    let tree = RSassert {
+	tree: Tree::Concat(
+	    Box::new(
+		Tree::IfElse(
+		    Box::new(
+			Expression::Integer(10)
+		    ),
+		    Box::new(Tree::Return(
+			Box::new(
+			    Expression::True)
+		    )),
+		    Box::new(Tree::Return(
+			Box::new(
+			    Expression::False)
+		    )),
+		),
+	    ),
+	    Box::new(Tree::Return(Box::new(Expression::True))),
+	)
+    };
+    assert!(tree.typecheck().is_err());
+}
+
+#[test]
+fn assert_tycheck_if_else_4() {
+    let tree = RSassert {
+	tree: Tree::Concat(
+	    Box::new(
+		Tree::IfElse(
+		    Box::new(
+			Expression::True
+		    ),
+		    Box::new(Tree::Return(
+			Box::new(
+			    Expression::True)
+		    )),
+		    Box::new(Tree::Return(
+			Box::new(
+			    Expression::Integer(10))
+		    )),
+		),
+	    ),
+	    Box::new(Tree::Return(Box::new(Expression::True))),
+	)
+    };
+    assert!(tree.typecheck().is_err());
+}
+
+#[test]
+fn assert_tycheck_assignment_1() {
+    let tree = RSassert {
+	tree: Tree::Assignment(
+	    AssignmentVariable::Var(Variable::Id("a".into())),
+	    Box::new(Expression::True)
+	)
+    };
+    assert!(tree.typecheck().is_err());
+}
+
+#[test]
+fn assert_tycheck_assignment_2() {
+    use super::translator::Translator;
+    use super::structure::{RSsystem, RSlabel};
+
+    let tree = RSassert {
+	tree: Tree::Concat(
+	    Box::new(
+		Tree::Assignment(
+		    AssignmentVariable::Var(Variable::Id("a".into())),
+		    Box::new(Expression::True)
+		)
+	    ),
+	    Box::new(
+		Tree::Return(
+		    Box::new(
+			Expression::True
+		    )
+		)
+	    ),
+	)
+    };
+    assert!(tree.typecheck().is_ok());
+
+
+    let mut translator = Translator::new();
+
+    let mut graph = petgraph::Graph::new();
+    let node_1 = graph.add_node(RSsystem::new());
+    let node_2 = graph.add_node(RSsystem::new());
+    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+
+    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+		     Ok(AssertReturnValue::Boolean(true))));
+}
+
+#[test]
+fn assert_tycheck_assignment_3() {
+    use super::translator::Translator;
+    use super::structure::{RSsystem, RSlabel};
+
+    let tree = RSassert {
+	tree: Tree::Concat(
+	    Box::new(
+		Tree::Assignment(
+		    AssignmentVariable::Var(Variable::Id("a".into())),
+		    Box::new(Expression::False)
+		)
+	    ),
+	    Box::new(
+		Tree::Return(
+		    Box::new(
+			Expression::Var(
+			    AssignmentVariable::Var(Variable::Id("a".into()))
+			)
+		    )
+		)
+	    ),
+	)
+    };
+    assert!(tree.typecheck().is_ok());
+
+
+    let mut translator = Translator::new();
+
+    let mut graph = petgraph::Graph::new();
+    let node_1 = graph.add_node(RSsystem::new());
+    let node_2 = graph.add_node(RSsystem::new());
+    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+
+    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+		     Ok(AssertReturnValue::Boolean(false))));
+}
+
+#[test]
+fn assert_tycheck_assignment_4() {
+    let tree = RSassert {
+	tree: Tree::Concat(
+	    Box::new(
+		Tree::Assignment(
+		    AssignmentVariable::Var(Variable::Id("a".into())),
+		    Box::new(Expression::True)
+		)
+	    ),
+	    Box::new(
+		Tree::Return(
+		    Box::new(
+			Expression::Var(
+			    AssignmentVariable::Var(Variable::Id("b".into()))
+			)
+		    )
+		)
+	    ),
+	)
+    };
+    assert!(tree.typecheck().is_err());
+}
+
+#[test]
+fn assert_tycheck_assignment_5() {
+    use super::translator::Translator;
+    use super::structure::{RSsystem, RSlabel};
+
+    let tree = RSassert {
+	tree: Tree::Concat(
+	    Box::new(Tree::Assignment(
+		AssignmentVariable::Var(Variable::Id("a".into())),
+		Box::new(Expression::Integer(10))
+	    )),
+	    Box::new(Tree::Concat(
+		Box::new(Tree::Return(
+		    Box::new(Expression::Var(
+			AssignmentVariable::Var(Variable::Id("a".into()))
+		    ))
+		)),
+		Box::new(Tree::Return(
+		    Box::new(Expression::Var(
+			AssignmentVariable::Var(Variable::Id("a".into()))
+		    ))
+		)),
+	    ))
+	)
+    };
+    assert!(tree.typecheck().is_ok());
+
+
+    let mut translator = Translator::new();
+
+    let mut graph = petgraph::Graph::new();
+    let node_1 = graph.add_node(RSsystem::new());
+    let node_2 = graph.add_node(RSsystem::new());
+    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+
+    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+		     Ok(AssertReturnValue::Integer(10))));
+}
+
+#[test]
+fn assert_tycheck_assignment_6() {
+    use super::translator::Translator;
+    use super::structure::{RSsystem, RSlabel};
+
+    let tree = RSassert {
+	tree: Tree::Concat(
+	    Box::new(Tree::Concat(
+		Box::new(Tree::Assignment(
+		    AssignmentVariable::Var(Variable::Id("a".into())),
+		    Box::new(Expression::Integer(10))
+		)),
+		Box::new(Tree::Assignment(
+		    AssignmentVariable::Var(Variable::Id("b".into())),
+		    Box::new(Expression::Integer(200))
+		)),
+	    )),
+	    Box::new(Tree::Concat(
+		Box::new(Tree::Return(
+		    Box::new(Expression::Var(
+			AssignmentVariable::Var(Variable::Id("a".into()))
+		    ))
+		)),
+		Box::new(Tree::Return(
+		    Box::new(Expression::Var(
+			AssignmentVariable::Var(Variable::Id("b".into()))
+		    ))
+		)),
+	    ))
+	)
+    };
+    assert!(tree.typecheck().is_ok());
+
+
+    let mut translator = Translator::new();
+
+    let mut graph = petgraph::Graph::new();
+    let node_1 = graph.add_node(RSsystem::new());
+    let node_2 = graph.add_node(RSsystem::new());
+    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+
+    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+		     Ok(AssertReturnValue::Integer(10))));
+}
+
+#[test]
+fn assert_tycheck_assignment_7() {
+    use super::translator::Translator;
+    use super::structure::{RSsystem, RSlabel};
+
+    let tree = RSassert {
+	tree: Tree::Concat(
+	    Box::new(Tree::Concat(
+		Box::new(Tree::Assignment(
+		    AssignmentVariable::Var(Variable::Id("a".into())),
+		    Box::new(Expression::Integer(10))
+		)),
+		Box::new(Tree::Assignment(
+		    AssignmentVariable::Var(Variable::Id("a".into())),
+		    Box::new(Expression::True)
+		)),
+	    )),
+	    Box::new(Tree::Concat(
+		Box::new(Tree::Return(
+		    Box::new(Expression::Var(
+			AssignmentVariable::Var(Variable::Id("a".into()))
+		    ))
+		)),
+		Box::new(Tree::Return(
+		    Box::new(Expression::False)
+		)),
+	    ))
+	)
+    };
+    assert!(tree.typecheck().is_ok());
+
+
+    let mut translator = Translator::new();
+
+    let mut graph = petgraph::Graph::new();
+    let node_1 = graph.add_node(RSsystem::new());
+    let node_2 = graph.add_node(RSsystem::new());
+    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+
+    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+		     Ok(AssertReturnValue::Boolean(true))));
+}
+
+#[test]
+fn assert_tycheck_assignment_8() {
+    use super::translator::Translator;
+    use super::structure::{RSsystem, RSlabel};
+
+    let tree = RSassert {
+	tree: Tree::Concat(
+	    Box::new(Tree::Concat(
+		Box::new(Tree::Assignment(
+		    AssignmentVariable::Var(Variable::Id("a".into())),
+		    Box::new(Expression::Integer(10))
+		)),
+		Box::new(Tree::Assignment(
+		    AssignmentVariable::Var(Variable::Id("b".into())),
+		    Box::new(Expression::Var(
+			AssignmentVariable::Var(Variable::Id("a".into()))
+		    ))
+		)),
+	    )),
+	    Box::new(Tree::Concat(
+		Box::new(Tree::Return(
+		    Box::new(Expression::Var(
+			AssignmentVariable::Var(Variable::Id("a".into()))
+		    ))
+		)),
+		Box::new(Tree::Return(
+		    Box::new(Expression::Var(
+			AssignmentVariable::Var(Variable::Id("b".into()))
+		    ))
+		)),
+	    ))
+	)
+    };
+    assert!(tree.typecheck().is_ok());
+
+
+    let mut translator = Translator::new();
+
+    let mut graph = petgraph::Graph::new();
+    let node_1 = graph.add_node(RSsystem::new());
+    let node_2 = graph.add_node(RSsystem::new());
+    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+
+    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+		     Ok(AssertReturnValue::Integer(10))));
+}
+
+#[test]
+fn assert_tycheck_assignment_9() {
+    use super::translator::Translator;
+    use super::structure::{RSsystem, RSlabel};
+
+    let tree = RSassert {
+	tree: Tree::Concat(
+	    Box::new(Tree::Concat(
+		Box::new(Tree::Assignment(
+		    AssignmentVariable::Var(Variable::Id("a".into())),
+		    Box::new(Expression::Integer(10))
+		)),
+		Box::new(Tree::Assignment(
+		    AssignmentVariable::Var(Variable::Id("b".into())),
+		    Box::new(Expression::Var(
+			AssignmentVariable::Var(Variable::Id("a".into()))
+		    ))
+		)),
+	    )),
+	    Box::new(Tree::Concat(
+		Box::new(Tree::Return(
+		    Box::new(Expression::Var(
+			AssignmentVariable::Var(Variable::Id("b".into()))
+		    ))
+		)),
+		Box::new(Tree::Return(
+		    Box::new(Expression::Integer(200))
+		)),
+	    ))
+	)
+    };
+    assert!(tree.typecheck().is_ok());
+
+
+    let mut translator = Translator::new();
+
+    let mut graph = petgraph::Graph::new();
+    let node_1 = graph.add_node(RSsystem::new());
+    let node_2 = graph.add_node(RSsystem::new());
+    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+
+    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+		     Ok(AssertReturnValue::Integer(10))));
+}
+
+#[test]
+fn assert_tycheck_assignment_10() {
+    use super::translator::Translator;
+    use super::structure::{RSsystem, RSlabel};
+
+    let tree = RSassert {
+	tree: Tree::Concat(
+	    Box::new(Tree::Concat(
+		Box::new(Tree::Assignment(
+		    AssignmentVariable::Var(Variable::Id("a".into())),
+		    Box::new(Expression::Integer(10))
+		)),
+		Box::new(Tree::Assignment(
+		    AssignmentVariable::Var(Variable::Id("b".into())),
+		    Box::new(Expression::Var(
+			AssignmentVariable::Var(Variable::Id("a".into()))
+		    ))
+		)),
+	    )),
+	    Box::new(Tree::Concat(
+		Box::new(Tree::Assignment(
+		    AssignmentVariable::Var(Variable::Id("a".into())),
+		    Box::new(Expression::Integer(200))
+		)),
+		Box::new(Tree::Return(
+		    Box::new(Expression::Var(
+			AssignmentVariable::Var(Variable::Id("b".into()))
+		    ))
+		)),
+	    ))
+	)
+    };
+    assert!(tree.typecheck().is_ok());
+
+
+    let mut translator = Translator::new();
+
+    let mut graph = petgraph::Graph::new();
+    let node_1 = graph.add_node(RSsystem::new());
+    let node_2 = graph.add_node(RSsystem::new());
+    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+
+    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+		     Ok(AssertReturnValue::Integer(10))));
+}
+
+
+#[test]
+fn assert_tycheck_for_1() {
+    use super::translator::Translator;
+    use super::structure::{RSsystem, RSlabel, RSset};
+
+    let tree = RSassert {
+	tree: Tree::Concat(
+	    Box::new(Tree::Concat(
+		Box::new(Tree::Assignment(
+		    AssignmentVariable::Var(Variable::Id("a".into())),
+		    Box::new(Expression::Set(RSset::new()))
+		)),
+		Box::new(Tree::Assignment(
+		    AssignmentVariable::Var(Variable::Id("b".into())),
+		    Box::new(Expression::Set(RSset::new()))
+		)),
+	    )),
+	    Box::new(Tree::For(
+		Variable::Id("c".into()),
+		Range::IterateOverSet(
+		    Box::new(
+			Expression::Var(
+			    AssignmentVariable::Var(Variable::Id("a".into()))
+			)
+		    )
+		),
+		Box::new(Tree::Return(
+		    Box::new(Expression::Integer(200))
+		)),
+	    ))
+	)
+    };
+    assert!(tree.typecheck().is_ok());
+
+
+    let mut translator = Translator::new();
+
+    let mut graph = petgraph::Graph::new();
+    let node_1 = graph.add_node(RSsystem::new());
+    let node_2 = graph.add_node(RSsystem::new());
+    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+
+    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+		     Err(_)));
+}
+
+
+#[test]
+fn assert_tycheck_for_2() {
+    use super::translator::Translator;
+    use super::structure::{RSsystem, RSlabel, RSset};
+
+    let tree = RSassert {
+	tree: Tree::Concat(
+	    Box::new(Tree::Concat(
+		Box::new(Tree::Assignment(
+		    AssignmentVariable::Var(Variable::Id("a".into())),
+		    Box::new(Expression::Set(RSset::from([1, 2])))
+		)),
+		Box::new(Tree::Assignment(
+		    AssignmentVariable::Var(Variable::Id("b".into())),
+		    Box::new(Expression::Set(RSset::new()))
+		)),
+	    )),
+	    Box::new(Tree::For(
+		Variable::Id("c".into()),
+		Range::IterateOverSet(
+		    Box::new(
+			Expression::Var(
+			    AssignmentVariable::Var(Variable::Id("a".into()))
+			)
+		    )
+		),
+		Box::new(Tree::Return(
+		    Box::new(Expression::Var(
+			AssignmentVariable::Var(Variable::Id("b".into()))
+		    ))
+		)),
+	    ))
+	)
+    };
+    assert!(tree.typecheck().is_ok());
+
+
+    let mut translator = Translator::new();
+    translator.encode("one");
+    translator.encode("two");
+
+    let mut graph = petgraph::Graph::new();
+    let node_1 = graph.add_node(RSsystem::new());
+    let node_2 = graph.add_node(RSsystem::new());
+    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+
+    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+		     Ok(AssertReturnValue::Set(_))));
+}
+
+#[test]
+fn assert_tycheck_for_3() {
+    use super::translator::Translator;
+    use super::structure::{RSsystem, RSlabel, RSset};
+
+    let tree = RSassert {
+	tree: Tree::Concat(
+	    Box::new(Tree::Concat(
+		Box::new(Tree::Assignment(
+		    AssignmentVariable::Var(Variable::Id("a".into())),
+		    Box::new(Expression::Label(
+			Box::new(RSlabel::from(RSset::from([1, 2]),
+					       RSset::new(),
+					       RSset::from([1, 2]),
+					       RSset::new(),
+					       RSset::new(),
+					       RSset::new(),
+					       RSset::new(),
+					       RSset::new()))
+		    ))
+		)),
+		Box::new(Tree::Assignment(
+		    AssignmentVariable::Var(Variable::Id("b".into())),
+		    Box::new(Expression::Set(RSset::new()))
+		)),
+	    )),
+	    Box::new(Tree::For(
+		Variable::Id("c".into()),
+		Range::IterateOverSet(
+		    Box::new(
+			Expression::Var(
+			    AssignmentVariable::QualifiedVar(
+				Variable::Id("a".into()),
+				QualifierRestricted::Entities
+			    )
+			)
+		    )
+		),
+		Box::new(Tree::Return(
+		    Box::new(Expression::Var(
+			AssignmentVariable::Var(Variable::Id("b".into()))
+		    ))
+		)),
+	    ))
+	)
+    };
+    assert!(tree.typecheck().is_ok());
+
+
+    let mut translator = Translator::new();
+    translator.encode("one");
+    translator.encode("two");
+
+    let mut graph = petgraph::Graph::new();
+    let node_1 = graph.add_node(RSsystem::new());
+    let node_2 = graph.add_node(RSsystem::new());
+    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+
+    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+		     Ok(AssertReturnValue::Set(_))));
+}
+
+#[test]
+fn assert_tycheck_for_4() {
+    use super::translator::Translator;
+    use super::structure::{RSsystem, RSlabel, RSset};
+
+    let tree = RSassert {
+	tree: Tree::Concat(
+	    Box::new(Tree::Concat(
+		Box::new(Tree::Assignment(
+		    AssignmentVariable::Var(Variable::Id("a".into())),
+		    Box::new(Expression::Label(
+			Box::new(RSlabel::from(RSset::from([1, 2]),
+					       RSset::from([3]),
+					       RSset::from([1, 2, 3]),
+					       RSset::new(),
+					       RSset::new(),
+					       RSset::new(),
+					       RSset::new(),
+					       RSset::new()))
+		    ))
+		)),
+		Box::new(Tree::Assignment(
+		    AssignmentVariable::Var(Variable::Id("b".into())),
+		    Box::new(Expression::Set(RSset::new()))
+		)),
+	    )),
+	    Box::new(Tree::For(
+		Variable::Id("c".into()),
+		Range::IterateOverSet(
+		    Box::new(
+			Expression::Unary(
+			    Unary::Qualifier(Qualifier::AvailableEntities),
+			    Box::new(Expression::Var(
+				AssignmentVariable::Var(
+				    Variable::Id("a".into())
+				)
+			    ))
+			)
+		    )
+		),
+		Box::new(Tree::Return(
+		    Box::new(Expression::Var(
+			AssignmentVariable::Var(Variable::Id("c".into()))
+		    ))
+		)),
+	    ))
+	)
+    };
+    assert!(tree.typecheck().is_ok());
+
+
+    let mut translator = Translator::new();
+    translator.encode("one");
+    translator.encode("two");
+    translator.encode("three");
+
+    let mut graph = petgraph::Graph::new();
+    let node_1 = graph.add_node(RSsystem::new());
+    let node_2 = graph.add_node(RSsystem::new());
+    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+
+    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+		     Ok(AssertReturnValue::Element(_))));
+}
+
+#[test]
+fn assert_tycheck_for_5() {
+    use super::translator::Translator;
+    use super::structure::{RSsystem, RSlabel, RSset};
+
+    let tree = RSassert {
+	tree: Tree::Concat(
+	    Box::new(Tree::Concat(
+		Box::new(Tree::Assignment(
+		    AssignmentVariable::Var(Variable::Id("a".into())),
+		    Box::new(Expression::Label(
+			Box::new(RSlabel::from(RSset::from([1, 2]),
+					       RSset::from([3]),
+					       RSset::from([1, 2, 3]),
+					       RSset::new(),
+					       RSset::new(),
+					       RSset::new(),
+					       RSset::new(),
+					       RSset::new()))
+		    ))
+		)),
+		Box::new(Tree::Assignment(
+		    AssignmentVariable::Var(Variable::Id("b".into())),
+		    Box::new(Expression::Integer(0))
+		)),
+	    )),
+	    Box::new(Tree::Concat(
+		Box::new(Tree::For(
+		    Variable::Id("c".into()),
+		    Range::IterateOverSet(
+			Box::new(
+			    Expression::Unary(
+				Unary::Qualifier(Qualifier::AvailableEntities),
+				Box::new(Expression::Var(
+				    AssignmentVariable::Var(
+					Variable::Id("a".into())
+				    )
+				))
+			    )
+			)
+		    ),
+		    Box::new(Tree::Assignment(
+			AssignmentVariable::Var(Variable::Id("b".into())),
+			Box::new(Expression::Binary(
+			    Binary::Plus,
+			    Box::new(Expression::Var(
+				AssignmentVariable::Var(Variable::Id("b".into()))
+			    )),
+			    Box::new(Expression::Integer(1))
+			))
+		    )),
+		)),
+		Box::new(Tree::Return(
+		    Box::new(Expression::Var(
+			AssignmentVariable::Var(Variable::Id("b".into()))
+		    ))
+		))
+	    ))
+	)
+    };
+    assert!(tree.typecheck().is_ok());
+
+
+    let mut translator = Translator::new();
+    translator.encode("one");
+    translator.encode("two");
+    translator.encode("three");
+
+    let mut graph = petgraph::Graph::new();
+    let node_1 = graph.add_node(RSsystem::new());
+    let node_2 = graph.add_node(RSsystem::new());
+    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+
+    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+		     Ok(AssertReturnValue::Integer(3))));
+}
+
+#[test]
+fn assert_tycheck_for_6() {
+    use super::translator::Translator;
+    use super::structure::{RSsystem, RSlabel, RSset};
+
+    let tree = RSassert {
+	tree: Tree::Concat(
+	    Box::new(Tree::Concat(
+		Box::new(Tree::Assignment(
+		    AssignmentVariable::Var(Variable::Id("a".into())),
+		    Box::new(Expression::Label(
+			Box::new(RSlabel::from(RSset::from([1, 2]),
+					       RSset::from([3]),
+					       RSset::from([1, 2, 3]),
+					       RSset::new(),
+					       RSset::new(),
+					       RSset::new(),
+					       RSset::new(),
+					       RSset::new()))
+		    ))
+		)),
+		Box::new(Tree::Concat(
+		    Box::new(Tree::Assignment(
+			AssignmentVariable::Var(Variable::Id("b".into())),
+			Box::new(Expression::Set(RSset::from([2])))
+		    )),
+		    Box::new(Tree::Assignment(
+			AssignmentVariable::Var(Variable::Id("c".into())),
+			Box::new(Expression::Integer(0))
+		    )),
+		))
+	    )),
+	    Box::new(Tree::Concat(
+		Box::new(Tree::For(
+		    Variable::Id("d".into()),
+		    Range::IterateOverSet(
+			Box::new(
+			    Expression::Binary(
+				Binary::Plus,
+				Box::new(Expression::Var(
+				    AssignmentVariable::QualifiedVar(
+					Variable::Id("a".into()),
+					QualifierRestricted::Context
+				    )
+				)),
+				Box::new(Expression::Var(
+				    AssignmentVariable::Var(
+					Variable::Id("b".into())
+				    )
+				))
+			    )
+			)
+		    ),
+		    Box::new(Tree::Assignment(
+			AssignmentVariable::Var(Variable::Id("c".into())),
+			Box::new(Expression::Binary(
+			    Binary::Plus,
+			    Box::new(Expression::Var(
+				AssignmentVariable::Var(Variable::Id("c".into()))
+			    )),
+			    Box::new(Expression::Integer(1))
+			))
+		    )),
+		)),
+		Box::new(Tree::Return(
+		    Box::new(Expression::Var(
+			AssignmentVariable::Var(Variable::Id("c".into()))
+		    ))
+		))
+	    ))
+	)
+    };
+    assert!(tree.typecheck().is_ok());
+
+
+    let mut translator = Translator::new();
+    translator.encode("one");
+    translator.encode("two");
+    translator.encode("three");
+
+    let mut graph = petgraph::Graph::new();
+    let node_1 = graph.add_node(RSsystem::new());
+    let node_2 = graph.add_node(RSsystem::new());
+    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+
+
+    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+		     Ok(AssertReturnValue::Integer(2))));
+}
+
+#[test]
+fn assert_tycheck_for_7() {
+    use super::translator::Translator;
+    use super::structure::{RSsystem, RSlabel};
+
+    let tree = RSassert {
+	tree: Tree::Concat(
+	    Box::new(Tree::Concat(
+		Box::new(Tree::Assignment(
+		    AssignmentVariable::Var(Variable::Id("a".into())),
+		    Box::new(Expression::Integer(0))
+		)),
+		Box::new(Tree::Assignment(
+		    AssignmentVariable::Var(Variable::Id("b".into())),
+		    Box::new(Expression::Integer(10))
+		)),
+	    )),
+	    Box::new(Tree::For(
+		Variable::Id("c".into()),
+		Range::IterateInRange(
+		    Box::new(Expression::Var(
+			AssignmentVariable::Var(Variable::Id("a".into()))
+		    )),
+		    Box::new(Expression::Var(
+			AssignmentVariable::Var(Variable::Id("b".into())),
+		    )),
+		),
+		Box::new(Tree::Return(
+		    Box::new(Expression::Var(
+			AssignmentVariable::Var(Variable::Id("c".into()))
+		    ))
+		)),
+	    ))
+	)
+    };
+    assert!(tree.typecheck().is_ok());
+
+
+    let mut translator = Translator::new();
+
+    let mut graph = petgraph::Graph::new();
+    let node_1 = graph.add_node(RSsystem::new());
+    let node_2 = graph.add_node(RSsystem::new());
+    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+
+
+    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+		     Ok(AssertReturnValue::Integer(0))));
+}
+
+#[test]
+fn assert_tycheck_for_8() {
+    use super::translator::Translator;
+    use super::structure::{RSsystem, RSlabel};
+
+    let tree = RSassert {
+	tree: Tree::Concat(
+	    Box::new(Tree::Concat(
+		Box::new(Tree::Assignment(
+		    AssignmentVariable::Var(Variable::Id("a".into())),
+		    Box::new(Expression::Unary(
+			Unary::Neighbours,
+			Box::new(Expression::Unary(
+			    Unary::Source,
+			    Box::new(Expression::Var(
+				AssignmentVariable::Var(Variable::Edge)
+			    ))
+			))
+		    ))
+		)),
+		Box::new(Tree::Assignment(
+		    AssignmentVariable::Var(Variable::Id("b".into())),
+		    Box::new(Expression::Integer(0))
+		)),
+	    )),
+	    Box::new(Tree::Concat(
+		Box::new(Tree::For(
+		    Variable::Id("c".into()),
+		    Range::IterateOverSet(
+			Box::new(Expression::Var(
+			    AssignmentVariable::Var(Variable::Id("a".into()))
+			)),
+		    ),
+		    Box::new(Tree::Assignment(
+			AssignmentVariable::Var(Variable::Id("b".into())),
+			Box::new(Expression::Binary(
+			    Binary::Plus,
+			    Box::new(Expression::Var(
+				AssignmentVariable::Var(
+				    Variable::Id("b".into())
+				)
+			    )),
+			    Box::new(Expression::Integer(1))
+			))
+		    )),
+		)),
+		Box::new(Tree::Return(
+		    Box::new(Expression::Var(
+			AssignmentVariable::Var(Variable::Id("b".into()))
+		    ))
+		))
+	    ))
+	)
+    };
+    assert!(tree.typecheck().is_ok());
+
+
+    let mut translator = Translator::new();
+
+    let mut graph = petgraph::Graph::new();
+    let node_1 = graph.add_node(RSsystem::new());
+    let node_2 = graph.add_node(RSsystem::new());
+    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+
+    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+		     Ok(AssertReturnValue::Integer(1))));
+
+
+    let mut translator = Translator::new();
+
+    let mut graph = petgraph::Graph::new();
+    let node_1 = graph.add_node(RSsystem::new());
+    let node_2 = graph.add_node(RSsystem::new());
+    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+    let node_3 = graph.add_node(RSsystem::new());
+    graph.add_edge(node_1, node_3, RSlabel::new());
+
+    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+		     Ok(AssertReturnValue::Integer(2))));
 }

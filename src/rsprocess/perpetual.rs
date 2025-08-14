@@ -81,17 +81,13 @@ fn filter_delta<'a>(x: (&IdType, &'a RSprocess)) -> Option<&'a RSset> {
     use super::structure::RSprocess::*;
     let (id, rest) = x;
 
-    if let EntitySet {
-        entities,
-        next_process,
-    } = rest
+    if let EntitySet { entities, next_process } = rest
+	&& let RecursiveIdentifier { identifier } = &**next_process
+        && identifier == id
     {
-        if let RecursiveIdentifier { identifier } = &**next_process {
-            if identifier == id {
-                return Some(entities);
-            }
-        }
+        return Some(entities);
     }
+
     None
 }
 
@@ -196,16 +192,11 @@ fn filter_delta_named<'a>(
         return None;
     }
 
-    if let EntitySet {
-        entities,
-        next_process,
-    } = rest
+    if let EntitySet { entities, next_process } = rest
+	&& let RecursiveIdentifier { identifier } = &**next_process
+	&& identifier == id
     {
-        if let RecursiveIdentifier { identifier } = &**next_process {
-            if identifier == id {
-                return Some(entities);
-            }
-        }
+        return Some(entities);
     }
     None
 }
