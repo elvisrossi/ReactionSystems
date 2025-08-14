@@ -55,6 +55,7 @@ match {
     "::", "substr", "min", "max", "commonsubstr",
     "SystemEntities", "SystemContext",
     "AvailableEntities", "AllReactants", "AllInhibitors",
+    "relabel",
 } else {
     r"[0-9]+" => NUMBER
 } else {
@@ -726,8 +727,9 @@ Instruction: presets::Instruction = {
 	presets::Instruction::FastFrequency { experiment: p, so },
     "Digraph" ">" <gso: Separated_Or<GraphSaveOptions, "|">> =>
 	presets::Instruction::Digraph { gso },
-    "Bisimilarity" "(" <p: Path> ")" ">" <so: SaveOptions> =>
-	presets::Instruction::Bisimilarity { system_b: p, so },
+    "Bisimilarity" "(" <p: Path> ")" "relabel" <edge_relabeler: Assert>
+    ">" <so: SaveOptions> =>
+	presets::Instruction::Bisimilarity { system_b: p, edge_relabeler, so },
 }
 
 pub Run: presets::Instructions = {

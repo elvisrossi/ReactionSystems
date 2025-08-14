@@ -8,10 +8,12 @@ use std::io::prelude::*;
 use std::rc::Rc;
 
 use lalrpop_util::ParseError;
+use petgraph::Graph;
 
 // grammar is defined in lib.rs, calling lalrpop_mod! twice, generates twice
 // the code
 use crate::grammar;
+use crate::rsprocess::graph::MapEdges;
 
 use super::structure::{RSset, RSsystem};
 use super::translator::Translator;
@@ -86,7 +88,9 @@ pub enum Instruction {
     LimitFrequency { experiment: String, so: SaveOptions },
     FastFrequency { experiment: String, so: SaveOptions },
     Digraph { gso: Vec<GraphSaveOptions> },
-    Bisimilarity { system_b: String, so: SaveOptions }
+    Bisimilarity { system_b: String,
+		   edge_relabeler: Box<super::assert::RSassert>,
+		   so: SaveOptions }
 }
 
 /// Describes a system or a graph.
@@ -495,13 +499,15 @@ pub fn digraph(system: &mut EvaluatedSystem) -> Result<(), String> {
 /// Computes bisimularity of two provided systems
 pub fn bisimilar(
     system_a: &mut EvaluatedSystem,
+    edge_relabeler: &super::assert::RSassert,
     system_b: String
 ) -> Result<String, String>
 {
+    use super::assert::AssertReturnValue;
+
     let system_b = read_file(system_a.get_translator(),
 				 system_b.to_string(),
 				 parser_instructions)?;
-
     let mut system_b =
 	match system_b.system.compute(system_a.get_translator().clone())? {
 	    EvaluatedSystem::System { sys, translator } =>
@@ -520,25 +526,23 @@ pub fn bisimilar(
     digraph(&mut system_b)?;
 
     // since we ran digraph on both they have to be graphs
-    match (system_a, &system_b) {
+    match (system_a, &mut system_b) {
 	(EvaluatedSystem::Graph { graph: a, translator: _ },
-	 EvaluatedSystem::Graph { graph: b, translator: _ }) => {
-	    // needed because rust cant see that we want to use &graph::RSgraph
-	    // and not &mut graph::RSgraph
-	    let a: &graph::RSgraph = a;
-	    let b: &graph::RSgraph = b;
+	 EvaluatedSystem::Graph { graph: b, translator: translator_b }) => {
+	    let a: Graph<RSsystem, AssertReturnValue> =
+		a.map_edges(edge_relabeler, translator_b)?;
+	    let b: Graph<RSsystem, AssertReturnValue> =
+		b.map_edges(edge_relabeler, translator_b)?;
 	    Ok(format!(
 		"{}",
-		// super::bisimilarity::bisimilarity_kanellakis_smolka(&a, &b)
-		// super::bisimilarity::bisimilarity_paige_tarjan_ignore_labels(&a, &b)
-		super::bisimilarity::bisimilarity_paige_tarjan(&a, &b)
+		// super::bisimilarity::bisimilarity_kanellakis_smolka(&&a, &&b)
+		// super::bisimilarity::bisimilarity_paige_tarjan_ignore_labels(&&a, &&b)
+		super::bisimilarity::bisimilarity_paige_tarjan(&&a, &&b)
 	    ))
 	},
 	_ => { unreachable!() }
     }
 }
-
-
 
 
 
@@ -745,8 +749,9 @@ fn execute(
                 }
             }
         }
-	Instruction::Bisimilarity { system_b, so } => {
-	    save_options!(bisimilar(system, system_b)?, so);
+	Instruction::Bisimilarity { system_b, edge_relabeler, so } => {
+	    edge_relabeler.typecheck()?;
+	    save_options!(bisimilar(system, &edge_relabeler, system_b)?, so);
 	}
     }
     Ok(())

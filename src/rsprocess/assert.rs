@@ -668,7 +668,7 @@ enum AssertionTypes {
     Edge,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum AssertReturnValue {
     Boolean(bool),
     Integer(IntegerType),

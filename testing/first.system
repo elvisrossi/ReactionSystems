@@ -4,11 +4,14 @@ Context: [({a,b}.{a}.{a,c}.x + {a,b}.{a}.{a}.nill)]
 Reactions: ([{a,b}, {c}, {b}])
 
 
-Bisimilarity ("testing/adversarial.system") > Print,
+Bisimilarity ("testing/adversarial.system")
+	     relabel label { return true }
+	     > Print,
+
 Digraph > Dot
         | Entities " - " Context " - entities masked: " MaskEntities {a}
 	| Entities
-	| EntitiesDeleted {a} ? "blue" ! "white"
+	| Entities < {a} ? "blue" ! "white"
 	| ! "black"
 	> Print,
 
