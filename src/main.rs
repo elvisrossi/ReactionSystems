@@ -3,7 +3,7 @@ fn main() {
 
     use reactionsystems::rsprocess::presets;
     match presets::run("testing/first.system".into()) {
-	Ok(_) => {},
+	Ok(()) => {},
 	Err(e) => {println!("{e}")}
     }
 

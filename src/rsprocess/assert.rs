@@ -160,7 +160,7 @@ pub enum QualifierRestricted {
 }
 
 impl QualifierRestricted {
-    pub fn referenced_mut<'a>(
+    pub(super) fn referenced_mut<'a>(
 	&self,
 	label: &'a mut super::structure::RSlabel,
     ) -> &'a mut super::structure::RSset {
@@ -175,7 +175,7 @@ impl QualifierRestricted {
 	}
     }
 
-    pub fn referenced<'a>(
+    pub(super) fn referenced<'a>(
 	&self,
 	label: &'a super::structure::RSlabel,
     ) -> &'a super::structure::RSset {
@@ -200,7 +200,7 @@ pub enum QualifierLabel {
 }
 
 impl QualifierLabel {
-    pub fn get(
+    pub(super) fn get(
 	&self,
 	l: &super::structure::RSlabel,
     ) -> AssertReturnValue {
@@ -229,7 +229,7 @@ pub enum QualifierSystem {
 }
 
 impl QualifierSystem {
-    pub fn get(
+    pub(super) fn get(
 	&self,
 	l: &super::structure::RSsystem,
     ) -> AssertReturnValue {
@@ -413,14 +413,14 @@ struct TypeContext {
 }
 
 impl TypeContext {
-    pub fn new() -> Self {
+    fn new() -> Self {
 	TypeContext {
 	    data: HashMap::new(),
 	    return_ty: None
 	}
     }
 
-    pub fn assign(
+    fn assign(
 	&mut self,
 	v: &AssignmentVariable,
 	ty: AssertionTypes
@@ -452,7 +452,7 @@ impl TypeContext {
 	}
     }
 
-    pub fn return_type(
+    fn return_type(
 	&mut self,
 	ty: AssertionTypes
     ) -> Result<(), String> {
@@ -469,7 +469,7 @@ impl TypeContext {
 	}
     }
 
-    pub fn assign_range(
+    fn assign_range(
 	&mut self,
 	v: &Variable,
 	ty: AssertionTypes
@@ -499,7 +499,7 @@ impl TypeContext {
 	}
     }
 
-    pub fn get(
+    fn get(
 	&self,
 	v: &AssignmentVariable,
     ) -> Result<AssertionTypes, String> {
@@ -545,14 +545,14 @@ struct Context<'a> {
 }
 
 impl<'a> Context<'a> {
-    pub fn new(
+    fn new(
 	label: &'a super::structure::RSlabel,
 	edge: &'a petgraph::graph::EdgeIndex,
     ) -> Self {
 	Self { data: HashMap::new(), label, edge }
     }
 
-    pub fn assign(
+    fn assign(
 	&mut self,
 	v: &AssignmentVariable,
 	val: AssertReturnValue,
@@ -610,7 +610,7 @@ impl<'a> Context<'a> {
 	}
     }
 
-    pub fn get(
+    fn get(
 	&self,
 	v: &AssignmentVariable
     ) -> Result<AssertReturnValue, String> {
@@ -684,7 +684,7 @@ pub enum AssertReturnValue {
 }
 
 impl AssertReturnValue {
-    pub fn unary(
+    fn unary(
 	self,
 	u: &Unary,
 	translator: &mut super::translator::Translator,
@@ -753,7 +753,7 @@ impl AssertReturnValue {
 	}
     }
 
-    pub fn binary(
+    fn binary(
 	self,
 	b: &Binary,
 	other: AssertReturnValue,

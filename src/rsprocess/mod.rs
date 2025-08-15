@@ -14,6 +14,6 @@ pub mod rsdot;
 pub mod serialize;
 pub mod presets;
 pub mod bisimilarity;
+pub mod assert;
 
 mod format_helpers;
-mod assert;
