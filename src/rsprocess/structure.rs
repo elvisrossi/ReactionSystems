@@ -619,7 +619,9 @@ impl Hash for RSlabel {
 // RSassert
 // -----------------------------------------------------------------------------
 
-pub use crate::rsprocess::assert::RSassert;
+pub type RSassert =
+    crate::rsprocess::assert::RSassert<
+	    crate::rsprocess::assert::EdgeRelablerInput>;
 
 pub mod assert {
     pub use crate::rsprocess::assert::*;
@@ -636,6 +638,6 @@ pub enum RSBHML {
     False,
     Or(Vec<RSBHML>),
     And(Vec<RSBHML>),
-    Diamond(Box<RSassert>, Box<RSBHML>),
-    Box(Box<RSassert>, Box<RSBHML>),
+    // Diamond(Box<RSassert>, Box<RSBHML>),
+    // Box(Box<RSassert>, Box<RSBHML>),
 }

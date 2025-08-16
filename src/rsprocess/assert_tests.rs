@@ -1322,7 +1322,9 @@ fn assert_tycheck_for_8() {
 			Unary::Neighbours,
 			Box::new(Expression::Unary(
 			    Unary::Source,
-			    Box::new(Expression::Var(Variable::Edge))
+			    Box::new(Expression::Var(
+				Variable::Special(EdgeRelablerInput::Edge)
+			    ))
 			))
 		    ))
 		)),
@@ -1402,7 +1404,9 @@ fn assert_tycheck_system() {
 			Unary::System,
 			Box::new(Expression::Unary(
 			    Unary::Target,
-			    Box::new(Expression::Var(Variable::Edge))
+			    Box::new(Expression::Var(
+				Variable::Special(EdgeRelablerInput::Edge)
+			    ))
 			))
 		    ))
 		))

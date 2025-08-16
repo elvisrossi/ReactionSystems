@@ -2,13 +2,13 @@
 //                    Display Implementation for all types
 // -----------------------------------------------------------------------------
 
-impl fmt::Display for RSassert {
+impl<S> fmt::Display for RSassert<S> where S: Display {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 	write!(f, "label {{\n{}\n}}", self.tree)
     }
 }
 
-impl fmt::Display for Tree {
+impl<S> fmt::Display for Tree<S> where S: Display {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 	match self {
 	    Self::Concat(t1, t2) => {write!(f, "{t1};\n{t2}")},
@@ -29,17 +29,16 @@ impl fmt::Display for Tree {
     }
 }
 
-impl fmt::Display for Variable {
+impl<S> fmt::Display for Variable<S> where S: Display {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 	match self {
-	    Self::Label => {write!(f, "label")},
-	    Self::Edge => {write!(f, "edge")},
+	    Self::Special(s) => {write!(f, "{s}")},
 	    Self::Id(s) => {write!(f, "{s}")}
 	}
     }
 }
 
-impl fmt::Display for Expression {
+impl<S> fmt::Display for Expression<S> where S: Display {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 	match self {
 	    Self::True => {write!(f, "True")},
@@ -74,7 +73,7 @@ impl fmt::Display for Expression {
     }
 }
 
-impl fmt::Display for Range {
+impl<S> fmt::Display for Range<S> where S: Display {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 	match self {
 	    Self::IterateOverSet(exp) => {write!(f, "{{{exp}}}")},

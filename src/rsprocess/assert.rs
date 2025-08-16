@@ -4,29 +4,40 @@
 type IntegerType = i64;
 
 #[derive(Debug, Clone)]
-pub struct RSassert {
-    pub tree: Tree
+pub struct RSassert<S> {
+    pub tree: Tree<S>
 }
 
 #[derive(Debug, Clone)]
-pub enum Tree {
-    Concat(Box<Tree>, Box<Tree>),
-    If(Box<Expression>, Box<Tree>),
-    IfElse(Box<Expression>, Box<Tree>, Box<Tree>),
-    Assignment(Variable, Option<Qualifier>, Box<Expression>),
-    Return(Box<Expression>),
-    For(Variable, Range, Box<Tree>),
+pub enum Tree<S> {
+    Concat(Box<Tree<S>>, Box<Tree<S>>),
+    If(Box<Expression<S>>, Box<Tree<S>>),
+    IfElse(Box<Expression<S>>, Box<Tree<S>>, Box<Tree<S>>),
+    Assignment(Variable<S>, Option<Qualifier>, Box<Expression<S>>),
+    Return(Box<Expression<S>>),
+    For(Variable<S>, Range<S>, Box<Tree<S>>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum Variable  {
+pub enum Variable<S> {
     Id(String),
-    Label, // special label that is the input of the function
-    Edge, // special edge that is the input of the function
+    Special(S)
+}
+
+trait SpecialVariables<G>: Display + std::fmt::Debug + Sized + Eq + Copy
+    + std::hash::Hash
+{
+    fn type_of(&self) -> AssertionTypes;
+    fn type_qualified(&self, q: &Qualifier) -> Result<AssertionTypes, String>;
+    fn new_context(input: HashMap<Self, G>)
+		   -> HashMap<Self, AssertReturnValue>;
+    fn correct_type(&self, other: &AssertReturnValue) -> bool;
+    // fn correct_type_qualified(&self, q: &Qualifier, other: &AssertReturnValue)
+    //			      -> bool;
 }
 
 #[derive(Debug, Clone)]
-pub enum Expression {
+pub enum Expression<S> {
     True,
     False,
     Integer(IntegerType),
@@ -34,16 +45,16 @@ pub enum Expression {
     Set(super::structure::RSset),
     Element(super::translator::IdType),
     String(String),
-    Var(Variable),
+    Var(Variable<S>),
 
-    Unary(Unary, Box<Expression>),
-    Binary(Binary, Box<Expression>, Box<Expression>),
+    Unary(Unary, Box<Expression<S>>),
+    Binary(Binary, Box<Expression<S>>, Box<Expression<S>>),
 }
 
 #[derive(Debug, Clone)]
-pub enum Range {
-    IterateOverSet(Box<Expression>),
-    IterateInRange(Box<Expression>, Box<Expression>),
+pub enum Range<S> {
+    IterateOverSet(Box<Expression<S>>),
+    IterateInRange(Box<Expression<S>>, Box<Expression<S>>),
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -118,7 +129,56 @@ pub enum Binary {
     CommonSubStr,
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+enum AssertionTypes {
+    Boolean,
+    Integer,
+    String,
+    Label,
+    Set,
+    Element,
+    System,
+    Context,
+    NoType,
+    RangeInteger,
+    RangeSet,
+    RangeNeighbours,
 
+    Node,
+    Edge,
+}
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub enum AssertReturnValue {
+    Boolean(bool),
+    Integer(IntegerType),
+    String(String),
+    Label(super::structure::RSlabel),
+    Set(super::structure::RSset),
+    Element(super::translator::IdType),
+    Node(petgraph::graph::NodeIndex),
+    Edge(petgraph::graph::EdgeIndex),
+    Neighbours(petgraph::graph::NodeIndex),
+    System(super::structure::RSsystem),
+    Context(super::structure::RSprocess),
+}
+
+impl AssertReturnValue {
+    pub fn assign_qualified(&mut self, q: Qualifier, val: AssertReturnValue)
+			-> Result<(), String> {
+	match (self, q, val) {
+	    (Self::Label(l),
+	     Qualifier::Restricted(q),
+	     AssertReturnValue::Set(set)) => {
+		*q.referenced_mut(l) = set;
+		Ok(())
+	    },
+	    (s, q, val) => {
+		Err(format!("Cannot assign {val} to {s} with qualifier {q}"))
+	    }
+	}
+    }
+}
 
 
 
@@ -390,9 +450,15 @@ impl Binary {
 	    (Self::Times, AssertionTypes::Set, AssertionTypes::Set) => {
 		Ok(AssertionTypes::Set)
 	    },
-	    (Self::Exponential, AssertionTypes::Integer, AssertionTypes::Integer) |
-	    (Self::Quotient, AssertionTypes::Integer, AssertionTypes::Integer) |
-	    (Self::Reminder, AssertionTypes::Integer, AssertionTypes::Integer) => {
+	    (Self::Exponential,
+	     AssertionTypes::Integer,
+	     AssertionTypes::Integer) |
+	    (Self::Quotient,
+	     AssertionTypes::Integer,
+	     AssertionTypes::Integer) |
+	    (Self::Reminder,
+	     AssertionTypes::Integer,
+	     AssertionTypes::Integer) => {
 		Ok(AssertionTypes::Integer)
 	    },
 	    (Self::Concat, AssertionTypes::String, AssertionTypes::String) => {
@@ -405,7 +471,9 @@ impl Binary {
 	    (Self::Max, AssertionTypes::Integer, AssertionTypes::Integer) => {
 		Ok(AssertionTypes::Integer)
 	    },
-	    (Self::CommonSubStr, AssertionTypes::String, AssertionTypes::String) => {
+	    (Self::CommonSubStr,
+	     AssertionTypes::String,
+	     AssertionTypes::String) => {
 		Ok(AssertionTypes::String)
 	    },
 	    _ => {
@@ -420,13 +488,18 @@ impl Binary {
 
 // -----------------------------------------------------------------------------
 use std::collections::HashMap;
-use std::fmt;
+use std::fmt::{self, Display};
 
 use petgraph::visit::EdgeRef;
 
 struct TypeContext {
     data: HashMap<String, AssertionTypes>,
     return_ty: Option<AssertionTypes>
+}
+
+struct Context<S> {
+    data: HashMap<String, AssertReturnValue>,
+    special: HashMap<S, AssertReturnValue>,
 }
 
 impl TypeContext {
@@ -437,12 +510,32 @@ impl TypeContext {
 	}
     }
 
-    fn assign(
+    fn return_type(
 	&mut self,
-	v: &Variable,
-	q: Option<&Qualifier>,
 	ty: AssertionTypes
     ) -> Result<(), String> {
+	if let Some(ty_return) = self.return_ty {
+	    if ty_return == ty {
+		Ok(())
+	    } else {
+		Err(format!("Return statements don't agree: {ty_return} and \
+			     {ty} found."))
+	    }
+	} else {
+	    self.return_ty = Some(ty);
+	    Ok(())
+	}
+    }
+}
+
+impl TypeContext {
+    fn assign<S, G>(
+	&mut self,
+	v: &Variable<S>,
+	q: Option<&Qualifier>,
+	ty: AssertionTypes
+    ) -> Result<(), String>
+    where S: SpecialVariables<G> {
 	match (v, q) {
 	    (Variable::Id(v), None) => {
 		self.data.insert(v.clone(), ty);
@@ -471,68 +564,36 @@ impl TypeContext {
 		    }
 		}
 	    },
-	    (Variable::Label, None) => {
-		if let AssertionTypes::Label = ty {
+	    (Variable::Special(s), None) => {
+		if s.type_of() == ty {
 		    Ok(())
 		} else {
-		    Err(format!("Variable label has type label but was \
-				 assigned a value of type {ty}."))
+		    Err(format!("Variable {s} has type {} but was \
+				 assigned a value of type {ty}.", s.type_of()))
 		}
-	    }
-	    (Variable::Label, Some(q)) => {
-		match (q, ty) {
-		    (Qualifier::Restricted(_),
-		     AssertionTypes::Set) => {
-			Ok(())
-		    },
-		    (q, ty) => {
-			Err(format!("Variable label has type label, but \
-				     was assigned with qualifier {q} \
-				     value with type {ty}"))
-		    }
-		}
-	    }
-	    (Variable::Edge, None) => {
-		if let AssertionTypes::Edge = ty {
+	    },
+	    (Variable::Special(s), Some(q)) => {
+		if s.type_qualified(q)? == ty {
 		    Ok(())
 		} else {
-		    Err(format!("Variable egde has type edge but was \
-				 assigned a value of type {ty}."))
+		    Err(format!("Variable {s} has type {} but was \
+				 assigned a value of type {ty} with qualifier \
+				 {q}.", s.type_of()))
 		}
-	    }
-	    (Variable::Edge, Some(q)) => {
-		Err(format!("Variable egde has type edge but was qualified \
-			     with qualifier {q}."))
 	    }
 	}
     }
 
-    fn return_type(
+    fn assign_range<S, G>(
 	&mut self,
+	v: &Variable<S>,
 	ty: AssertionTypes
-    ) -> Result<(), String> {
-	if let Some(ty_return) = self.return_ty {
-	    if ty_return == ty {
-		Ok(())
-	    } else {
-		Err(format!("Return statements don't agree: {ty_return} and \
-			     {ty} found."))
-	    }
-	} else {
-	    self.return_ty = Some(ty);
-	    Ok(())
-	}
-    }
-
-    fn assign_range(
-	&mut self,
-	v: &Variable,
-	ty: AssertionTypes
-    ) -> Result<(), String> {
+    ) -> Result<(), String>
+    where S: SpecialVariables<G> {
 	let v = match v {
-	    Variable::Label |
-	    Variable::Edge => return Err("Protected word label used in for \
-					  assignment.".into()),
+	    Variable::Special(s) =>
+		return Err(format!("Protected word {s} used in for \
+				    assignment.")),
 	    Variable::Id(v) => v
 	};
 	match ty {
@@ -554,16 +615,14 @@ impl TypeContext {
 	}
     }
 
-    fn get(
+    fn get<S, G>(
 	&self,
-	v: &Variable,
-    ) -> Result<AssertionTypes, String> {
+	v: &Variable<S>,
+    ) -> Result<AssertionTypes, String>
+    where S: SpecialVariables<G> {
 	match v {
-	    Variable::Label => {
-		Ok(AssertionTypes::Label)
-	    },
-	    Variable::Edge => {
-		Ok(AssertionTypes::Edge)
+	    Variable::Special(s) => {
+		Ok(s.type_of())
 	    },
 	    Variable::Id(v) => {
 		if let Some(ty) = self.data.get(v) {
@@ -576,28 +635,22 @@ impl TypeContext {
     }
 }
 
-struct Context {
-    data: HashMap<String, AssertReturnValue>,
-    label: super::structure::RSlabel,
-    edge: petgraph::graph::EdgeIndex,
-}
-
-impl Context {
-    fn new(
-	label: &super::structure::RSlabel,
-	edge: &petgraph::graph::EdgeIndex,
-    ) -> Self {
+impl<S> Context<S> {
+    fn new<G>(
+	input: HashMap<S, G>,
+    ) -> Self
+    where S: SpecialVariables<G> {
 	Self { data: HashMap::new(),
-	       label: label.clone(),
-	       edge: *edge }
+	       special: S::new_context(input) }
     }
 
-    fn assign(
+    fn assign<G>(
 	&mut self,
-	v: &Variable,
+	v: &Variable<S>,
 	q: Option<&Qualifier>,
 	val: AssertReturnValue,
-    ) -> Result<(), String> {
+    ) -> Result<(), String>
+    where S: SpecialVariables<G> {
 	match (v, q) {
 	    (Variable::Id(v), None) => {
 		self.data.insert(v.clone(), val);
@@ -627,92 +680,48 @@ impl Context {
 		    }
 		}
 	    },
-	    (Variable::Edge, None) => {
-		if let AssertReturnValue::Edge(e) = val {
-		    self.edge = e;
-		    Ok(())
-		} else {
-		    Err(format!("Trying to assign {val} to variable edge."))
-		}
-	    }
-	    (Variable::Edge, Some(q)) => {
-		Err(format!("No assignment on {q} for variable edge."))
-	    }
-	    (Variable::Label, None) => {
-		if let AssertReturnValue::Label(l) = val {
-		    self.label = l.clone();
-		    Ok(())
-		} else {
-		    Err(format!("Trying to assign {val} to variable label."))
-		}
-	    }
-	    (Variable::Label, Some(q)) => {
-		match (q, val) {
-		    (Qualifier::Restricted(q), AssertReturnValue::Set(set)) => {
-			*q.referenced_mut(&mut self.label) = set;
-			Ok(())
-		    },
-		    (q, newval) => {
-			Err(format!("Variable label could not be assigned with \
-				     qualifier {q} new value {newval}."))
+	    (Variable::Special(s), None) => {
+		if s.correct_type(&val) {
+		    if let Some(s) = self.special.get_mut(s) {
+			*s = val;
+		    } else {
+			self.special.insert(*s, val);
 		    }
+		    Ok(())
+		} else {
+		    Err(format!("Trying to assign {val} to variable {s}."))
+		}
+	    },
+	    (Variable::Special(s), Some(q)) => {
+		if let Some(s) = self.special.get_mut(s) {
+		    s.assign_qualified(*q, val)
+		} else {
+		    Err(format!("Trying to assign {val} to variable {s} with \
+				 qualifier {q} but no value for {val} was found\
+				 ."))
 		}
 	    }
 	}
     }
 
-    fn get(
+    fn get<G>(
 	&self,
-	v: &Variable,
-    ) -> Result<AssertReturnValue, String> {
+	v: &Variable<S>,
+    ) -> Result<AssertReturnValue, String>
+    where S: SpecialVariables<G> {
 	match v {
 	    Variable::Id(var) => {
 		self.data.get(var)
 		    .cloned()
 		    .ok_or(format!("Variable {v} used, but no value assigned."))
 	    },
-	    Variable::Label => {
-		Ok(AssertReturnValue::Label(self.label.clone()))
-	    },
-	    Variable::Edge => {
-		Ok(AssertReturnValue::Edge(self.edge))
+	    Variable::Special(s) => {
+		self.special.get(s)
+		    .cloned()
+		    .ok_or(format!("Variable {v} used but no value assigned."))
 	    },
 	}
     }
-}
-
-#[derive(Copy, Clone, PartialEq, Eq)]
-enum AssertionTypes {
-    Boolean,
-    Integer,
-    String,
-    Label,
-    Set,
-    Element,
-    System,
-    Context,
-    NoType,
-    RangeInteger,
-    RangeSet,
-    RangeNeighbours,
-
-    Node,
-    Edge,
-}
-
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
-pub enum AssertReturnValue {
-    Boolean(bool),
-    Integer(IntegerType),
-    String(String),
-    Label(super::structure::RSlabel),
-    Set(super::structure::RSset),
-    Element(super::translator::IdType),
-    Node(petgraph::graph::NodeIndex),
-    Edge(petgraph::graph::EdgeIndex),
-    Neighbours(petgraph::graph::NodeIndex),
-    System(super::structure::RSsystem),
-    Context(super::structure::RSprocess),
 }
 
 impl AssertReturnValue {
@@ -878,10 +887,11 @@ impl AssertReturnValue {
     }
 }
 
-fn typecheck(
-    tree: &Tree,
+fn typecheck<S, G>(
+    tree: &Tree<S>,
     c: &mut TypeContext
 ) -> Result<AssertionTypes, String>
+where S: SpecialVariables<G>
 {
     match tree {
 	Tree::Concat(t1, t2) => {
@@ -928,10 +938,11 @@ fn typecheck(
     }
 }
 
-fn typecheck_expression(
-    exp: &Expression,
+fn typecheck_expression<S, G>(
+    exp: &Expression<S>,
     c: &TypeContext
-) -> Result<AssertionTypes, String> {
+) -> Result<AssertionTypes, String>
+where S: SpecialVariables<G> {
     match exp {
 	Expression::True |
 	Expression::False => Ok(AssertionTypes::Boolean),
@@ -956,10 +967,11 @@ fn typecheck_expression(
 }
 
 
-fn typecheck_range(
-    range: &Range,
+fn typecheck_range<S, G>(
+    range: &Range<S>,
     c: &mut TypeContext
-) -> Result<AssertionTypes, String> {
+) -> Result<AssertionTypes, String>
+where S: SpecialVariables<G> {
     match range {
 	Range::IterateInRange(exp1, exp2) => {
 	    let type_exp1 = typecheck_expression(exp1, c)?;
@@ -987,12 +999,13 @@ fn typecheck_range(
     }
 }
 
-fn execute(
-    tree: &Tree,
-    c: &mut Context,
+fn execute<S, G>(
+    tree: &Tree<S>,
+    c: &mut Context<S>,
     translator: &mut super::translator::Translator,
     graph: &super::graph::RSgraph,
-) -> Result<Option<AssertReturnValue>, String> {
+) -> Result<Option<AssertReturnValue>, String>
+where S: SpecialVariables<G> {
     match tree {
 	Tree::Concat(t1, t2) => {
 	    if let Some(val) = execute(t1, c, translator, graph)? {
@@ -1040,12 +1053,13 @@ fn execute(
 
 type RangeIterator = std::vec::IntoIter<AssertReturnValue>;
 
-fn range_into_iter(
-    range: &Range,
-    c: &mut Context,
+fn range_into_iter<S, G>(
+    range: &Range<S>,
+    c: &mut Context<S>,
     translator: &mut super::translator::Translator,
     graph: &super::graph::RSgraph,
-) -> Result<RangeIterator, String> {
+) -> Result<RangeIterator, String>
+where S: SpecialVariables<G> {
     match range {
 	Range::IterateOverSet(exp) => {
 	    let val = execute_exp(exp, c, translator, graph)?;
@@ -1083,12 +1097,13 @@ fn range_into_iter(
     }
 }
 
-fn execute_exp(
-    exp: &Expression,
-    c: &Context,
+fn execute_exp<S, G>(
+    exp: &Expression<S>,
+    c: &Context<S>,
     translator: &mut super::translator::Translator,
     graph: &super::graph::RSgraph,
-) -> Result<AssertReturnValue, String> {
+) -> Result<AssertReturnValue, String>
+where S: SpecialVariables<G> {
     match exp {
 	Expression::True => Ok(AssertReturnValue::Boolean(true)),
 	Expression::False => Ok(AssertReturnValue::Boolean(false)),
@@ -1111,7 +1126,90 @@ fn execute_exp(
     }
 }
 
-impl RSassert {
+
+
+
+
+
+// ----------------------------------------------------------------------------
+//                       Specific Assert Implementation
+// ----------------------------------------------------------------------------
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum EdgeRelablerInput {
+    Label,
+    Edge,
+}
+
+#[derive(Debug, Clone)]
+pub enum EdgeRelablerInputValues {
+    Label(super::structure::RSlabel),
+    Edge(petgraph::graph::EdgeIndex),
+}
+
+impl SpecialVariables<EdgeRelablerInputValues> for EdgeRelablerInput {
+    fn type_of(&self) -> AssertionTypes {
+	match self {
+	    Self::Edge => AssertionTypes::Edge,
+	    Self::Label => AssertionTypes::Label,
+	}
+    }
+
+    fn type_qualified(&self, q: &Qualifier) -> Result<AssertionTypes, String> {
+	match (self, q) {
+	    (Self::Label, Qualifier::Label(_)) |
+	    (Self::Label, Qualifier::Restricted(_)) =>
+		Ok(AssertionTypes::Set),
+	    (s, q) =>
+		Err(format!("Wrong use of qualifier {q} on value {s}"))
+	}
+    }
+
+    fn new_context(input: HashMap<Self, EdgeRelablerInputValues>)
+		   -> HashMap<Self, AssertReturnValue> {
+	input.iter().map(|(key, value)| {
+	    match value {
+		EdgeRelablerInputValues::Edge(e) =>
+		    (*key, AssertReturnValue::Edge(*e)),
+		EdgeRelablerInputValues::Label(l) =>
+		    (*key, AssertReturnValue::Label(l.clone())),
+	    }
+	}).collect::<HashMap<Self, AssertReturnValue>>()
+    }
+
+    fn correct_type(&self, other: &AssertReturnValue) -> bool {
+	match (self, other) {
+	    (Self::Edge, AssertReturnValue::Edge(_)) |
+	    (Self::Label, AssertReturnValue::Label(_)) => true,
+	    (_, _) => false
+	}
+    }
+
+    // fn correct_type_qualified(&self, q: &Qualifier, other: &AssertReturnValue)
+    //			      -> bool {
+    //	match (self, q, other) {
+    //	    (Self::Label, Qualifier::Label(_), AssertReturnValue::Set(_)) |
+    //	    (Self::Label, Qualifier::Restricted(_), AssertReturnValue::Set(_))
+    //		=> true,
+    //	    (_, _, _) => false
+    //	}
+    // }
+}
+
+impl Display for EdgeRelablerInput {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+	match self {
+	    Self::Label => write!(f, "label"),
+	    Self::Edge => write!(f, "edge"),
+	}
+    }
+}
+
+
+
+
+
+impl RSassert<EdgeRelablerInput> {
     pub fn typecheck(&self) -> Result<(), String> {
 	let mut context = TypeContext::new();
 	typecheck(&self.tree, &mut context)?;
@@ -1143,7 +1241,14 @@ impl RSassert {
 	translator: &mut super::translator::Translator,
     ) -> Result<AssertReturnValue, String> {
 	let label = graph.edge_weight(*edge).unwrap();
-	let mut context = Context::new(label, edge);
+
+	let mut input_vals = HashMap::new();
+	input_vals.insert(EdgeRelablerInput::Edge,
+			  EdgeRelablerInputValues::Edge(*edge));
+	input_vals.insert(EdgeRelablerInput::Label,
+			  EdgeRelablerInputValues::Label(label.clone()));
+
+	let mut context = Context::new(input_vals);
 	if let Some(v) = execute(&self.tree, &mut context, translator, graph)? {
 	    Ok(v)
 	} else {

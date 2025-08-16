@@ -128,7 +128,7 @@ where
 {
     fn map_edges(
 	&self,
-	edge_map: &super::assert::RSassert,
+	edge_map: &super::structure::RSassert,
 	translator: &mut super::translator::Translator
     ) -> Result<Graph<RSsystem, super::assert::AssertReturnValue, Ty, Ix>, String>;
 }
@@ -138,7 +138,7 @@ impl<'a> MapEdges<'a, RSsystem, RSlabel, Directed, u32>
 {
     fn map_edges(
 	&self,
-	edge_map: &super::assert::RSassert,
+	edge_map: &super::structure::RSassert,
 	translator: &mut super::translator::Translator
     )-> Result<Graph<RSsystem, super::assert::AssertReturnValue, Directed, u32>, String> {
 	use petgraph::graph::EdgeIndex;
