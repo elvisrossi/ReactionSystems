@@ -2,30 +2,33 @@
 //                                  Testing
 // -----------------------------------------------------------------------------
 
+use super::dsl::*;
+use super::super::{translator, structure};
+
 #[test]
 fn assert_tycheck_true() {
-    use super::translator::Translator;
-    use super::structure::{RSsystem, RSlabel};
+    use translator::Translator;
+    use structure::{RSsystem, RSlabel};
 
     let tree = RSassert {tree: Tree::Return(Box::new(Expression::True))};
     assert!(tree.typecheck().is_ok());
 
 
-    let mut translator = Translator::new();
+    let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
     let node_1 = graph.add_node(RSsystem::new());
     let node_2 = graph.add_node(RSsystem::new());
     let edge = graph.add_edge(node_1, node_2, RSlabel::new());
 
-    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+    assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Boolean(true))));
 }
 
 #[test]
 fn assert_tycheck_concat_1() {
-    use super::translator::Translator;
-    use super::structure::{RSsystem, RSlabel};
+    use translator::Translator;
+    use structure::{RSsystem, RSlabel};
 
     let tree = RSassert {
 	tree: Tree::Concat(
@@ -39,21 +42,21 @@ fn assert_tycheck_concat_1() {
     assert!(tree.typecheck().is_ok());
 
 
-    let mut translator = Translator::new();
+    let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
     let node_1 = graph.add_node(RSsystem::new());
     let node_2 = graph.add_node(RSsystem::new());
     let edge = graph.add_edge(node_1, node_2, RSlabel::new());
 
-    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+    assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Boolean(true))));
 }
 
 #[test]
 fn assert_tycheck_concat_2() {
-    use super::translator::Translator;
-    use super::structure::{RSsystem, RSlabel};
+    use translator::Translator;
+    use structure::{RSsystem, RSlabel};
 
     let tree = RSassert {
 	tree: Tree::Concat(
@@ -67,21 +70,21 @@ fn assert_tycheck_concat_2() {
     assert!(tree.typecheck().is_ok());
 
 
-    let mut translator = Translator::new();
+    let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
     let node_1 = graph.add_node(RSsystem::new());
     let node_2 = graph.add_node(RSsystem::new());
     let edge = graph.add_edge(node_1, node_2, RSlabel::new());
 
-    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+    assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Boolean(true))));
 }
 
 #[test]
 fn assert_tycheck_return_1() {
-    use super::translator::Translator;
-    use super::structure::{RSsystem, RSlabel};
+    use translator::Translator;
+    use structure::{RSsystem, RSlabel};
 
     let tree = RSassert {
 	tree: Tree::Concat(
@@ -92,14 +95,14 @@ fn assert_tycheck_return_1() {
     assert!(tree.typecheck().is_ok());
 
 
-    let mut translator = Translator::new();
+    let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
     let node_1 = graph.add_node(RSsystem::new());
     let node_2 = graph.add_node(RSsystem::new());
     let edge = graph.add_edge(node_1, node_2, RSlabel::new());
 
-    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+    assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Boolean(true))));
 }
 
@@ -136,8 +139,8 @@ fn assert_tycheck_return_incompatible_2() {
 
 #[test]
 fn assert_tycheck_return_2() {
-    use super::translator::Translator;
-    use super::structure::{RSsystem, RSlabel};
+    use translator::Translator;
+    use structure::{RSsystem, RSlabel};
 
     let tree = RSassert {
 	tree: Tree::Concat(
@@ -157,22 +160,22 @@ fn assert_tycheck_return_2() {
     assert!(tree.typecheck().is_ok());
 
 
-    let mut translator = Translator::new();
+    let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
     let node_1 = graph.add_node(RSsystem::new());
     let node_2 = graph.add_node(RSsystem::new());
     let edge = graph.add_edge(node_1, node_2, RSlabel::new());
 
-    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+    assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Boolean(true))));
 }
 
 
 #[test]
 fn assert_tycheck_return_3() {
-    use super::translator::Translator;
-    use super::structure::{RSsystem, RSlabel};
+    use translator::Translator;
+    use structure::{RSsystem, RSlabel};
 
     let tree = RSassert {
 	tree: Tree::Concat(
@@ -192,21 +195,21 @@ fn assert_tycheck_return_3() {
     assert!(tree.typecheck().is_ok());
 
 
-    let mut translator = Translator::new();
+    let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
     let node_1 = graph.add_node(RSsystem::new());
     let node_2 = graph.add_node(RSsystem::new());
     let edge = graph.add_edge(node_1, node_2, RSlabel::new());
 
-    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+    assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Boolean(false))));
 }
 
 #[test]
 fn assert_tycheck_if_1() {
-    use super::translator::Translator;
-    use super::structure::{RSsystem, RSlabel};
+    use translator::Translator;
+    use structure::{RSsystem, RSlabel};
 
     let tree = RSassert {
 	tree: Tree::Concat(
@@ -228,21 +231,21 @@ fn assert_tycheck_if_1() {
     assert!(tree.typecheck().is_ok());
 
 
-    let mut translator = Translator::new();
+    let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
     let node_1 = graph.add_node(RSsystem::new());
     let node_2 = graph.add_node(RSsystem::new());
     let edge = graph.add_edge(node_1, node_2, RSlabel::new());
 
-    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+    assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Boolean(true))));
 }
 
 #[test]
 fn assert_tycheck_if_2() {
-    use super::translator::Translator;
-    use super::structure::{RSsystem, RSlabel};
+    use translator::Translator;
+    use structure::{RSsystem, RSlabel};
 
     let tree = RSassert {
 	tree: Tree::Concat(
@@ -263,21 +266,21 @@ fn assert_tycheck_if_2() {
     };
     assert!(tree.typecheck().is_ok());
 
-    let mut translator = Translator::new();
+    let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
     let node_1 = graph.add_node(RSsystem::new());
     let node_2 = graph.add_node(RSsystem::new());
     let edge = graph.add_edge(node_1, node_2, RSlabel::new());
 
-    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+    assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Boolean(false))));
 }
 
 #[test]
 fn assert_tycheck_if_3() {
-    use super::translator::Translator;
-    use super::structure::{RSsystem, RSlabel};
+    use translator::Translator;
+    use structure::{RSsystem, RSlabel};
 
     let tree = RSassert {
 	tree: Tree::Concat(
@@ -299,14 +302,14 @@ fn assert_tycheck_if_3() {
     assert!(tree.typecheck().is_ok());
 
 
-    let mut translator = Translator::new();
+    let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
     let node_1 = graph.add_node(RSsystem::new());
     let node_2 = graph.add_node(RSsystem::new());
     let edge = graph.add_edge(node_1, node_2, RSlabel::new());
 
-    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+    assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Boolean(true))));
 }
 
@@ -334,8 +337,8 @@ fn assert_tycheck_if_4() {
 
 #[test]
 fn assert_tycheck_if_else_1() {
-    use super::translator::Translator;
-    use super::structure::{RSsystem, RSlabel};
+    use translator::Translator;
+    use structure::{RSsystem, RSlabel};
 
     let tree = RSassert {
 	tree: Tree::Concat(
@@ -360,21 +363,21 @@ fn assert_tycheck_if_else_1() {
     assert!(tree.typecheck().is_ok());
 
 
-    let mut translator = Translator::new();
+    let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
     let node_1 = graph.add_node(RSsystem::new());
     let node_2 = graph.add_node(RSsystem::new());
     let edge = graph.add_edge(node_1, node_2, RSlabel::new());
 
-    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+    assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Boolean(true))));
 }
 
 #[test]
 fn assert_tycheck_if_else_2() {
-    use super::translator::Translator;
-    use super::structure::{RSsystem, RSlabel};
+    use translator::Translator;
+    use structure::{RSsystem, RSlabel};
 
     let tree = RSassert {
 	tree: Tree::Concat(
@@ -399,14 +402,14 @@ fn assert_tycheck_if_else_2() {
     assert!(tree.typecheck().is_ok());
 
 
-    let mut translator = Translator::new();
+    let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
     let node_1 = graph.add_node(RSsystem::new());
     let node_2 = graph.add_node(RSsystem::new());
     let edge = graph.add_edge(node_1, node_2, RSlabel::new());
 
-    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+    assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Boolean(false))));
 }
 
@@ -474,8 +477,8 @@ fn assert_tycheck_assignment_1() {
 
 #[test]
 fn assert_tycheck_assignment_2() {
-    use super::translator::Translator;
-    use super::structure::{RSsystem, RSlabel};
+    use translator::Translator;
+    use structure::{RSsystem, RSlabel};
 
     let tree = RSassert {
 	tree: Tree::Concat(
@@ -498,21 +501,21 @@ fn assert_tycheck_assignment_2() {
     assert!(tree.typecheck().is_ok());
 
 
-    let mut translator = Translator::new();
+    let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
     let node_1 = graph.add_node(RSsystem::new());
     let node_2 = graph.add_node(RSsystem::new());
     let edge = graph.add_edge(node_1, node_2, RSlabel::new());
 
-    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+    assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Boolean(true))));
 }
 
 #[test]
 fn assert_tycheck_assignment_3() {
-    use super::translator::Translator;
-    use super::structure::{RSsystem, RSlabel};
+    use translator::Translator;
+    use structure::{RSsystem, RSlabel};
 
     let tree = RSassert {
 	tree: Tree::Concat(
@@ -537,14 +540,14 @@ fn assert_tycheck_assignment_3() {
     assert!(tree.typecheck().is_ok());
 
 
-    let mut translator = Translator::new();
+    let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
     let node_1 = graph.add_node(RSsystem::new());
     let node_2 = graph.add_node(RSsystem::new());
     let edge = graph.add_edge(node_1, node_2, RSlabel::new());
 
-    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+    assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Boolean(false))));
 }
 
@@ -575,8 +578,8 @@ fn assert_tycheck_assignment_4() {
 
 #[test]
 fn assert_tycheck_assignment_5() {
-    use super::translator::Translator;
-    use super::structure::{RSsystem, RSlabel};
+    use translator::Translator;
+    use structure::{RSsystem, RSlabel};
 
     let tree = RSassert {
 	tree: Tree::Concat(
@@ -602,21 +605,21 @@ fn assert_tycheck_assignment_5() {
     assert!(tree.typecheck().is_ok());
 
 
-    let mut translator = Translator::new();
+    let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
     let node_1 = graph.add_node(RSsystem::new());
     let node_2 = graph.add_node(RSsystem::new());
     let edge = graph.add_edge(node_1, node_2, RSlabel::new());
 
-    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+    assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Integer(10))));
 }
 
 #[test]
 fn assert_tycheck_assignment_6() {
-    use super::translator::Translator;
-    use super::structure::{RSsystem, RSlabel};
+    use translator::Translator;
+    use structure::{RSsystem, RSlabel};
 
     let tree = RSassert {
 	tree: Tree::Concat(
@@ -649,21 +652,21 @@ fn assert_tycheck_assignment_6() {
     assert!(tree.typecheck().is_ok());
 
 
-    let mut translator = Translator::new();
+    let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
     let node_1 = graph.add_node(RSsystem::new());
     let node_2 = graph.add_node(RSsystem::new());
     let edge = graph.add_edge(node_1, node_2, RSlabel::new());
 
-    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+    assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Integer(10))));
 }
 
 #[test]
 fn assert_tycheck_assignment_7() {
-    use super::translator::Translator;
-    use super::structure::{RSsystem, RSlabel};
+    use translator::Translator;
+    use structure::{RSsystem, RSlabel};
 
     let tree = RSassert {
 	tree: Tree::Concat(
@@ -694,21 +697,21 @@ fn assert_tycheck_assignment_7() {
     assert!(tree.typecheck().is_ok());
 
 
-    let mut translator = Translator::new();
+    let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
     let node_1 = graph.add_node(RSsystem::new());
     let node_2 = graph.add_node(RSsystem::new());
     let edge = graph.add_edge(node_1, node_2, RSlabel::new());
 
-    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+    assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Boolean(true))));
 }
 
 #[test]
 fn assert_tycheck_assignment_8() {
-    use super::translator::Translator;
-    use super::structure::{RSsystem, RSlabel};
+    use translator::Translator;
+    use structure::{RSsystem, RSlabel};
 
     let tree = RSassert {
 	tree: Tree::Concat(
@@ -743,21 +746,21 @@ fn assert_tycheck_assignment_8() {
     assert!(tree.typecheck().is_ok());
 
 
-    let mut translator = Translator::new();
+    let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
     let node_1 = graph.add_node(RSsystem::new());
     let node_2 = graph.add_node(RSsystem::new());
     let edge = graph.add_edge(node_1, node_2, RSlabel::new());
 
-    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+    assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Integer(10))));
 }
 
 #[test]
 fn assert_tycheck_assignment_9() {
-    use super::translator::Translator;
-    use super::structure::{RSsystem, RSlabel};
+    use translator::Translator;
+    use structure::{RSsystem, RSlabel};
 
     let tree = RSassert {
 	tree: Tree::Concat(
@@ -790,21 +793,21 @@ fn assert_tycheck_assignment_9() {
     assert!(tree.typecheck().is_ok());
 
 
-    let mut translator = Translator::new();
+    let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
     let node_1 = graph.add_node(RSsystem::new());
     let node_2 = graph.add_node(RSsystem::new());
     let edge = graph.add_edge(node_1, node_2, RSlabel::new());
 
-    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+    assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Integer(10))));
 }
 
 #[test]
 fn assert_tycheck_assignment_10() {
-    use super::translator::Translator;
-    use super::structure::{RSsystem, RSlabel};
+    use translator::Translator;
+    use structure::{RSsystem, RSlabel};
 
     let tree = RSassert {
 	tree: Tree::Concat(
@@ -839,22 +842,22 @@ fn assert_tycheck_assignment_10() {
     assert!(tree.typecheck().is_ok());
 
 
-    let mut translator = Translator::new();
+    let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
     let node_1 = graph.add_node(RSsystem::new());
     let node_2 = graph.add_node(RSsystem::new());
     let edge = graph.add_edge(node_1, node_2, RSlabel::new());
 
-    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+    assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Integer(10))));
 }
 
 
 #[test]
 fn assert_tycheck_for_1() {
-    use super::translator::Translator;
-    use super::structure::{RSsystem, RSlabel, RSset};
+    use translator::Translator;
+    use structure::{RSsystem, RSlabel, RSset};
 
     let tree = RSassert {
 	tree: Tree::Concat(
@@ -888,21 +891,21 @@ fn assert_tycheck_for_1() {
     assert!(tree.typecheck().is_ok());
 
 
-    let mut translator = Translator::new();
+    let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
     let node_1 = graph.add_node(RSsystem::new());
     let node_2 = graph.add_node(RSsystem::new());
     let edge = graph.add_edge(node_1, node_2, RSlabel::new());
 
-    assert!(tree.execute(&graph, &edge, &mut translator).is_err());
+    assert!(tree.execute(&graph, &edge, &mut tr).is_err());
 }
 
 
 #[test]
 fn assert_tycheck_for_2() {
-    use super::translator::Translator;
-    use super::structure::{RSsystem, RSlabel, RSset};
+    use translator::Translator;
+    use structure::{RSsystem, RSlabel, RSset};
 
     let tree = RSassert {
 	tree: Tree::Concat(
@@ -938,23 +941,23 @@ fn assert_tycheck_for_2() {
     assert!(tree.typecheck().is_ok());
 
 
-    let mut translator = Translator::new();
-    translator.encode("one");
-    translator.encode("two");
+    let mut tr = Translator::new();
+    tr.encode("one");
+    tr.encode("two");
 
     let mut graph = petgraph::Graph::new();
     let node_1 = graph.add_node(RSsystem::new());
     let node_2 = graph.add_node(RSsystem::new());
     let edge = graph.add_edge(node_1, node_2, RSlabel::new());
 
-    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+    assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Set(_))));
 }
 
 #[test]
 fn assert_tycheck_for_3() {
-    use super::translator::Translator;
-    use super::structure::{RSsystem, RSlabel, RSset};
+    use translator::Translator;
+    use structure::{RSsystem, RSlabel, RSset};
 
     let tree = RSassert {
 	tree: Tree::Concat(
@@ -1004,23 +1007,23 @@ fn assert_tycheck_for_3() {
     assert!(tree.typecheck().is_ok());
 
 
-    let mut translator = Translator::new();
-    translator.encode("one");
-    translator.encode("two");
+    let mut tr = Translator::new();
+    tr.encode("one");
+    tr.encode("two");
 
     let mut graph = petgraph::Graph::new();
     let node_1 = graph.add_node(RSsystem::new());
     let node_2 = graph.add_node(RSsystem::new());
     let edge = graph.add_edge(node_1, node_2, RSlabel::new());
 
-    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+    assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Set(_))));
 }
 
 #[test]
 fn assert_tycheck_for_4() {
-    use super::translator::Translator;
-    use super::structure::{RSsystem, RSlabel, RSset};
+    use translator::Translator;
+    use structure::{RSsystem, RSlabel, RSset};
 
     let tree = RSassert {
 	tree: Tree::Concat(
@@ -1070,24 +1073,24 @@ fn assert_tycheck_for_4() {
     assert!(tree.typecheck().is_ok());
 
 
-    let mut translator = Translator::new();
-    translator.encode("one");
-    translator.encode("two");
-    translator.encode("three");
+    let mut tr = Translator::new();
+    tr.encode("one");
+    tr.encode("two");
+    tr.encode("three");
 
     let mut graph = petgraph::Graph::new();
     let node_1 = graph.add_node(RSsystem::new());
     let node_2 = graph.add_node(RSsystem::new());
     let edge = graph.add_edge(node_1, node_2, RSlabel::new());
 
-    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+    assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Element(_))));
 }
 
 #[test]
 fn assert_tycheck_for_5() {
-    use super::translator::Translator;
-    use super::structure::{RSsystem, RSlabel, RSset};
+    use translator::Translator;
+    use structure::{RSsystem, RSlabel, RSset};
 
     let tree = RSassert {
 	tree: Tree::Concat(
@@ -1150,24 +1153,24 @@ fn assert_tycheck_for_5() {
     assert!(tree.typecheck().is_ok());
 
 
-    let mut translator = Translator::new();
-    translator.encode("one");
-    translator.encode("two");
-    translator.encode("three");
+    let mut tr = Translator::new();
+    tr.encode("one");
+    tr.encode("two");
+    tr.encode("three");
 
     let mut graph = petgraph::Graph::new();
     let node_1 = graph.add_node(RSsystem::new());
     let node_2 = graph.add_node(RSsystem::new());
     let edge = graph.add_edge(node_1, node_2, RSlabel::new());
 
-    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+    assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Integer(3))));
 }
 
 #[test]
 fn assert_tycheck_for_6() {
-    use super::translator::Translator;
-    use super::structure::{RSsystem, RSlabel, RSset};
+    use translator::Translator;
+    use structure::{RSsystem, RSlabel, RSset};
 
     let tree = RSassert {
 	tree: Tree::Concat(
@@ -1240,10 +1243,10 @@ fn assert_tycheck_for_6() {
     assert!(tree.typecheck().is_ok());
 
 
-    let mut translator = Translator::new();
-    translator.encode("one");
-    translator.encode("two");
-    translator.encode("three");
+    let mut tr = Translator::new();
+    tr.encode("one");
+    tr.encode("two");
+    tr.encode("three");
 
     let mut graph = petgraph::Graph::new();
     let node_1 = graph.add_node(RSsystem::new());
@@ -1251,14 +1254,14 @@ fn assert_tycheck_for_6() {
     let edge = graph.add_edge(node_1, node_2, RSlabel::new());
 
 
-    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+    assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Integer(2))));
 }
 
 #[test]
 fn assert_tycheck_for_7() {
-    use super::translator::Translator;
-    use super::structure::{RSsystem, RSlabel};
+    use translator::Translator;
+    use structure::{RSsystem, RSlabel};
 
     let tree = RSassert {
 	tree: Tree::Concat(
@@ -1295,7 +1298,7 @@ fn assert_tycheck_for_7() {
     assert!(tree.typecheck().is_ok());
 
 
-    let mut translator = Translator::new();
+    let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
     let node_1 = graph.add_node(RSsystem::new());
@@ -1303,14 +1306,14 @@ fn assert_tycheck_for_7() {
     let edge = graph.add_edge(node_1, node_2, RSlabel::new());
 
 
-    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+    assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Integer(0))));
 }
 
 #[test]
 fn assert_tycheck_for_8() {
-    use super::translator::Translator;
-    use super::structure::{RSsystem, RSlabel};
+    use translator::Translator;
+    use structure::{RSsystem, RSlabel};
 
     let tree = RSassert {
 	tree: Tree::Concat(
@@ -1361,18 +1364,18 @@ fn assert_tycheck_for_8() {
     assert!(tree.typecheck().is_ok());
 
 
-    let mut translator = Translator::new();
+    let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
     let node_1 = graph.add_node(RSsystem::new());
     let node_2 = graph.add_node(RSsystem::new());
     let edge = graph.add_edge(node_1, node_2, RSlabel::new());
 
-    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+    assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Integer(1))));
 
 
-    let mut translator = Translator::new();
+    let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
     let node_1 = graph.add_node(RSsystem::new());
@@ -1381,14 +1384,14 @@ fn assert_tycheck_for_8() {
     let node_3 = graph.add_node(RSsystem::new());
     graph.add_edge(node_1, node_3, RSlabel::new());
 
-    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+    assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Integer(2))));
 }
 
 #[test]
 fn assert_tycheck_system() {
-    use super::translator::Translator;
-    use super::structure::{RSsystem, RSlabel, RSset, RSenvironment, RSprocess};
+    use translator::Translator;
+    use structure::{RSsystem, RSlabel, RSset, RSenvironment, RSprocess};
     use std::rc::Rc;
 
     let tree = RSassert {
@@ -1425,7 +1428,7 @@ fn assert_tycheck_system() {
     assert!(tree.typecheck().is_ok());
 
 
-    let mut translator = Translator::new();
+    let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
     let node_1 = graph.add_node(RSsystem::new());
@@ -1439,8 +1442,8 @@ fn assert_tycheck_system() {
     );
     let edge = graph.add_edge(node_1, node_2, RSlabel::new());
 
-    println!("{:?}", tree.execute(&graph, &edge, &mut translator));
+    println!("{:?}", tree.execute(&graph, &edge, &mut tr));
 
-    assert!(matches!(tree.execute(&graph, &edge, &mut translator),
+    assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Boolean(true))));
 }

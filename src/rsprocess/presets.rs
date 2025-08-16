@@ -503,7 +503,7 @@ pub fn bisimilar(
     system_b: String
 ) -> Result<String, String>
 {
-    use super::assert::AssertReturnValue;
+    use super::structure::assert::AssertReturnValue;
 
     let system_b = read_file(system_a.get_translator(),
 				 system_b.to_string(),

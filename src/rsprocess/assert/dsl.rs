@@ -1,6 +1,10 @@
-// If changing IntegerType in assert.rs, also change from Num to another
-// similar parser with different return type in grammar.lalrpop in
-// AssertExpression
+use std::collections::HashMap;
+
+use super::super::{structure, translator, graph};
+
+/// If changing IntegerType in assert.rs, also change from Num to another
+/// similar parser with different return type in grammar.lalrpop in
+/// AssertExpression
 type IntegerType = i64;
 
 #[derive(Debug, Clone)]
@@ -24,16 +28,15 @@ pub enum Variable<S> {
     Special(S)
 }
 
-trait SpecialVariables<G>: Display + std::fmt::Debug + Sized + Eq + Copy
-    + std::hash::Hash
+/// Trait needed for special variables.
+trait SpecialVariables<G>: std::fmt::Display + std::fmt::Debug + Sized + Eq
+    + Copy + std::hash::Hash
 {
     fn type_of(&self) -> AssertionTypes;
     fn type_qualified(&self, q: &Qualifier) -> Result<AssertionTypes, String>;
     fn new_context(input: HashMap<Self, G>)
 		   -> HashMap<Self, AssertReturnValue>;
     fn correct_type(&self, other: &AssertReturnValue) -> bool;
-    // fn correct_type_qualified(&self, q: &Qualifier, other: &AssertReturnValue)
-    //			      -> bool;
 }
 
 #[derive(Debug, Clone)]
@@ -41,9 +44,9 @@ pub enum Expression<S> {
     True,
     False,
     Integer(IntegerType),
-    Label(Box<super::structure::RSlabel>),
-    Set(super::structure::RSset),
-    Element(super::translator::IdType),
+    Label(Box<structure::RSlabel>),
+    Set(structure::RSset),
+    Element(translator::IdType),
     String(String),
     Var(Variable<S>),
 
@@ -153,34 +156,15 @@ pub enum AssertReturnValue {
     Boolean(bool),
     Integer(IntegerType),
     String(String),
-    Label(super::structure::RSlabel),
-    Set(super::structure::RSset),
-    Element(super::translator::IdType),
+    Label(structure::RSlabel),
+    Set(structure::RSset),
+    Element(translator::IdType),
     Node(petgraph::graph::NodeIndex),
     Edge(petgraph::graph::EdgeIndex),
     Neighbours(petgraph::graph::NodeIndex),
-    System(super::structure::RSsystem),
-    Context(super::structure::RSprocess),
+    System(structure::RSsystem),
+    Context(structure::RSprocess),
 }
-
-impl AssertReturnValue {
-    pub fn assign_qualified(&mut self, q: Qualifier, val: AssertReturnValue)
-			-> Result<(), String> {
-	match (self, q, val) {
-	    (Self::Label(l),
-	     Qualifier::Restricted(q),
-	     AssertReturnValue::Set(set)) => {
-		*q.referenced_mut(l) = set;
-		Ok(())
-	    },
-	    (s, q, val) => {
-		Err(format!("Cannot assign {val} to {s} with qualifier {q}"))
-	    }
-	}
-    }
-}
-
-
 
 // -----------------------------------------------------------------------------
 //                         Implementations for types
@@ -189,8 +173,8 @@ impl AssertReturnValue {
 impl QualifierRestricted {
     pub(super) fn referenced_mut<'a>(
 	&self,
-	label: &'a mut super::structure::RSlabel,
-    ) -> &'a mut super::structure::RSset {
+	label: &'a mut structure::RSlabel,
+    ) -> &'a mut structure::RSset {
 	match self {
 	    Self::Entities => {&mut label.available_entities},
 	    Self::Context => {&mut label.context},
@@ -204,8 +188,8 @@ impl QualifierRestricted {
 
     pub(super) fn referenced<'a>(
 	&self,
-	label: &'a super::structure::RSlabel,
-    ) -> &'a super::structure::RSset {
+	label: &'a structure::RSlabel,
+    ) -> &'a structure::RSset {
 	match self {
 	    Self::Entities => {&label.available_entities},
 	    Self::Context => {&label.context},
@@ -219,7 +203,7 @@ impl QualifierRestricted {
 
     pub(super) fn get(
 	&self,
-	label: &super::structure::RSlabel,
+	label: &structure::RSlabel,
     ) -> AssertReturnValue {
 	AssertReturnValue::Set(self.referenced(label).clone())
     }
@@ -228,7 +212,7 @@ impl QualifierRestricted {
 impl QualifierLabel {
     pub(super) fn get(
 	&self,
-	l: &super::structure::RSlabel,
+	l: &structure::RSlabel,
     ) -> AssertReturnValue {
 	match self {
 	    QualifierLabel::AvailableEntities => {
@@ -248,7 +232,7 @@ impl QualifierLabel {
 impl QualifierSystem {
     pub(super) fn get(
 	&self,
-	l: &super::structure::RSsystem,
+	l: &structure::RSsystem,
     ) -> AssertReturnValue {
 	match self {
 	    Self::Context => {
@@ -484,13 +468,28 @@ impl Binary {
     }
 }
 
+impl AssertReturnValue {
+    pub fn assign_qualified(&mut self, q: Qualifier, val: AssertReturnValue)
+			-> Result<(), String> {
+	match (self, q, val) {
+	    (Self::Label(l),
+	     Qualifier::Restricted(q),
+	     AssertReturnValue::Set(set)) => {
+		*q.referenced_mut(l) = set;
+		Ok(())
+	    },
+	    (s, q, val) => {
+		Err(format!("Cannot assign {val} to {s} with qualifier {q}"))
+	    }
+	}
+    }
+}
+
 
 
 // -----------------------------------------------------------------------------
-use std::collections::HashMap;
-use std::fmt::{self, Display};
-
-use petgraph::visit::EdgeRef;
+//                        Typechecking and Evaluation
+// -----------------------------------------------------------------------------
 
 struct TypeContext {
     data: HashMap<String, AssertionTypes>,
@@ -728,8 +727,8 @@ impl AssertReturnValue {
     fn unary(
 	self,
 	u: &Unary,
-	translator: &mut super::translator::Translator,
-	graph: &super::graph::RSgraph,
+	translator: &mut translator::Translator,
+	graph: &graph::RSgraph,
     ) -> Result<AssertReturnValue, String> {
 	match (self, u) {
 	    (AssertReturnValue::Boolean(b), Unary::Not) => {
@@ -804,7 +803,7 @@ impl AssertReturnValue {
 	self,
 	b: &Binary,
 	other: AssertReturnValue,
-	_translator: &mut super::translator::Translator
+	_translator: &mut translator::Translator
     ) -> Result<AssertReturnValue, String> {
 	use AssertReturnValue::*;
 	Ok(match (b, self, other) {
@@ -1002,8 +1001,8 @@ where S: SpecialVariables<G> {
 fn execute<S, G>(
     tree: &Tree<S>,
     c: &mut Context<S>,
-    translator: &mut super::translator::Translator,
-    graph: &super::graph::RSgraph,
+    translator: &mut translator::Translator,
+    graph: &graph::RSgraph,
 ) -> Result<Option<AssertReturnValue>, String>
 where S: SpecialVariables<G> {
     match tree {
@@ -1056,10 +1055,12 @@ type RangeIterator = std::vec::IntoIter<AssertReturnValue>;
 fn range_into_iter<S, G>(
     range: &Range<S>,
     c: &mut Context<S>,
-    translator: &mut super::translator::Translator,
-    graph: &super::graph::RSgraph,
+    translator: &mut translator::Translator,
+    graph: &graph::RSgraph,
 ) -> Result<RangeIterator, String>
 where S: SpecialVariables<G> {
+    use petgraph::visit::EdgeRef;
+
     match range {
 	Range::IterateOverSet(exp) => {
 	    let val = execute_exp(exp, c, translator, graph)?;
@@ -1100,8 +1101,8 @@ where S: SpecialVariables<G> {
 fn execute_exp<S, G>(
     exp: &Expression<S>,
     c: &Context<S>,
-    translator: &mut super::translator::Translator,
-    graph: &super::graph::RSgraph,
+    translator: &mut translator::Translator,
+    graph: &graph::RSgraph,
 ) -> Result<AssertReturnValue, String>
 where S: SpecialVariables<G> {
     match exp {
@@ -1143,7 +1144,7 @@ pub enum EdgeRelablerInput {
 
 #[derive(Debug, Clone)]
 pub enum EdgeRelablerInputValues {
-    Label(super::structure::RSlabel),
+    Label(structure::RSlabel),
     Edge(petgraph::graph::EdgeIndex),
 }
 
@@ -1184,29 +1185,16 @@ impl SpecialVariables<EdgeRelablerInputValues> for EdgeRelablerInput {
 	    (_, _) => false
 	}
     }
-
-    // fn correct_type_qualified(&self, q: &Qualifier, other: &AssertReturnValue)
-    //			      -> bool {
-    //	match (self, q, other) {
-    //	    (Self::Label, Qualifier::Label(_), AssertReturnValue::Set(_)) |
-    //	    (Self::Label, Qualifier::Restricted(_), AssertReturnValue::Set(_))
-    //		=> true,
-    //	    (_, _, _) => false
-    //	}
-    // }
 }
 
-impl Display for EdgeRelablerInput {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl std::fmt::Display for EdgeRelablerInput {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 	match self {
 	    Self::Label => write!(f, "label"),
 	    Self::Edge => write!(f, "edge"),
 	}
     }
 }
-
-
-
 
 
 impl RSassert<EdgeRelablerInput> {
@@ -1236,9 +1224,9 @@ impl RSassert<EdgeRelablerInput> {
 
     pub fn execute(
 	&self,
-	graph: &super::graph::RSgraph,
-	edge: &<super::graph::RSgraph as petgraph::visit::GraphBase>::EdgeId,
-	translator: &mut super::translator::Translator,
+	graph: &graph::RSgraph,
+	edge: &<graph::RSgraph as petgraph::visit::GraphBase>::EdgeId,
+	translator: &mut translator::Translator,
     ) -> Result<AssertReturnValue, String> {
 	let label = graph.edge_weight(*edge).unwrap();
 
@@ -1257,6 +1245,4 @@ impl RSassert<EdgeRelablerInput> {
     }
 }
 
-include!("assert_fmt.rs");
-
-include!("assert_tests.rs");
+include!("fmt.rs");

@@ -130,7 +130,7 @@ where
 	&self,
 	edge_map: &super::structure::RSassert,
 	translator: &mut super::translator::Translator
-    ) -> Result<Graph<RSsystem, super::assert::AssertReturnValue, Ty, Ix>, String>;
+    ) -> Result<Graph<RSsystem, super::structure::assert::AssertReturnValue, Ty, Ix>, String>;
 }
 
 impl<'a> MapEdges<'a, RSsystem, RSlabel, Directed, u32>
@@ -140,7 +140,7 @@ impl<'a> MapEdges<'a, RSsystem, RSlabel, Directed, u32>
 	&self,
 	edge_map: &super::structure::RSassert,
 	translator: &mut super::translator::Translator
-    )-> Result<Graph<RSsystem, super::assert::AssertReturnValue, Directed, u32>, String> {
+    )-> Result<Graph<RSsystem, super::structure::assert::AssertReturnValue, Directed, u32>, String> {
 	use petgraph::graph::EdgeIndex;
 
 	let mut g = Graph::with_capacity(self.node_count(), self.edge_count());
