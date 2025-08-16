@@ -2,6 +2,7 @@
 //                    Display Implementation for all types
 // -----------------------------------------------------------------------------
 use std::fmt;
+use super::dsl::*;
 
 impl<S> fmt::Display for RSassert<S> where S: fmt::Display {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

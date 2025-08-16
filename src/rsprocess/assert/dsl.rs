@@ -133,7 +133,7 @@ pub enum Binary {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-enum AssertionTypes {
+pub(super) enum AssertionTypes {
     Boolean,
     Integer,
     String,
@@ -246,7 +246,7 @@ impl QualifierSystem {
 }
 
 impl Unary {
-    fn is_prefix(&self) -> bool {
+    pub(super) fn is_prefix(&self) -> bool {
 	match self {
 	    Self::Not |
 	    Self::Rand => true,
@@ -262,11 +262,11 @@ impl Unary {
 	}
     }
 
-    fn is_suffix(&self) -> bool {
+    pub(super) fn is_suffix(&self) -> bool {
 	!self.is_prefix()
     }
 
-    fn associate(
+    pub(super) fn associate(
 	&self,
 	type_exp: &AssertionTypes
     ) -> Result<AssertionTypes, String> {
@@ -330,7 +330,7 @@ impl Unary {
 }
 
 impl Binary {
-    fn is_prefix(&self) -> bool {
+    pub(super) fn is_prefix(&self) -> bool {
 	match self {
 	    Self::And |
 	    Self::Or |
@@ -355,11 +355,11 @@ impl Binary {
 	}
     }
 
-    fn is_suffix(&self) -> bool {
+    pub(super) fn is_suffix(&self) -> bool {
 	false
     }
 
-    fn is_infix(&self) -> bool {
+    pub(super) fn is_infix(&self) -> bool {
 	match self {
 	    Self::And |
 	    Self::Or |
@@ -384,7 +384,7 @@ impl Binary {
 	}
     }
 
-    fn associate(
+    pub(super) fn associate(
 	&self,
 	t1: &AssertionTypes,
 	t2: &AssertionTypes
@@ -469,8 +469,9 @@ impl Binary {
 }
 
 impl AssertReturnValue {
-    pub fn assign_qualified(&mut self, q: Qualifier, val: AssertReturnValue)
-			-> Result<(), String> {
+    pub(super) fn assign_qualified(
+	&mut self, q: Qualifier, val: AssertReturnValue
+    ) -> Result<(), String> {
 	match (self, q, val) {
 	    (Self::Label(l),
 	     Qualifier::Restricted(q),
@@ -1244,5 +1245,3 @@ impl RSassert<EdgeRelablerInput> {
 	}
     }
 }
-
-include!("fmt.rs");
