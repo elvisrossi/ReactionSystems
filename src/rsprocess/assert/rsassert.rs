@@ -85,7 +85,9 @@ impl RSassert<EdgeRelablerInput> {
 	    AssertionTypes::System |
 	    AssertionTypes::Context =>
 		Ok(()),
-	    AssertionTypes::NoType |
+	    AssertionTypes::NoType =>
+		Err(format!("No return type, at least one return statement \
+			     required.")),
 	    AssertionTypes::RangeInteger |
 	    AssertionTypes::RangeSet |
 	    AssertionTypes::RangeNeighbours =>
@@ -197,7 +199,9 @@ impl RSassert<NodeRelablerInput> {
 	    AssertionTypes::System |
 	    AssertionTypes::Context =>
 		Ok(()),
-	    AssertionTypes::NoType |
+	    AssertionTypes::NoType =>
+		Err(format!("No return type, at least one return statement \
+			     required.")),
 	    AssertionTypes::RangeInteger |
 	    AssertionTypes::RangeSet |
 	    AssertionTypes::RangeNeighbours =>
