@@ -1,4 +1,5 @@
 pub mod dsl;
+pub mod rsassert;
 
 mod fmt;
 

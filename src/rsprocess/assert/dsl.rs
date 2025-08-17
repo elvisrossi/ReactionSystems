@@ -29,8 +29,8 @@ pub enum Variable<S> {
 }
 
 /// Trait needed for special variables.
-trait SpecialVariables<G>: std::fmt::Display + std::fmt::Debug + Sized + Eq
-    + Copy + std::hash::Hash
+pub(super) trait SpecialVariables<G>: std::fmt::Display + std::fmt::Debug
+    + Sized + Eq + Copy + std::hash::Hash
 {
     /// Returns the type of the specific special variable.
     fn type_of(&self) -> AssertionTypes;
@@ -504,18 +504,18 @@ impl AssertReturnValue {
 //                        Typechecking and Evaluation
 // -----------------------------------------------------------------------------
 
-struct TypeContext {
+pub(super) struct TypeContext {
     data: HashMap<String, AssertionTypes>,
     return_ty: Option<AssertionTypes>
 }
 
-struct Context<S> {
+pub(super) struct Context<S> {
     data: HashMap<String, AssertReturnValue>,
     special: HashMap<S, AssertReturnValue>,
 }
 
 impl TypeContext {
-    fn new() -> Self {
+    pub(super) fn new() -> Self {
 	TypeContext {
 	    data: HashMap::new(),
 	    return_ty: None
@@ -648,7 +648,7 @@ impl TypeContext {
 }
 
 impl<S> Context<S> {
-    fn new<G>(
+    pub(super) fn new<G>(
 	input: HashMap<S, G>,
     ) -> Self
     where S: SpecialVariables<G> {
@@ -903,7 +903,7 @@ impl AssertReturnValue {
     }
 }
 
-fn typecheck<S, G>(
+fn typecheck_helper<S, G>(
     tree: &Tree<S>,
     c: &mut TypeContext
 ) -> Result<AssertionTypes, String>
@@ -911,8 +911,8 @@ where S: SpecialVariables<G>
 {
     match tree {
 	Tree::Concat(t1, t2) => {
-	    typecheck(t1, c)?;
-	    typecheck(t2, c)
+	    typecheck_helper(t1, c)?;
+	    typecheck_helper(t2, c)
 	},
 	Tree::If(exp, t) => {
 	    match typecheck_expression(exp, c)? {
@@ -920,7 +920,7 @@ where S: SpecialVariables<G>
 		_ => {return Err("Expression in if statement doesn't return a \
 				  boolean.".to_string())}
 	    };
-	    typecheck(t, c)
+	    typecheck_helper(t, c)
 	},
 	Tree::IfElse(exp, t1, t2) => {
 	    match typecheck_expression(exp, c)? {
@@ -928,8 +928,8 @@ where S: SpecialVariables<G>
 		_ => {return Err("Expression in if statement doesn't return a \
 				  boolean.".into())}
 	    };
-	    let type_t1 = typecheck(t1, c)?;
-	    let type_t2 = typecheck(t2, c)?;
+	    let type_t1 = typecheck_helper(t1, c)?;
+	    let type_t2 = typecheck_helper(t2, c)?;
 	    if type_t1 == type_t2 {
 		Ok(type_t1)
 	    } else {
@@ -949,9 +949,19 @@ where S: SpecialVariables<G>
 	Tree::For(var, range, t) => {
 	    let type_range = typecheck_range(range, c)?;
 	    c.assign_range(var, type_range)?;
-	    typecheck(t, c)
+	    typecheck_helper(t, c)
 	},
     }
+}
+
+pub(super) fn typecheck<S, G>(
+    tree: &Tree<S>,
+    c: &mut TypeContext
+) -> Result<AssertionTypes, String>
+where S: SpecialVariables<G>
+{
+    typecheck_helper(tree, c)?;
+    Ok(c.return_ty.unwrap_or(AssertionTypes::NoType))
 }
 
 fn typecheck_expression<S, G>(
@@ -1015,7 +1025,7 @@ where S: SpecialVariables<G> {
     }
 }
 
-fn execute<S, G>(
+pub(super) fn execute<S, G>(
     tree: &Tree<S>,
     c: &mut Context<S>,
     translator: &mut translator::Translator,
@@ -1141,123 +1151,5 @@ where S: SpecialVariables<G> {
 	    let val2 = execute_exp(exp2, c, translator, graph)?;
 	    val1.binary(b, val2, translator)
 	},
-    }
-}
-
-
-
-
-
-
-// ----------------------------------------------------------------------------
-//                       Specific Assert Implementation
-// ----------------------------------------------------------------------------
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub enum EdgeRelablerInput {
-    Label,
-    Edge,
-}
-
-#[derive(Debug, Clone)]
-pub enum EdgeRelablerInputValues {
-    Label(structure::RSlabel),
-    Edge(petgraph::graph::EdgeIndex),
-}
-
-impl SpecialVariables<EdgeRelablerInputValues> for EdgeRelablerInput {
-    fn type_of(&self) -> AssertionTypes {
-	match self {
-	    Self::Edge => AssertionTypes::Edge,
-	    Self::Label => AssertionTypes::Label,
-	}
-    }
-
-    fn type_qualified(&self, q: &Qualifier) -> Result<AssertionTypes, String> {
-	match (self, q) {
-	    (Self::Label, Qualifier::Label(_)) |
-	    (Self::Label, Qualifier::Restricted(_)) =>
-		Ok(AssertionTypes::Set),
-	    (s, q) =>
-		Err(format!("Wrong use of qualifier {q} on value {s}"))
-	}
-    }
-
-    fn new_context(input: HashMap<Self, EdgeRelablerInputValues>)
-		   -> HashMap<Self, AssertReturnValue> {
-	input.iter().map(|(key, value)| {
-	    match value {
-		EdgeRelablerInputValues::Edge(e) =>
-		    (*key, AssertReturnValue::Edge(*e)),
-		EdgeRelablerInputValues::Label(l) =>
-		    (*key, AssertReturnValue::Label(l.clone())),
-	    }
-	}).collect::<HashMap<Self, AssertReturnValue>>()
-    }
-
-    fn correct_type(&self, other: &AssertReturnValue) -> bool {
-	match (self, other) {
-	    (Self::Edge, AssertReturnValue::Edge(_)) |
-	    (Self::Label, AssertReturnValue::Label(_)) => true,
-	    (_, _) => false
-	}
-    }
-}
-
-impl std::fmt::Display for EdgeRelablerInput {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-	match self {
-	    Self::Label => write!(f, "label"),
-	    Self::Edge => write!(f, "edge"),
-	}
-    }
-}
-
-
-impl RSassert<EdgeRelablerInput> {
-    pub fn typecheck(&self) -> Result<(), String> {
-	let mut context = TypeContext::new();
-	typecheck(&self.tree, &mut context)?;
-	let ty = context.return_ty.unwrap_or(AssertionTypes::NoType);
-	match ty {
-	    AssertionTypes::Boolean |
-	    AssertionTypes::Integer |
-	    AssertionTypes::String |
-	    AssertionTypes::Label |
-	    AssertionTypes::Set |
-	    AssertionTypes::Element |
-	    AssertionTypes::Edge |
-	    AssertionTypes::Node |
-	    AssertionTypes::System |
-	    AssertionTypes::Context =>
-		Ok(()),
-	    AssertionTypes::NoType |
-	    AssertionTypes::RangeInteger |
-	    AssertionTypes::RangeSet |
-	    AssertionTypes::RangeNeighbours =>
-		Err(format!("Returned type {ty} is not a valid return type.")),
-	}
-    }
-
-    pub fn execute(
-	&self,
-	graph: &graph::RSgraph,
-	edge: &<graph::RSgraph as petgraph::visit::GraphBase>::EdgeId,
-	translator: &mut translator::Translator,
-    ) -> Result<AssertReturnValue, String> {
-	let label = graph.edge_weight(*edge).unwrap();
-
-	let mut input_vals = HashMap::new();
-	input_vals.insert(EdgeRelablerInput::Edge,
-			  EdgeRelablerInputValues::Edge(*edge));
-	input_vals.insert(EdgeRelablerInput::Label,
-			  EdgeRelablerInputValues::Label(label.clone()));
-
-	let mut context = Context::new(input_vals);
-	if let Some(v) = execute(&self.tree, &mut context, translator, graph)? {
-	    Ok(v)
-	} else {
-	    Err("No value returned.".into())
-	}
     }
 }

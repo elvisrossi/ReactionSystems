@@ -4,13 +4,16 @@
 
 use super::dsl::*;
 use super::super::{translator, structure};
+use super::rsassert::*;
+
+type LocalAssert = RSassert<EdgeRelablerInput>;
 
 #[test]
 fn assert_tycheck_true() {
     use translator::Translator;
     use structure::{RSsystem, RSlabel};
 
-    let tree = RSassert {tree: Tree::Return(Box::new(Expression::True))};
+    let tree = LocalAssert {tree: Tree::Return(Box::new(Expression::True))};
     assert!(tree.typecheck().is_ok());
 
 
@@ -30,7 +33,7 @@ fn assert_tycheck_concat_1() {
     use translator::Translator;
     use structure::{RSsystem, RSlabel};
 
-    let tree = RSassert {
+    let tree = LocalAssert {
 	tree: Tree::Concat(
 	    Box::new(Tree::Assignment(
 		Variable::Id("a".into()),
@@ -58,7 +61,7 @@ fn assert_tycheck_concat_2() {
     use translator::Translator;
     use structure::{RSsystem, RSlabel};
 
-    let tree = RSassert {
+    let tree = LocalAssert {
 	tree: Tree::Concat(
 	    Box::new(Tree::Return(Box::new(Expression::True))),
 	    Box::new(Tree::Assignment(
@@ -86,7 +89,7 @@ fn assert_tycheck_return_1() {
     use translator::Translator;
     use structure::{RSsystem, RSlabel};
 
-    let tree = RSassert {
+    let tree = LocalAssert {
 	tree: Tree::Concat(
 	    Box::new(Tree::Return(Box::new(Expression::True))),
 	    Box::new(Tree::Return(Box::new(Expression::False))),
@@ -108,7 +111,7 @@ fn assert_tycheck_return_1() {
 
 #[test]
 fn assert_tycheck_return_incompatible_1() {
-    let tree = RSassert {
+    let tree = LocalAssert {
 	tree: Tree::Concat(
 	    Box::new(Tree::Return(Box::new(Expression::True))),
 	    Box::new(Tree::Return(Box::new(Expression::Integer(10)))),
@@ -119,7 +122,7 @@ fn assert_tycheck_return_incompatible_1() {
 
 #[test]
 fn assert_tycheck_return_incompatible_2() {
-    let tree = RSassert {
+    let tree = LocalAssert {
 	tree: Tree::Concat(
 	    Box::new(Tree::Return(Box::new(Expression::True))),
 	    Box::new(
@@ -142,7 +145,7 @@ fn assert_tycheck_return_2() {
     use translator::Translator;
     use structure::{RSsystem, RSlabel};
 
-    let tree = RSassert {
+    let tree = LocalAssert {
 	tree: Tree::Concat(
 	    Box::new(Tree::Return(Box::new(Expression::True))),
 	    Box::new(
@@ -177,7 +180,7 @@ fn assert_tycheck_return_3() {
     use translator::Translator;
     use structure::{RSsystem, RSlabel};
 
-    let tree = RSassert {
+    let tree = LocalAssert {
 	tree: Tree::Concat(
 	    Box::new(
 		Tree::Concat(
@@ -211,7 +214,7 @@ fn assert_tycheck_if_1() {
     use translator::Translator;
     use structure::{RSsystem, RSlabel};
 
-    let tree = RSassert {
+    let tree = LocalAssert {
 	tree: Tree::Concat(
 	    Box::new(Tree::Return(Box::new(Expression::True))),
 	    Box::new(
@@ -247,7 +250,7 @@ fn assert_tycheck_if_2() {
     use translator::Translator;
     use structure::{RSsystem, RSlabel};
 
-    let tree = RSassert {
+    let tree = LocalAssert {
 	tree: Tree::Concat(
 	    Box::new(
 		Tree::If(
@@ -282,7 +285,7 @@ fn assert_tycheck_if_3() {
     use translator::Translator;
     use structure::{RSsystem, RSlabel};
 
-    let tree = RSassert {
+    let tree = LocalAssert {
 	tree: Tree::Concat(
 	    Box::new(
 		Tree::If(
@@ -315,7 +318,7 @@ fn assert_tycheck_if_3() {
 
 #[test]
 fn assert_tycheck_if_4() {
-    let tree = RSassert {
+    let tree = LocalAssert {
 	tree: Tree::Concat(
 	    Box::new(
 		Tree::If(
@@ -340,7 +343,7 @@ fn assert_tycheck_if_else_1() {
     use translator::Translator;
     use structure::{RSsystem, RSlabel};
 
-    let tree = RSassert {
+    let tree = LocalAssert {
 	tree: Tree::Concat(
 	    Box::new(Tree::Return(Box::new(Expression::True))),
 	    Box::new(
@@ -379,7 +382,7 @@ fn assert_tycheck_if_else_2() {
     use translator::Translator;
     use structure::{RSsystem, RSlabel};
 
-    let tree = RSassert {
+    let tree = LocalAssert {
 	tree: Tree::Concat(
 	    Box::new(
 		Tree::IfElse(
@@ -415,7 +418,7 @@ fn assert_tycheck_if_else_2() {
 
 #[test]
 fn assert_tycheck_if_else_3() {
-    let tree = RSassert {
+    let tree = LocalAssert {
 	tree: Tree::Concat(
 	    Box::new(
 		Tree::IfElse(
@@ -440,7 +443,7 @@ fn assert_tycheck_if_else_3() {
 
 #[test]
 fn assert_tycheck_if_else_4() {
-    let tree = RSassert {
+    let tree = LocalAssert {
 	tree: Tree::Concat(
 	    Box::new(
 		Tree::IfElse(
@@ -465,7 +468,7 @@ fn assert_tycheck_if_else_4() {
 
 #[test]
 fn assert_tycheck_assignment_1() {
-    let tree = RSassert {
+    let tree = LocalAssert {
 	tree: Tree::Assignment(
 	    Variable::Id("a".into()),
 	    None,
@@ -480,7 +483,7 @@ fn assert_tycheck_assignment_2() {
     use translator::Translator;
     use structure::{RSsystem, RSlabel};
 
-    let tree = RSassert {
+    let tree = LocalAssert {
 	tree: Tree::Concat(
 	    Box::new(
 		Tree::Assignment(
@@ -517,7 +520,7 @@ fn assert_tycheck_assignment_3() {
     use translator::Translator;
     use structure::{RSsystem, RSlabel};
 
-    let tree = RSassert {
+    let tree = LocalAssert {
 	tree: Tree::Concat(
 	    Box::new(
 		Tree::Assignment(
@@ -553,7 +556,7 @@ fn assert_tycheck_assignment_3() {
 
 #[test]
 fn assert_tycheck_assignment_4() {
-    let tree = RSassert {
+    let tree = LocalAssert {
 	tree: Tree::Concat(
 	    Box::new(
 		Tree::Assignment(
@@ -581,7 +584,7 @@ fn assert_tycheck_assignment_5() {
     use translator::Translator;
     use structure::{RSsystem, RSlabel};
 
-    let tree = RSassert {
+    let tree = LocalAssert {
 	tree: Tree::Concat(
 	    Box::new(Tree::Assignment(
 		Variable::Id("a".into()),
@@ -621,7 +624,7 @@ fn assert_tycheck_assignment_6() {
     use translator::Translator;
     use structure::{RSsystem, RSlabel};
 
-    let tree = RSassert {
+    let tree = LocalAssert {
 	tree: Tree::Concat(
 	    Box::new(Tree::Concat(
 		Box::new(Tree::Assignment(
@@ -668,7 +671,7 @@ fn assert_tycheck_assignment_7() {
     use translator::Translator;
     use structure::{RSsystem, RSlabel};
 
-    let tree = RSassert {
+    let tree = LocalAssert {
 	tree: Tree::Concat(
 	    Box::new(Tree::Concat(
 		Box::new(Tree::Assignment(
@@ -713,7 +716,7 @@ fn assert_tycheck_assignment_8() {
     use translator::Translator;
     use structure::{RSsystem, RSlabel};
 
-    let tree = RSassert {
+    let tree = LocalAssert {
 	tree: Tree::Concat(
 	    Box::new(Tree::Concat(
 		Box::new(Tree::Assignment(
@@ -762,7 +765,7 @@ fn assert_tycheck_assignment_9() {
     use translator::Translator;
     use structure::{RSsystem, RSlabel};
 
-    let tree = RSassert {
+    let tree = LocalAssert {
 	tree: Tree::Concat(
 	    Box::new(Tree::Concat(
 		Box::new(Tree::Assignment(
@@ -809,7 +812,7 @@ fn assert_tycheck_assignment_10() {
     use translator::Translator;
     use structure::{RSsystem, RSlabel};
 
-    let tree = RSassert {
+    let tree = LocalAssert {
 	tree: Tree::Concat(
 	    Box::new(Tree::Concat(
 		Box::new(Tree::Assignment(
@@ -859,7 +862,7 @@ fn assert_tycheck_for_1() {
     use translator::Translator;
     use structure::{RSsystem, RSlabel, RSset};
 
-    let tree = RSassert {
+    let tree = LocalAssert {
 	tree: Tree::Concat(
 	    Box::new(Tree::Concat(
 		Box::new(Tree::Assignment(
@@ -907,7 +910,7 @@ fn assert_tycheck_for_2() {
     use translator::Translator;
     use structure::{RSsystem, RSlabel, RSset};
 
-    let tree = RSassert {
+    let tree = LocalAssert {
 	tree: Tree::Concat(
 	    Box::new(Tree::Concat(
 		Box::new(Tree::Assignment(
@@ -959,7 +962,7 @@ fn assert_tycheck_for_3() {
     use translator::Translator;
     use structure::{RSsystem, RSlabel, RSset};
 
-    let tree = RSassert {
+    let tree = LocalAssert {
 	tree: Tree::Concat(
 	    Box::new(Tree::Concat(
 		Box::new(Tree::Assignment(
@@ -1025,7 +1028,7 @@ fn assert_tycheck_for_4() {
     use translator::Translator;
     use structure::{RSsystem, RSlabel, RSset};
 
-    let tree = RSassert {
+    let tree = LocalAssert {
 	tree: Tree::Concat(
 	    Box::new(Tree::Concat(
 		Box::new(Tree::Assignment(
@@ -1092,7 +1095,7 @@ fn assert_tycheck_for_5() {
     use translator::Translator;
     use structure::{RSsystem, RSlabel, RSset};
 
-    let tree = RSassert {
+    let tree = LocalAssert {
 	tree: Tree::Concat(
 	    Box::new(Tree::Concat(
 		Box::new(Tree::Assignment(
@@ -1172,7 +1175,7 @@ fn assert_tycheck_for_6() {
     use translator::Translator;
     use structure::{RSsystem, RSlabel, RSset};
 
-    let tree = RSassert {
+    let tree = LocalAssert {
 	tree: Tree::Concat(
 	    Box::new(Tree::Concat(
 		Box::new(Tree::Assignment(
@@ -1263,7 +1266,7 @@ fn assert_tycheck_for_7() {
     use translator::Translator;
     use structure::{RSsystem, RSlabel};
 
-    let tree = RSassert {
+    let tree = LocalAssert {
 	tree: Tree::Concat(
 	    Box::new(Tree::Concat(
 		Box::new(Tree::Assignment(
@@ -1315,7 +1318,7 @@ fn assert_tycheck_for_8() {
     use translator::Translator;
     use structure::{RSsystem, RSlabel};
 
-    let tree = RSassert {
+    let tree = LocalAssert {
 	tree: Tree::Concat(
 	    Box::new(Tree::Concat(
 		Box::new(Tree::Assignment(
@@ -1396,7 +1399,7 @@ fn assert_tycheck_system() {
     use structure::{RSsystem, RSlabel, RSset, RSenvironment, RSprocess};
     use std::rc::Rc;
 
-    let tree = RSassert {
+    let tree = LocalAssert {
 	tree: Tree::Concat(
 	    Box::new(Tree::Assignment(
 		Variable::Id("a".into()),

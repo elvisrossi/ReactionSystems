@@ -621,12 +621,11 @@ impl Hash for RSlabel {
 
 pub type RSassert =
     crate::rsprocess::assert::dsl::RSassert<
-	    crate::rsprocess::assert::dsl::EdgeRelablerInput>;
+	    crate::rsprocess::assert::rsassert::EdgeRelablerInput>;
 
 pub mod assert {
     pub use crate::rsprocess::assert::dsl::*;
 }
-
 
 // -----------------------------------------------------------------------------
 // RSBHML
