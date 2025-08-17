@@ -92,12 +92,8 @@ impl fmt::Display for Unary {
 	    Self::Empty => write!(f, ".empty"),
 	    Self::Length => write!(f, ".length"),
 	    Self::ToStr => write!(f, ".tostr"),
-	    Self::Qualifier(q) => write!(f, ".{q}"),
 	    Self::ToEl => write!(f, ".toel"),
-	    Self::Source => write!(f, ".source"),
-	    Self::Target => write!(f, ".target"),
-	    Self::Neighbours => write!(f, ".neighbours"),
-	    Self::System => write!(f, ".system"),
+	    Self::Qualifier(q) => write!(f, ".{q}"),
 	}
     }
 }
@@ -135,12 +131,32 @@ impl fmt::Display for QualifierSystem {
     }
 }
 
+impl fmt::Display for QualifierEdge {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+	match self {
+	    Self::Source => write!(f, "source"),
+	    Self::Target => write!(f, "target"),
+	}
+    }
+}
+
+impl fmt::Display for QualifierNode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+	match self {
+	    Self::Neighbours => write!(f, "neighbours"),
+	    Self::System => write!(f, "system"),
+	}
+    }
+}
+
 impl fmt::Display for Qualifier {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 	match self {
 	    Self::Label(q) => write!(f, "{q}"),
 	    Self::Restricted(q) => write!(f, "{q}"),
 	    Self::System(q) => write!(f, "{q}"),
+	    Self::Edge(q) => write!(f, "{q}"),
+	    Self::Node(q) => write!(f, "{q}"),
 	}
     }
 }

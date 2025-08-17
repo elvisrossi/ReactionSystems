@@ -1322,9 +1322,11 @@ fn assert_tycheck_for_8() {
 		    Variable::Id("a".into()),
 		    None,
 		    Box::new(Expression::Unary(
-			Unary::Neighbours,
+			Unary::Qualifier(Qualifier::Node(
+			    QualifierNode::Neighbours)),
 			Box::new(Expression::Unary(
-			    Unary::Source,
+			    Unary::Qualifier(Qualifier::Edge(
+				QualifierEdge::Source)),
 			    Box::new(Expression::Var(
 				Variable::Special(EdgeRelablerInput::Edge)
 			    ))
@@ -1404,9 +1406,11 @@ fn assert_tycheck_system() {
 			Qualifier::System(QualifierSystem::Entities)
 		    ),
 		    Box::new(Expression::Unary(
-			Unary::System,
+			Unary::Qualifier(Qualifier::Node(
+			    QualifierNode::System)),
 			Box::new(Expression::Unary(
-			    Unary::Target,
+			    Unary::Qualifier(Qualifier::Edge(
+				QualifierEdge::Target)),
 			    Box::new(Expression::Var(
 				Variable::Special(EdgeRelablerInput::Edge)
 			    ))

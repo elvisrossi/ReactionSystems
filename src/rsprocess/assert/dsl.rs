@@ -32,10 +32,17 @@ pub enum Variable<S> {
 trait SpecialVariables<G>: std::fmt::Display + std::fmt::Debug + Sized + Eq
     + Copy + std::hash::Hash
 {
+    /// Returns the type of the specific special variable.
     fn type_of(&self) -> AssertionTypes;
+
+    /// Returns the type of the qualified special variable.
     fn type_qualified(&self, q: &Qualifier) -> Result<AssertionTypes, String>;
+
+    /// Creates a new context.
     fn new_context(input: HashMap<Self, G>)
 		   -> HashMap<Self, AssertReturnValue>;
+
+    /// Returns true if
     fn correct_type(&self, other: &AssertReturnValue) -> bool;
 }
 
@@ -68,12 +75,8 @@ pub enum Unary {
     Empty,
     Length,
     ToStr,
-    Qualifier(Qualifier),
     ToEl,
-    Source,
-    Target,
-    Neighbours,
-    System,
+    Qualifier(Qualifier),
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -101,10 +104,24 @@ pub enum QualifierSystem {
 }
 
 #[derive(Debug, Clone, Copy)]
+pub enum QualifierEdge {
+    Source,
+    Target,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum QualifierNode {
+    Neighbours,
+    System,
+}
+
+#[derive(Debug, Clone, Copy)]
 pub enum Qualifier {
     System(QualifierSystem),
     Label(QualifierLabel),
     Restricted(QualifierRestricted),
+    Edge(QualifierEdge),
+    Node(QualifierNode),
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -254,11 +271,7 @@ impl Unary {
 	    Self::Length |
 	    Self::ToStr |
 	    Self::Qualifier(_) |
-	    Self::ToEl |
-	    Self::Source |
-	    Self::Target |
-	    Self::Neighbours |
-	    Self::System => false,
+	    Self::ToEl => false,
 	}
     }
 
@@ -299,13 +312,11 @@ impl Unary {
 	    (Self::ToEl, AssertionTypes::String) => {
 		Ok(AssertionTypes::Element)
 	    },
-	    (Self::Source, AssertionTypes::Edge) => {
+	    (Self::Qualifier(Qualifier::Edge(_)), AssertionTypes::Edge) => {
 		Ok(AssertionTypes::Node)
 	    },
-	    (Self::Target, AssertionTypes::Edge) => {
-		Ok(AssertionTypes::Node)
-	    },
-	    (Self::Neighbours, AssertionTypes::Node) => {
+	    (Self::Qualifier(Qualifier::Node(QualifierNode::Neighbours)),
+	     AssertionTypes::Node) => {
 		Ok(AssertionTypes::RangeNeighbours)
 	    },
 	    (Self::Qualifier(
@@ -318,7 +329,8 @@ impl Unary {
 	     AssertionTypes::System) => {
 		Ok(AssertionTypes::Context)
 	    },
-	    (Self::System, AssertionTypes::Node) => {
+	    (Self::Qualifier(Qualifier::Node(QualifierNode::System)),
+	     AssertionTypes::Node) => {
 		Ok(AssertionTypes::System)
 	    },
 	    (op, type_exp) => {
@@ -774,18 +786,22 @@ impl AssertReturnValue {
 	    (AssertReturnValue::String(s), Unary::ToEl) => {
 		Ok(AssertReturnValue::Element(translator.encode(s)))
 	    },
-	    (AssertReturnValue::Edge(edge), Unary::Source) => {
+	    (AssertReturnValue::Edge(edge),
+	     Unary::Qualifier(Qualifier::Edge(QualifierEdge::Source))) => {
 		Ok(AssertReturnValue::Node(
 		    graph.edge_endpoints(edge).unwrap().0))
 	    },
-	    (AssertReturnValue::Edge(edge), Unary::Target) => {
+	    (AssertReturnValue::Edge(edge),
+	     Unary::Qualifier(Qualifier::Edge(QualifierEdge::Target))) => {
 		Ok(AssertReturnValue::Node(
 		    graph.edge_endpoints(edge).unwrap().1))
 	    },
-	    (AssertReturnValue::Node(node), Unary::Neighbours) => {
+	    (AssertReturnValue::Node(node),
+	     Unary::Qualifier(Qualifier::Node(QualifierNode::Neighbours))) => {
 		Ok(AssertReturnValue::Neighbours(node))
 	    },
-	    (AssertReturnValue::Node(node), Unary::System) => {
+	    (AssertReturnValue::Node(node),
+	     Unary::Qualifier(Qualifier::Node(QualifierNode::System))) => {
 		Ok(AssertReturnValue::System(
 		    graph.node_weight(node).unwrap().clone()
 		))
