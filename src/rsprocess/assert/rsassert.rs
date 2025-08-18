@@ -6,6 +6,33 @@ use std::collections::HashMap;
 //                       Specific Assert Implementation
 // ----------------------------------------------------------------------------
 
+pub mod useful_types_edge_relabeler {
+    macro_rules! export_types {
+	( $( $x:ident ),* ) => {
+	    $(
+		pub type $x = super::super::dsl::$x<super::EdgeRelablerInput>;
+	    )*
+	};
+    }
+
+    macro_rules! export_types_no_parameter {
+	( $( $x:ident ),* ) => {
+	    $(
+		pub type $x = super::super::dsl::$x;
+	    )*
+	};
+    }
+
+    export_types!(RSassert, Tree, Variable, Expression, Range);
+
+    export_types_no_parameter!(Unary, QualifierRestricted, QualifierLabel,
+			       QualifierSystem, QualifierEdge, QualifierNode,
+			       Qualifier, Binary, AssertReturnValue);
+
+    pub type Special = super::EdgeRelablerInput;
+}
+
+
 // Implementation for graph labeling in bisimulation.
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -15,7 +42,7 @@ pub enum EdgeRelablerInput {
 }
 
 #[derive(Debug, Clone)]
-pub enum EdgeRelablerInputValues {
+enum EdgeRelablerInputValues {
     Label(structure::RSlabel),
     Edge(petgraph::graph::EdgeIndex),
 }
@@ -68,7 +95,6 @@ impl std::fmt::Display for EdgeRelablerInput {
     }
 }
 
-
 impl RSassert<EdgeRelablerInput> {
     pub fn typecheck(&self) -> Result<(), String> {
 	let mut context = TypeContext::new();
@@ -119,7 +145,9 @@ impl RSassert<EdgeRelablerInput> {
     }
 }
 
+// -----------------------------------------------------------------------------
 // Implementation for node grouping.
+// -----------------------------------------------------------------------------
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum NodeRelablerInput {
@@ -128,7 +156,7 @@ pub enum NodeRelablerInput {
 }
 
 #[derive(Debug, Clone)]
-pub enum NodeRelablerInputValues {
+enum NodeRelablerInputValues {
     Entities(structure::RSset),
     Node(petgraph::graph::NodeIndex),
 }
