@@ -166,28 +166,27 @@ fn print_process(
     match process {
         Nill => {
             write!(f, "Nill")
-        }
+        },
         RecursiveIdentifier { identifier } => {
             write!(f,
 		   "[{}]",
 		   translator.decode(*identifier).unwrap_or("Missing".into()))
-        }
-        EntitySet {
-            entities,
-            next_process,
-        } => {
+        },
+        EntitySet { entities, next_process, } => {
             write!(
                 f,
                 "{}.{}",
                 RSsetDisplay::from(translator, entities),
                 RSprocessDisplay::from(translator, next_process)
             )
-        }
-        WaitEntity {
-            repeat,
-            repeated_process,
-            next_process,
-        } => {
+        },
+	Guarded { reaction, next_process } => {
+	    write!(f,
+		   "?{}?.{}",
+		   RSreactionDisplay::from(translator, reaction),
+		   RSprocessDisplay::from(translator, next_process))
+	},
+        WaitEntity { repeat, repeated_process, next_process, } => {
             write!(
                 f,
                 "({})^{repeat}.{}",

@@ -14,7 +14,7 @@ impl<'a> TransitionsIterator<'a> {
     pub fn from(
 	system: &'a RSsystem
     ) -> Result<TransitionsIterator<'a>, String> {
-        match unfold(&system.delta, &system.context_process) {
+        match unfold(&system.delta, &system.context_process, &system.available_entities) {
             Ok(o) => Ok(TransitionsIterator {
                 choices_iterator: o.into_iter(),
                 system,

@@ -143,7 +143,7 @@ impl IntoIterator for RSset {
 // -----------------------------------------------------------------------------
 
 /// Basic structure for a reaction.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct RSreaction {
     pub reactants: RSset,
     pub inhibitors: RSset,
@@ -194,6 +194,10 @@ pub enum RSprocess {
     EntitySet {
         entities: RSset,
         next_process: Rc<RSprocess>,
+    },
+    Guarded {
+	reaction: RSreaction,
+	next_process: Rc<RSprocess>,
     },
     WaitEntity {
         repeat: i64,
@@ -248,6 +252,12 @@ impl RSprocess {
                     elements.push(entities);
                     queue.push_back(next_process);
                 }
+		Self::Guarded { reaction, next_process } => {
+		    elements.push(&reaction.reactants);
+		    elements.push(&reaction.inhibitors);
+		    elements.push(&reaction.products);
+		    queue.push_back(next_process);
+		}
                 Self::WaitEntity {
                     repeat: _,
                     repeated_process,

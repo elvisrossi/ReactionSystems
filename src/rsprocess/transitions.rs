@@ -16,44 +16,46 @@ use std::rc::Rc;
 pub fn unfold(
     environment: &RSenvironment,
     context_process: &RSprocess,
+    current_entities: &RSset,
 ) -> Result<RSchoices, String> {
     match context_process {
-        RSprocess::Nill => Ok(RSchoices::new()),
+        RSprocess::Nill => {
+	    Ok(RSchoices::new())
+	},
         RSprocess::RecursiveIdentifier { identifier } => {
             let newprocess = environment.get(*identifier);
             if let Some(newprocess) = newprocess {
-                unfold(environment, newprocess)
+                unfold(environment, newprocess, current_entities)
             } else {
                 Err(format!("Missing symbol in context: {identifier}"))
             }
         }
-        RSprocess::EntitySet {
-            entities,
-            next_process,
-        } => Ok(RSchoices::from(vec![(
-            Rc::new(entities.clone()),
-            Rc::clone(next_process),
-        )])),
-        RSprocess::WaitEntity {
-            repeat,
-            repeated_process: _,
-            next_process,
-        } if *repeat <= 0 => unfold(environment, next_process),
-        RSprocess::WaitEntity {
-            repeat,
-            repeated_process,
-            next_process,
-        } if *repeat == 1 => {
-            let mut choices1 = unfold(environment, repeated_process)?;
+        RSprocess::EntitySet { entities, next_process, } => {
+	    Ok(RSchoices::from([(
+		Rc::new(entities.clone()),
+		Rc::clone(next_process),
+            )]))
+	},
+	RSprocess::Guarded { reaction, next_process } => {
+	    if reaction.enabled(current_entities) {
+		Ok(RSchoices::from([(Rc::new(reaction.products.clone()),
+				     Rc::clone(next_process))]))
+	    } else {
+		Ok(RSchoices::new())
+	    }
+	}
+        RSprocess::WaitEntity { repeat, repeated_process: _, next_process, }
+	if *repeat <= 0 => {
+	    unfold(environment, next_process, current_entities)
+	},
+        RSprocess::WaitEntity { repeat, repeated_process, next_process, }
+	if *repeat == 1 => {
+            let mut choices1 = unfold(environment, repeated_process, current_entities)?;
             choices1.replace(Rc::clone(next_process));
             Ok(choices1)
         }
-        RSprocess::WaitEntity {
-            repeat,
-            repeated_process,
-            next_process,
-        } => {
-            let mut choices1 = unfold(environment, repeated_process)?;
+        RSprocess::WaitEntity { repeat, repeated_process, next_process, } => {
+            let mut choices1 = unfold(environment, repeated_process, current_entities)?;
             choices1.replace(Rc::new(RSprocess::WaitEntity {
                 repeat: (*repeat - 1),
                 repeated_process: Rc::clone(repeated_process),
@@ -64,7 +66,7 @@ pub fn unfold(
         RSprocess::Summation { children } => {
             // short-circuits with try_fold.
             children.iter().try_fold(RSchoices::new(), |mut acc, x| {
-                match unfold(environment, x) {
+                match unfold(environment, x, current_entities) {
                     Ok(mut choices) => {
                         acc.append(&mut choices);
                         Ok(acc)
@@ -82,7 +84,7 @@ pub fn unfold(
                 )]))
             } else {
                 children.iter().try_fold(RSchoices::new(), |mut acc, x| {
-                    acc.shuffle(unfold(environment, x)?);
+                    acc.shuffle(unfold(environment, x, current_entities)?);
                     Ok(acc)
                 })
             }
