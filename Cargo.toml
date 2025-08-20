@@ -8,10 +8,10 @@ lalrpop = "0.22"
 
 [dependencies]
 rand = { version = "*" }
+colored = { version = "*" }
 regex = { version = "1", features = ["unicode-bool"] }
 lalrpop-util = { version = "*", features = ["lexer", "unicode"] }
 petgraph = { version = "*", features = ["serde-1"] }
-# TODO remove git and use crates.io version when updated
 petgraph-graphml = { version = "5" }
 serde = { version = "1", features = ["derive", "rc"] }
 serde_cbor_2 = { version = "*" }

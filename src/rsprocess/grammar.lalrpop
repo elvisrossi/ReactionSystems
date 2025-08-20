@@ -44,15 +44,16 @@ match {
     "Products", "MaskProducts", "UncommonProducts", "UncommonMaskProducts",
     "Union", "MaskUnion", "UncommonUnion", "UncommonMaskUnion",
     "Difference", "MaskDifference",
-	"UncommonDifference", "UncommonMaskDifference",
+    "UncommonDifference", "UncommonMaskDifference",
     "EntitiesDeleted", "MaskEntitiesDeleted",
 	"UncommonEntitiesDeleted", "UncommonMaskEntitiesDeleted",
     "EntitiesAdded", "MaskEntitiesAdded",
 	"UncommonEntitiesAdded", "UncommonMaskEntitiesAdded",
     "label", "edge", "if", "then", "else", "let", "=", "return", "for", "in",
-    "not", "rand", ".empty", ".length", ".tostr", ".source", ".target",
+    "not", "rand", "empty", "length", "tostr", "source", "target",
     "&&", "||", "^^", "<=", ">=", "==", "!=", "+", "*", "/", "%",
-    "::", "substr", "min", "max", "commonsubstr",
+    "::",
+    "substr", "min", "max", "commonsubstr",
     "SystemEntities", "SystemContext",
     "AvailableEntities", "AllReactants", "AllInhibitors",
     "relabel",
@@ -67,16 +68,96 @@ match {
     _
 }
 
-
 // matches words (letter followed by numbers, letters or _)
 Literal: String = {
-    WORD => <>.to_string()
+    WORD => <>.into(),
+};
+
+LiteralProcess: String = {
+    Literal => <>,
+    "true" => <>.into(),
+    "false" => <>.into(),
+    "Environment" => <>.into(),
+    "Initial" => <>.into(),
+    "Context" => <>.into(),
+    "Reactions" => <>.into(),
+    "Weights" => <>.into(),
+    "Sets" => <>.into(),
+    "Print" => <>.into(),
+    "Save" => <>.into(),
+    "Dot" => <>.into(),
+    "GraphML" => <>.into(),
+    "Serialize" => <>.into(),
+    "Stats" => <>.into(),
+    "Target" => <>.into(),
+    "Run" => <>.into(),
+    "Loop" => <>.into(),
+    "Frequency" => <>.into(),
+    "LimitFrequency" => <>.into(),
+    "FastFrequency" => <>.into(),
+    "Digraph" => <>.into(),
+    "Bisimilarity" => <>.into(),
+    "Deserialize" => <>.into(),
+    "Hide" => <>.into(),
+    "Entities" => <>.into(),
+    "MaskEntities" => <>.into(),
+    "UncommonEntities" => <>.into(),
+    "UncommonMaskEntities" => <>.into(),
+    "MaskContext" => <>.into(),
+    "UncommonContext" => <>.into(),
+    "UncommonMaskContext" => <>.into(),
+    "Products" => <>.into(),
+    "MaskProducts" => <>.into(),
+    "UncommonProducts" => <>.into(),
+    "UncommonMaskProducts" => <>.into(),
+    "Union" => <>.into(),
+    "MaskUnion" => <>.into(),
+    "UncommonUnion" => <>.into(),
+    "UncommonMaskUnion" => <>.into(),
+    "Difference" => <>.into(),
+    "MaskDifference" => <>.into(),
+    "UncommonDifference" => <>.into(),
+    "UncommonMaskDifference" => <>.into(),
+    "EntitiesDeleted" => <>.into(),
+    "MaskEntitiesDeleted" => <>.into(),
+    "UncommonEntitiesDeleted" => <>.into(),
+    "UncommonMaskEntitiesDeleted" => <>.into(),
+    "EntitiesAdded" => <>.into(),
+    "MaskEntitiesAdded" => <>.into(),
+    "UncommonEntitiesAdded" => <>.into(),
+    "UncommonMaskEntitiesAdded" => <>.into(),
+    "label" => <>.into(),
+    "edge" => <>.into(),
+    "if" => <>.into(),
+    "then" => <>.into(),
+    "else" => <>.into(),
+    "let" => <>.into(),
+    "return" => <>.into(),
+    "for" => <>.into(),
+    "in" => <>.into(),
+    "not" => <>.into(),
+    "rand" => <>.into(),
+    "empty" => <>.into(),
+    "length" => <>.into(),
+    "tostr" => <>.into(),
+    "source" => <>.into(),
+    "target" => <>.into(),
+    "substr" => <>.into(),
+    "min" => <>.into(),
+    "max" => <>.into(),
+    "commonsubstr" => <>.into(),
+    "SystemEntities" => <>.into(),
+    "SystemContext" => <>.into(),
+    "AvailableEntities" => <>.into(),
+    "AllReactants" => <>.into(),
+    "AllInhibitors" => <>.into(),
+    "relabel" => <>.into(),
 };
 
 // all numbers are i64
 Num: i64 = {
     NUMBER =>? i64::from_str(<>)
-		  .map_err(|_| ParseError::User { error: "Number is too big" })
+	       .map_err(|_| ParseError::User { error: "Number is too big" })
 };
 
 Path: String = {
@@ -124,7 +205,10 @@ pub Reactions: Vec<RSreaction> = {
 }
 
 Reaction: RSreaction = {
+    #[precedence(level="1")]
     "[" <r: Set> "," <i: Set> "," <p: Set> "]" => RSreaction::from(r, i, p),
+
+    #[precedence(level="0")]
     "[" "r:" <r: Set> "," "i:" <i: Set> "," "p:" <p: Set> "]" =>
 	RSreaction::from(r, i, p),
 }
@@ -145,18 +229,26 @@ Boxed_CTX_process: Rc<RSprocess> = {
 
 CTX_process: RSprocess = {
     "nill" => RSprocess::Nill,
+
     <c: Set_of_entities> "." <k: CTX_process> =>
 	RSprocess::EntitySet{ entities: c, next_process: Rc::new(k) },
+
     "(" <k: CTX_process>  ")" => k,
+
     "(" <k: Separated<CTX_process, "+">> ")" =>
 	RSprocess::Summation{
 		children: k.into_iter().map(Rc::new).collect::<Vec<_>>()
 	},
-    "<" <n: Num> <k1: CTX_process> ">" "." <k: CTX_process> =>
+
+    "?" <r: Reaction> "?" "." <k: CTX_process> =>
+	RSprocess::Guarded{ reaction: r, next_process: Rc::new(k) },
+
+    "<" <n: Num> "," <k1: CTX_process> ">" "." <k: CTX_process> =>
 	RSprocess::WaitEntity{ repeat: n,
 			       repeated_process: Rc::new(k1),
 			       next_process: Rc::new(k) },
-    <identifier: Literal> =>
+
+    <identifier: LiteralProcess> =>
 	RSprocess::RecursiveIdentifier{
 		identifier: translator.encode(identifier)
 	}
@@ -172,7 +264,7 @@ pub Environment: Box<RSenvironment> = {
 };
 
 Env_term: (IdType, RSprocess) = {
-    <identifier: Literal> "=" <k: CTX_process> =>
+    <identifier: LiteralProcess> "=" <k: CTX_process> =>
 	(translator.encode(identifier), k)
 };
 
@@ -192,61 +284,78 @@ AssertTree: rsassert::Tree = {
 }
 
 AssertTree2: rsassert::Tree = {
+    #[precedence(level="1")]
     "if" <e: AssertExpression>
     "then" "{" <t: AssertTree> "}" =>
 	rsassert::Tree::If(Box::new(e), Box::new(t)),
 
+    #[precedence(level="0")]
     "if" <e: AssertExpression>
     "then" "{" <t1: AssertTree> "}"
     "else" "{" <t2: AssertTree> "}" =>
 	rsassert::Tree::IfElse(Box::new(e), Box::new(t1), Box::new(t2)),
 
+    #[precedence(level="2")]
     "let" <v: AssertVariable> <q: AssertQualifier?> "=" <e: AssertExpression> =>
 	rsassert::Tree::Assignment(v, q, Box::new(e)),
 
+    #[precedence(level="3")]
     "return" <e: AssertExpression> =>
 	rsassert::Tree::Return(Box::new(e)),
 
+    #[precedence(level="4")]
     "for" <v: AssertVariable> "in" <r: AssertRange> "{" <t: AssertTree> "}" =>
 	rsassert::Tree::For(v, r, Box::new(t)),
 }
 
 AssertVariable: rsassert::Variable = {
+    #[precedence(level="0")]
     "label" => rsassert::Variable::Special(rsassert::Special::Label),
+    #[precedence(level="1")]
     "edge"  => rsassert::Variable::Special(rsassert::Special::Edge),
+    #[precedence(level="2")]
     <v: Literal> => rsassert::Variable::Id(v),
 }
 
 
 AssertExpression: rsassert::Expression = {
     // Unary
+    #[precedence(level="0")]
     <unp: AssertUnaryPrefix> <e: AssertExpression> =>
 	rsassert::Expression::Unary(unp, Box::new(e)),
-    "(" <e: AssertExpression> ")" <uns: AssertUnarySuffix> =>
+    #[precedence(level="2")]
+    <e: AssertExpression> <uns: AssertUnarySuffix> =>
 	rsassert::Expression::Unary(uns, Box::new(e)),
 
     // binary
-    "(" <e1: AssertExpression> <b: AssertBinary> <e2: AssertExpression> ")" =>
+    #[precedence(level="3")] #[assoc(side="left")]
+    <e1: AssertExpression> <b: AssertBinary> <e2: AssertExpression> =>
 	rsassert::Expression::Binary(b, Box::new(e1), Box::new(e2)),
+    #[precedence(level="1")]
     <b: AssertBinaryPrefix>
     "(" <e1: AssertExpression> "," <e2: AssertExpression> ")" =>
 	rsassert::Expression::Binary(b, Box::new(e1), Box::new(e2)),
 
+    #[precedence(level="4")]
     "(" <e: AssertExpression> ")" => e,
     "true" => rsassert::Expression::True,
     "false" => rsassert::Expression::False,
 
+    #[precedence(level="5")]
     <v: AssertVariable> => rsassert::Expression::Var(v),
 
     // If changing IntegerType in assert.rs, also change from Num to another
     // similar parser with different return type
+    #[precedence(level="6")]
     <i: Num> => rsassert::Expression::Integer(i),
 
+    #[precedence(level="7")]
     <lab: AssertLabel> => rsassert::Expression::Label(Box::new(lab)),
     <set: Set_of_entities> => rsassert::Expression::Set(set),
     "'" <el: Literal> "'" => rsassert::Expression::Element(translator.encode(el)),
 
     // strings
+    #[precedence(level="8")]
     PATH => rsassert::Expression::String(<>.trim_end_matches("\"")
 					 .trim_start_matches("\"")
 					 .to_string()),
@@ -264,11 +373,13 @@ AssertUnaryPrefix: rsassert::Unary = {
 }
 
 AssertUnarySuffix: rsassert::Unary = {
-    ".empty" => rsassert::Unary::Empty,
-    ".length" => rsassert::Unary::Length,
-    ".tostr" => rsassert::Unary::ToStr,
-    ".toel" => rsassert::Unary::ToEl,
+    #[precedence(level="0")]
+    "." "empty" => rsassert::Unary::Empty,
+    "." "length" => rsassert::Unary::Length,
+    "." "tostr" => rsassert::Unary::ToStr,
+    "." "toel" => rsassert::Unary::ToEl,
 
+    #[precedence(level="1")]
     "." <q: AssertQualifier> => rsassert::Unary::Qualifier(q),
 }
 
@@ -377,7 +488,6 @@ AssertLabel: RSlabel = {
 // system
 // a system is an environment, a set of entities as initial state, a context and
 // a set of reaction rules.
-
 pub System: RSsystem = {
     "Environment" ":" <delta: Environment>
     "Initial Entities" ":" <available_entities: Set>
@@ -392,7 +502,6 @@ pub System: RSsystem = {
 // experiment
 // an experiment is composed by a sequence of weights and a sequence of sets of
 // entities of equal length.
-
 pub Experiment: (Vec<u32>, Vec<RSset>) = {
     "Weights" ":" <w: Separated_Or<Num, ",">>
     "Sets" ":" <s: Separated_Or<Set_of_entities, ",">>
@@ -749,14 +858,17 @@ Instruction: presets::Instruction = {
 }
 
 pub Run: presets::Instructions = {
+    #[precedence(level="0")]
     <sys: System> <instr: Separated_Or<Instruction, ",">> =>
 	Instructions { system: presets::System::RSsystem { sys },
 		       instructions: instr },
 
+    #[precedence(level="1")]
     <sys: System> =>
 	Instructions { system: presets::System::RSsystem { sys },
 		       instructions: vec![] },
 
+    #[precedence(level="2")]
     "Deserialize" "(" <path: Path> ")"
     <instr: Separated_Or<Instruction, ",">> =>
 	Instructions { system: presets::System::Deserialize { path },

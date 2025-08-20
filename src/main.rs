@@ -2,7 +2,7 @@ fn main() {
     let now = std::time::Instant::now();
 
     use reactionsystems::rsprocess::presets;
-    match presets::run("testing/first.system".into()) {
+    match presets::run("testing/medical.system".into()) {
 	Ok(()) => {},
 	Err(e) => {println!("{e}")}
     }
