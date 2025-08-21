@@ -41,7 +41,7 @@ impl From<Vec<IdType>> for RSset {
 }
 
 impl RSset {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         RSset {
             identifiers: BTreeSet::new(),
         }
