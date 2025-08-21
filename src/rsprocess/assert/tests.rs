@@ -9,7 +9,7 @@ use super::rsassert::*;
 type LocalAssert = RSassert<EdgeRelablerInput>;
 
 #[test]
-fn assert_tycheck_true() {
+fn return_true() {
     use translator::Translator;
     use structure::{RSsystem, RSlabel};
 
@@ -29,7 +29,7 @@ fn assert_tycheck_true() {
 }
 
 #[test]
-fn assert_tycheck_concat_1() {
+fn concat_1() {
     use translator::Translator;
     use structure::{RSsystem, RSlabel};
 
@@ -57,7 +57,7 @@ fn assert_tycheck_concat_1() {
 }
 
 #[test]
-fn assert_tycheck_concat_2() {
+fn concat_2() {
     use translator::Translator;
     use structure::{RSsystem, RSlabel};
 
@@ -85,7 +85,7 @@ fn assert_tycheck_concat_2() {
 }
 
 #[test]
-fn assert_tycheck_return_1() {
+fn return_1() {
     use translator::Translator;
     use structure::{RSsystem, RSlabel};
 
@@ -110,7 +110,7 @@ fn assert_tycheck_return_1() {
 }
 
 #[test]
-fn assert_tycheck_return_incompatible_1() {
+fn return_incompatible_1() {
     let tree = LocalAssert {
 	tree: Tree::Concat(
 	    Box::new(Tree::Return(Box::new(Expression::True))),
@@ -121,7 +121,7 @@ fn assert_tycheck_return_incompatible_1() {
 }
 
 #[test]
-fn assert_tycheck_return_incompatible_2() {
+fn return_incompatible_2() {
     let tree = LocalAssert {
 	tree: Tree::Concat(
 	    Box::new(Tree::Return(Box::new(Expression::True))),
@@ -141,7 +141,7 @@ fn assert_tycheck_return_incompatible_2() {
 }
 
 #[test]
-fn assert_tycheck_return_2() {
+fn return_2() {
     use translator::Translator;
     use structure::{RSsystem, RSlabel};
 
@@ -176,7 +176,7 @@ fn assert_tycheck_return_2() {
 
 
 #[test]
-fn assert_tycheck_return_3() {
+fn return_3() {
     use translator::Translator;
     use structure::{RSsystem, RSlabel};
 
@@ -210,7 +210,7 @@ fn assert_tycheck_return_3() {
 }
 
 #[test]
-fn assert_tycheck_if_1() {
+fn if_1() {
     use translator::Translator;
     use structure::{RSsystem, RSlabel};
 
@@ -246,7 +246,7 @@ fn assert_tycheck_if_1() {
 }
 
 #[test]
-fn assert_tycheck_if_2() {
+fn if_2() {
     use translator::Translator;
     use structure::{RSsystem, RSlabel};
 
@@ -281,7 +281,7 @@ fn assert_tycheck_if_2() {
 }
 
 #[test]
-fn assert_tycheck_if_3() {
+fn if_3() {
     use translator::Translator;
     use structure::{RSsystem, RSlabel};
 
@@ -317,7 +317,7 @@ fn assert_tycheck_if_3() {
 }
 
 #[test]
-fn assert_tycheck_if_4() {
+fn if_4() {
     let tree = LocalAssert {
 	tree: Tree::Concat(
 	    Box::new(
@@ -339,7 +339,7 @@ fn assert_tycheck_if_4() {
 }
 
 #[test]
-fn assert_tycheck_if_else_1() {
+fn if_else_1() {
     use translator::Translator;
     use structure::{RSsystem, RSlabel};
 
@@ -378,7 +378,7 @@ fn assert_tycheck_if_else_1() {
 }
 
 #[test]
-fn assert_tycheck_if_else_2() {
+fn if_else_2() {
     use translator::Translator;
     use structure::{RSsystem, RSlabel};
 
@@ -417,7 +417,7 @@ fn assert_tycheck_if_else_2() {
 }
 
 #[test]
-fn assert_tycheck_if_else_3() {
+fn if_else_3() {
     let tree = LocalAssert {
 	tree: Tree::Concat(
 	    Box::new(
@@ -442,7 +442,7 @@ fn assert_tycheck_if_else_3() {
 }
 
 #[test]
-fn assert_tycheck_if_else_4() {
+fn if_else_4() {
     let tree = LocalAssert {
 	tree: Tree::Concat(
 	    Box::new(
@@ -467,7 +467,7 @@ fn assert_tycheck_if_else_4() {
 }
 
 #[test]
-fn assert_tycheck_assignment_1() {
+fn assignment_1() {
     let tree = LocalAssert {
 	tree: Tree::Assignment(
 	    Variable::Id("a".into()),
@@ -479,7 +479,7 @@ fn assert_tycheck_assignment_1() {
 }
 
 #[test]
-fn assert_tycheck_assignment_2() {
+fn assignment_2() {
     use translator::Translator;
     use structure::{RSsystem, RSlabel};
 
@@ -516,7 +516,7 @@ fn assert_tycheck_assignment_2() {
 }
 
 #[test]
-fn assert_tycheck_assignment_3() {
+fn assignment_3() {
     use translator::Translator;
     use structure::{RSsystem, RSlabel};
 
@@ -555,7 +555,7 @@ fn assert_tycheck_assignment_3() {
 }
 
 #[test]
-fn assert_tycheck_assignment_4() {
+fn assignment_4() {
     let tree = LocalAssert {
 	tree: Tree::Concat(
 	    Box::new(
@@ -580,7 +580,7 @@ fn assert_tycheck_assignment_4() {
 }
 
 #[test]
-fn assert_tycheck_assignment_5() {
+fn assignment_5() {
     use translator::Translator;
     use structure::{RSsystem, RSlabel};
 
@@ -620,7 +620,7 @@ fn assert_tycheck_assignment_5() {
 }
 
 #[test]
-fn assert_tycheck_assignment_6() {
+fn assignment_6() {
     use translator::Translator;
     use structure::{RSsystem, RSlabel};
 
@@ -667,7 +667,7 @@ fn assert_tycheck_assignment_6() {
 }
 
 #[test]
-fn assert_tycheck_assignment_7() {
+fn assignment_7() {
     use translator::Translator;
     use structure::{RSsystem, RSlabel};
 
@@ -712,7 +712,7 @@ fn assert_tycheck_assignment_7() {
 }
 
 #[test]
-fn assert_tycheck_assignment_8() {
+fn assignment_8() {
     use translator::Translator;
     use structure::{RSsystem, RSlabel};
 
@@ -761,7 +761,7 @@ fn assert_tycheck_assignment_8() {
 }
 
 #[test]
-fn assert_tycheck_assignment_9() {
+fn assignment_9() {
     use translator::Translator;
     use structure::{RSsystem, RSlabel};
 
@@ -808,7 +808,7 @@ fn assert_tycheck_assignment_9() {
 }
 
 #[test]
-fn assert_tycheck_assignment_10() {
+fn assignment_10() {
     use translator::Translator;
     use structure::{RSsystem, RSlabel};
 
@@ -858,7 +858,7 @@ fn assert_tycheck_assignment_10() {
 
 
 #[test]
-fn assert_tycheck_for_1() {
+fn for_1() {
     use translator::Translator;
     use structure::{RSsystem, RSlabel, RSset};
 
@@ -906,7 +906,7 @@ fn assert_tycheck_for_1() {
 
 
 #[test]
-fn assert_tycheck_for_2() {
+fn for_2() {
     use translator::Translator;
     use structure::{RSsystem, RSlabel, RSset};
 
@@ -958,7 +958,7 @@ fn assert_tycheck_for_2() {
 }
 
 #[test]
-fn assert_tycheck_for_3() {
+fn for_3() {
     use translator::Translator;
     use structure::{RSsystem, RSlabel, RSset};
 
@@ -1024,7 +1024,7 @@ fn assert_tycheck_for_3() {
 }
 
 #[test]
-fn assert_tycheck_for_4() {
+fn for_4() {
     use translator::Translator;
     use structure::{RSsystem, RSlabel, RSset};
 
@@ -1091,7 +1091,7 @@ fn assert_tycheck_for_4() {
 }
 
 #[test]
-fn assert_tycheck_for_5() {
+fn for_5() {
     use translator::Translator;
     use structure::{RSsystem, RSlabel, RSset};
 
@@ -1171,7 +1171,7 @@ fn assert_tycheck_for_5() {
 }
 
 #[test]
-fn assert_tycheck_for_6() {
+fn for_6() {
     use translator::Translator;
     use structure::{RSsystem, RSlabel, RSset};
 
@@ -1262,7 +1262,7 @@ fn assert_tycheck_for_6() {
 }
 
 #[test]
-fn assert_tycheck_for_7() {
+fn for_7() {
     use translator::Translator;
     use structure::{RSsystem, RSlabel};
 
@@ -1314,7 +1314,7 @@ fn assert_tycheck_for_7() {
 }
 
 #[test]
-fn assert_tycheck_for_8() {
+fn for_8() {
     use translator::Translator;
     use structure::{RSsystem, RSlabel};
 
@@ -1394,7 +1394,7 @@ fn assert_tycheck_for_8() {
 }
 
 #[test]
-fn assert_tycheck_system() {
+fn nodes() {
     use translator::Translator;
     use structure::{RSsystem, RSlabel, RSset, RSenvironment, RSprocess};
     use std::rc::Rc;
