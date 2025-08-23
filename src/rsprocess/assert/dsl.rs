@@ -741,7 +741,7 @@ impl AssertReturnValue {
 	self,
 	u: &Unary,
 	translator: &mut translator::Translator,
-	graph: &graph::RSgraph,
+	graph: &graph::SystemGraph,
     ) -> Result<AssertReturnValue, String> {
 	match (self, u) {
 	    (AssertReturnValue::Boolean(b), Unary::Not) => {
@@ -1029,7 +1029,7 @@ pub(super) fn execute<S, G>(
     tree: &Tree<S>,
     c: &mut Context<S>,
     translator: &mut translator::Translator,
-    graph: &graph::RSgraph,
+    graph: &graph::SystemGraph,
 ) -> Result<Option<AssertReturnValue>, String>
 where S: SpecialVariables<G> {
     match tree {
@@ -1083,7 +1083,7 @@ fn range_into_iter<S, G>(
     range: &Range<S>,
     c: &mut Context<S>,
     translator: &mut translator::Translator,
-    graph: &graph::RSgraph,
+    graph: &graph::SystemGraph,
 ) -> Result<RangeIterator, String>
 where S: SpecialVariables<G> {
     use petgraph::visit::EdgeRef;
@@ -1129,7 +1129,7 @@ fn execute_exp<S, G>(
     exp: &Expression<S>,
     c: &Context<S>,
     translator: &mut translator::Translator,
-    graph: &graph::RSgraph,
+    graph: &graph::SystemGraph,
 ) -> Result<AssertReturnValue, String>
 where S: SpecialVariables<G> {
     match exp {

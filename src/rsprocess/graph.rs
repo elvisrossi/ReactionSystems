@@ -1,45 +1,16 @@
 //! Definitions for generating graphs from a simulation.
 
 use petgraph::{Graph, Directed};
-use std::collections::HashMap;
-use super::structure::{RSlabel, RSsystem, RSset};
-use super::support_structures::TransitionsIterator;
-use super::translator::{self, IdType};
 use std::rc::Rc;
 
+use super::label::Label;
+use super::set::Set;
+use super::system::System;
+use super::translator::{self, IdType};
 
-pub type RSgraph = Graph<RSsystem, RSlabel, Directed, u32>;
+pub type SystemGraph = Graph<System, Label, Directed, u32>;
 
-/// Creates a graph starting from a system as root node
-pub fn digraph(
-    system: RSsystem
-) -> Result<RSgraph, String> {
-    let mut graph = Graph::default();
-    let node = graph.add_node(system.clone());
-
-    let mut association = HashMap::new();
-    association.insert(system.clone(), node);
-
-    let mut stack = vec![system];
-
-    while let Some(current) = stack.pop() {
-	// depth first
-	let current_node = *association.get(&current).unwrap();
-
-	for (label, next) in TransitionsIterator::from(&current)? {
-	    // if not already visited
-	    let next_node = association.entry(next.clone()).or_insert_with(|| {
-		stack.push(next.clone());
-		graph.add_node(next)
-	    });
-	    graph.add_edge(current_node, *next_node, label);
-	}
-    }
-    Ok(graph)
-}
-
-
-fn common_system_entities(graph: &RSgraph) -> RSset {
+fn common_system_entities(graph: &SystemGraph) -> Set {
     graph.node_references().fold(
 	None,
 	|acc, node|
@@ -47,7 +18,7 @@ fn common_system_entities(graph: &RSgraph) -> RSset {
 	    None => Some(node.1.available_entities.clone()),
 	    Some(acc) => Some(node.1.available_entities.intersection(&acc))
 	}
-    ).unwrap_or(RSset::new())
+    ).unwrap_or(Set::new())
 }
 
 macro_rules! common_label {
@@ -57,7 +28,7 @@ macro_rules! common_label {
 	$empty_expr:expr,
 	$some_expr:expr
     ) => {
-	fn $name(graph: &RSgraph) -> RSset {
+	fn $name(graph: &SystemGraph) -> Set {
 	    graph.edge_references().fold(
 		None,
 		|$acc_name, $edge_name| {
@@ -67,7 +38,7 @@ macro_rules! common_label {
 			Some($acc_name) => Some($some_expr)
 		    }
 		}
-	    ).unwrap_or(RSset::new())
+	    ).unwrap_or(Set::new())
 	}
     };
 }
@@ -130,17 +101,20 @@ where
 	&self,
 	edge_map: &super::structure::RSassert,
 	translator: &mut super::translator::Translator
-    ) -> Result<Graph<RSsystem, super::structure::assert::AssertReturnValue, Ty, Ix>, String>;
+    ) -> Result<
+	    Graph<System,
+		  super::structure::assert::AssertReturnValue, Ty, Ix>
+	    , String>;
 }
 
-impl<'a> MapEdges<'a, RSsystem, RSlabel, Directed, u32>
-    for RSgraph
+impl<'a> MapEdges<'a, System, Label, Directed, u32>
+    for SystemGraph
 {
     fn map_edges(
 	&self,
 	edge_map: &super::structure::RSassert,
 	translator: &mut super::translator::Translator
-    )-> Result<Graph<RSsystem, super::structure::assert::AssertReturnValue, Directed, u32>, String> {
+    )-> Result<Graph<System, super::structure::assert::AssertReturnValue, Directed, u32>, String> {
 	use petgraph::graph::EdgeIndex;
 
 	let mut g = Graph::with_capacity(self.node_count(), self.edge_count());
@@ -171,11 +145,11 @@ pub enum NodeDisplayBase {
     String { string: String },
     Hide,
     Entities,
-    MaskEntities { mask: RSset },
-    ExcludeEntities { mask: RSset },
+    MaskEntities { mask: Set },
+    ExcludeEntities { mask: Set },
     Context,
     UncommonEntities,
-    MaskUncommonEntities { mask: RSset }
+    MaskUncommonEntities { mask: Set }
 }
 
 pub struct NodeDisplay {
@@ -183,12 +157,12 @@ pub struct NodeDisplay {
 }
 
 type GraphMapNodesFnTy<'a> =
-    dyn Fn(petgraph::prelude::NodeIndex, &'a RSsystem) -> String + 'a;
+    dyn Fn(petgraph::prelude::NodeIndex, &'a System) -> String + 'a;
 
 
 fn match_node_display<'a>(
     base: &NodeDisplayBase,
-    common_entities: Rc<RSset>,
+    common_entities: Rc<Set>,
     translator: Rc<translator::Translator>
 ) -> Box<GraphMapNodesFnTy<'a>> {
     use NodeDisplayBase::*;
@@ -235,13 +209,13 @@ impl NodeDisplay {
     pub fn generate<'a>(
 	self,
 	translator: Rc<translator::Translator>,
-	current_graph: &RSgraph
+	current_graph: &SystemGraph
     ) -> Box<GraphMapNodesFnTy<'a>> {
 	let common_entities =
 	    if self.contains_uncommon() {
 		Rc::new(common_system_entities(current_graph))
 	    } else {
-		Rc::new(RSset::new())
+		Rc::new(Set::new())
 	    };
 
 	Box::new(
@@ -267,13 +241,13 @@ impl NodeDisplay {
 pub enum EdgeDisplayBase {
     String { string: String },
     Hide,
-    Products { mask: Option<RSset>, filter_common: bool },
-    Entities { mask: Option<RSset>, filter_common: bool },
-    Context { mask: Option<RSset>, filter_common: bool },
-    Union { mask: Option<RSset>, filter_common: bool },
-    Difference { mask: Option<RSset>, filter_common: bool },
-    EntitiesDeleted { mask: Option<RSset>, filter_common: bool },
-    EntitiesAdded { mask: Option<RSset>, filter_common: bool },
+    Products { mask: Option<Set>, filter_common: bool },
+    Entities { mask: Option<Set>, filter_common: bool },
+    Context { mask: Option<Set>, filter_common: bool },
+    Union { mask: Option<Set>, filter_common: bool },
+    Difference { mask: Option<Set>, filter_common: bool },
+    EntitiesDeleted { mask: Option<Set>, filter_common: bool },
+    EntitiesAdded { mask: Option<Set>, filter_common: bool },
 }
 
 pub struct EdgeDisplay {
@@ -281,17 +255,17 @@ pub struct EdgeDisplay {
 }
 
 type GraphMapEdgesFnTy<'a> =
-    dyn Fn(petgraph::prelude::EdgeIndex, &'a RSlabel) -> String + 'a;
+    dyn Fn(petgraph::prelude::EdgeIndex, &'a Label) -> String + 'a;
 
 #[derive(Default, Clone)]
 struct CommonEntities {
-    common_products: RSset,
-    common_entities: RSset,
-    common_context: RSset,
-    common_union: RSset,
-    common_difference: RSset,
-    common_entities_deleted: RSset,
-    common_entities_added: RSset,
+    common_products: Set,
+    common_entities: Set,
+    common_context: Set,
+    common_union: Set,
+    common_difference: Set,
+    common_entities_deleted: Set,
+    common_entities_added: Set,
 }
 
 fn match_edge_display<'a>(
@@ -411,7 +385,7 @@ impl EdgeDisplay {
     pub fn generate<'a>(
 	self,
 	translator: Rc<translator::Translator>,
-	current_graph: &RSgraph
+	current_graph: &SystemGraph
     ) -> Box<GraphMapEdgesFnTy<'a>> {
 	// create the structure for common entities if required
 	let common = {
@@ -485,7 +459,7 @@ pub enum OperationType {
 }
 
 impl OperationType {
-    pub fn evaluate(&self, a: &RSset, b: &RSset) -> bool {
+    pub fn evaluate(&self, a: &Set, b: &Set) -> bool {
 	match self {
 	    Self::Equals => {
 		a.is_subset(b) && b.is_subset(a)
@@ -510,7 +484,7 @@ impl OperationType {
 pub enum ContextColorConditional {
     Nill,
     RecursiveIdentifier(IdType),
-    EntitySet(OperationType, RSset),
+    EntitySet(OperationType, Set),
     NonDeterministicChoice,
     Summation,
     WaitEntity
@@ -519,7 +493,7 @@ pub enum ContextColorConditional {
 #[derive(Clone)]
 pub enum NodeColorConditional {
     ContextConditional(ContextColorConditional),
-    EntitiesConditional(OperationType, RSset)
+    EntitiesConditional(OperationType, Set)
 }
 
 #[derive(Clone)]
@@ -540,7 +514,7 @@ fn node_formatter_base_color(
 fn match_node_color_conditional<'a>(
     rule: &'a NodeColorConditional,
     color: &'a String,
-    original_graph: Rc<RSgraph>,
+    original_graph: Rc<SystemGraph>,
     star: Option<IdType>
 ) -> Box<RSformatNodeTyOpt<'a>> {
     use super::format_helpers::node_formatter::*;
@@ -595,7 +569,7 @@ fn match_node_color_conditional<'a>(
 impl NodeColor {
     pub fn generate<'a>(
 	self,
-	original_graph: Rc<RSgraph>,
+	original_graph: Rc<SystemGraph>,
 	star: Option<IdType>
     ) -> Box<RSformatNodeTy<'a>> {
 	Box::new(
@@ -635,14 +609,14 @@ type RSformatEdgeTyOpt<'a> =
 
 #[derive(Clone)]
 pub enum EdgeColorConditional {
-    Entities(OperationType, RSset),
-    Context(OperationType, RSset),
-    T(OperationType, RSset),
-    Reactants(OperationType, RSset),
-    ReactantsAbsent(OperationType, RSset),
-    Inhibitors(OperationType, RSset),
-    InhibitorsPresent(OperationType, RSset),
-    Products(OperationType, RSset),
+    Entities(OperationType, Set),
+    Context(OperationType, Set),
+    T(OperationType, Set),
+    Reactants(OperationType, Set),
+    ReactantsAbsent(OperationType, Set),
+    Inhibitors(OperationType, Set),
+    InhibitorsPresent(OperationType, Set),
+    Products(OperationType, Set),
 }
 
 #[derive(Clone)]
@@ -662,7 +636,7 @@ fn edge_formatter_base_color(
 fn match_edge_color_conditional<'a>(
     rule: &'a EdgeColorConditional,
     color: &'a String,
-    original_graph: Rc<RSgraph>
+    original_graph: Rc<SystemGraph>
 ) -> Box<RSformatEdgeTyOpt<'a>> {
     use super::format_helpers::edge_formatter::*;
     match rule {
@@ -720,7 +694,7 @@ fn match_edge_color_conditional<'a>(
 impl EdgeColor {
     pub fn generate<'a>(
 	self,
-	original_graph: Rc<RSgraph>,
+	original_graph: Rc<SystemGraph>,
     ) -> Box<RSformatEdgeTy<'a>> {
 	Box::new(
 	    move |i, n| {

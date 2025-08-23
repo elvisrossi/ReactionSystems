@@ -12,14 +12,14 @@ use super::translator::Translator;
 
 #[derive(Serialize, Deserialize)]
 struct GraphAndTranslator {
-    graph: graph::RSgraph,
+    graph: graph::SystemGraph,
     translator: Translator
 }
 
 /// Serializer for graph and translator.
 pub fn ser<W>(
     writer: W,
-    graph: &graph::RSgraph,
+    graph: &graph::SystemGraph,
     translator: &Translator
 ) -> Result<(), serde_cbor_2::Error>
 where
@@ -35,7 +35,7 @@ where
 /// Deserializer for file that contains graph and translator.
 pub fn de<R>(
     reader: R
-) -> Result<(graph::RSgraph, Translator), serde_cbor_2::Error>
+) -> Result<(graph::SystemGraph, Translator), serde_cbor_2::Error>
 where
     R: io::Read,
 {

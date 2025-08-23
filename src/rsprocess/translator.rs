@@ -131,6 +131,7 @@ fn print_set(
     write!(f, "}}")
 }
 
+translator_structure!(SetDisplay, RSset, set, print_set);
 translator_structure!(RSsetDisplay, RSset, set, print_set);
 
 
@@ -162,7 +163,7 @@ fn print_process(
     translator: &Translator,
     process: &RSprocess,
 ) -> fmt::Result {
-    use super::structure::RSprocess::*;
+    use super::process::Process::*;
     match process {
         Nill => {
             write!(f, "Nill")

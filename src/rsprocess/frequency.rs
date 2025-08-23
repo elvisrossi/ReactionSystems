@@ -1,11 +1,10 @@
 //! Definitions and structure for frequency of elements in a simulation
 
-use crate::rsprocess::perpetual::lollipops_only_loop_decomposed_q;
 use std::collections::HashMap;
 
-use super::perpetual::lollipops_only_loop_named;
-use super::structure::{RSreaction, RSset, RSsystem};
-use super::transitions::run_separated;
+use super::reaction::Reaction;
+use super::set::Set;
+use super::system::System;
 use super::translator::IdType;
 
 /// structure that holds the frequency of elements of a run or multiple runs,
@@ -26,7 +25,7 @@ impl Frequency {
         }
     }
 
-    pub fn add(&mut self, e: &RSset, run: usize) {
+    pub fn add(&mut self, e: &Set, run: usize) {
         for &el in e.iter() {
 	    let entry =
 		self.frequency_map.entry(el).or_insert(vec![0; run + 1]);
@@ -59,83 +58,95 @@ impl Default for Frequency {
 
 // -----------------------------------------------------------------------------
 
-/// assume the system is finite, calculate the frequency of each symbol in all
-/// traversed states
-/// see naiveFreq
-pub fn naive_frequency(system: &RSsystem) -> Result<Frequency, String> {
-    let ect = run_separated(system)?;
-    let es = ect.iter().map(|(e, _, _)| e).collect::<Vec<_>>();
 
-    let mut freq = Frequency::new();
-    freq.append_weight(1);
+impl Frequency {
+    /// Assuming the system is finite, calculates the frequency of each symbol
+    /// in all traversed states.
+    /// see naiveFreq
+    pub fn naive_frequency(
+	system: &System
+    ) -> Result<Self, String> {
+	let ect = system.run_separated()?;
+	let es = ect.iter().map(|(e, _, _)| e).collect::<Vec<_>>();
 
-    es.iter().for_each(|e| freq.add(e, 0));
+	let mut freq = Frequency::new();
+	freq.append_weight(1);
 
-    Ok(freq)
-}
+	es.iter().for_each(|e| freq.add(e, 0));
 
-/// assume the system stabilizes in a loop, calculate the frequency of each
-/// symbol in all states of the loop
-/// see loopFreq
-pub fn loop_frequency(system: &RSsystem, symb: IdType) -> Frequency {
-    let mut freq = Frequency::new();
-    freq.append_weight(1);
-
-    if let Some(hoop) = lollipops_only_loop_named(system, symb) {
-        hoop.iter().for_each(|e| freq.add(e, 0));
-    }
-    freq
-}
-
-/// ```q[i]``` is given enough times such that the stabilizes in a loop,
-/// calculate the frequency of the symbols in any state in the last loop
-/// see limitFreq
-pub fn limit_frequency(
-    q: &[RSset],
-    reaction_rules: &[RSreaction],
-    available_entities: &RSset,
-) -> Option<Frequency> {
-    let mut available_entities = available_entities.clone();
-
-    for q in q.iter().rev().skip(1).rev() {
-        let res = lollipops_only_loop_decomposed_q(q,
-						   reaction_rules,
-						   &available_entities);
-        available_entities = res.into_iter().next()?;
+	Ok(freq)
     }
 
-    let mut freq = Frequency::new();
-    freq.append_weight(1);
+    /// Assume the system stabilizes in a loop, calculates the frequency of each
+    /// symbol in all states of the loop.
+    /// see loopFreq
+    pub fn loop_frequency(
+	system: &System,
+	symb: IdType
+    ) -> Self {
+	let mut freq = Frequency::new();
+	freq.append_weight(1);
 
-    lollipops_only_loop_decomposed_q(q.last().unwrap(),
-				     reaction_rules,
-				     &available_entities)
-        .iter()
-        .for_each(|e| freq.add(e, 0));
-    Some(freq)
-}
-
-/// ```q[i]``` is given enough times such that the stabilizes in a loop,
-/// calculate the frequency of the symbols in any state in any loop, weighted.
-/// see fastFreq
-pub fn fast_frequency(
-    q: &[RSset],
-    reaction_rules: &[RSreaction],
-    available_entities: &RSset,
-    weights: &[u32],
-) -> Option<Frequency> {
-    // FIXME: we return the empty frequency or do we not return anything?
-    let mut available_entities = available_entities.clone();
-
-    let mut freq = Frequency::new();
-
-    for (pos, (q, &w)) in q.iter().zip(weights).enumerate() {
-        freq.append_weight(w);
-        let hoop = lollipops_only_loop_decomposed_q(q,
-						    reaction_rules,
-						    &available_entities);
-        hoop.iter().for_each(|e| freq.add(e, pos));
-        available_entities = hoop.into_iter().next()?;
+	if let Some(hoop) = system.lollipops_only_loop_named(symb) {
+            hoop.iter().for_each(|e| freq.add(e, 0));
+	}
+	freq
     }
-    Some(freq)
+
+    /// Assuming ```q[i]``` is given enough times such that the system
+    /// stabilizes in a loop, calculates the frequency of the symbols in any
+    /// state in the last loop.
+    /// see limitFreq
+    pub fn limit_frequency(
+	q: &[Set],
+	reaction_rules: &[Reaction],
+	available_entities: &Set,
+    ) -> Option<Self> {
+	let mut available_entities = available_entities.clone();
+
+	for q in q.iter().rev().skip(1).rev() {
+            let res =
+		Reaction::lollipops_only_loop_decomposed_q(reaction_rules,
+							   q,
+							   &available_entities);
+            available_entities = res.into_iter().next()?;
+	}
+
+	let mut freq = Frequency::new();
+	freq.append_weight(1);
+
+	Reaction::lollipops_only_loop_decomposed_q(reaction_rules,
+						   q.last().unwrap(),
+						   &available_entities)
+            .iter()
+            .for_each(|e| freq.add(e, 0));
+	Some(freq)
+    }
+
+    /// Assuming ```q[i]``` is given enough times such that the system
+    /// stabilizes in a loop, calculates the frequency of the symbols in any
+    /// state in any loop, weighted.
+    /// see fastFreq
+    pub fn fast_frequency(
+	q: &[Set],
+	reaction_rules: &[Reaction],
+	available_entities: &Set,
+	weights: &[u32],
+    ) -> Option<Self> {
+	// FIXME: we return the empty frequency or do we not return anything?
+	let mut available_entities = available_entities.clone();
+
+	let mut freq = Frequency::new();
+
+	for (pos, (q, &w)) in q.iter().zip(weights).enumerate() {
+            freq.append_weight(w);
+            let hoop =
+		Reaction::lollipops_only_loop_decomposed_q(reaction_rules,
+							   q,
+							   &available_entities);
+            hoop.iter().for_each(|e| freq.add(e, pos));
+            available_entities = hoop.into_iter().next()?;
+	}
+	Some(freq)
+    }
 }

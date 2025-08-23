@@ -218,7 +218,7 @@ pub mod graph_map_edges_ty_from {
 
 pub mod node_formatter {
     use super::super::translator::IdType;
-    use super::super::graph::{RSgraph, OperationType};
+    use super::super::graph::{SystemGraph, OperationType};
     use std::rc::Rc;
     use super::super::structure::{RSset, RSprocess};
 
@@ -234,7 +234,7 @@ pub mod node_formatter {
 	) -> Option<String>;
 
     pub fn format_nill(
-	original_graph: Rc<RSgraph>,
+	original_graph: Rc<SystemGraph>,
 	color: String,
 	_star: Option<IdType>,
     ) -> Box<RSformatNodeTy> {
@@ -251,7 +251,7 @@ pub mod node_formatter {
     }
 
     pub fn format_recursive_identifier(
-	original_graph: Rc<RSgraph>,
+	original_graph: Rc<SystemGraph>,
 	color: String,
 	star: Option<IdType>,
 	s: IdType
@@ -275,7 +275,7 @@ pub mod node_formatter {
     }
 
     pub fn format_entity_set(
-	original_graph: Rc<RSgraph>,
+	original_graph: Rc<SystemGraph>,
 	color: String,
 	_star: Option<IdType>,
 	ot: OperationType,
@@ -297,7 +297,7 @@ pub mod node_formatter {
 
 
     pub fn format_non_deterministic_choice(
-	original_graph: Rc<RSgraph>,
+	original_graph: Rc<SystemGraph>,
 	color: String,
 	_star: Option<IdType>,
     ) -> Box<RSformatNodeTy> {
@@ -316,7 +316,7 @@ pub mod node_formatter {
     }
 
     pub fn format_summation(
-	original_graph: Rc<RSgraph>,
+	original_graph: Rc<SystemGraph>,
 	color: String,
 	_star: Option<IdType>,
     ) -> Box<RSformatNodeTy> {
@@ -336,7 +336,7 @@ pub mod node_formatter {
 
 
     pub fn format_wait_entity(
-	original_graph: Rc<RSgraph>,
+	original_graph: Rc<SystemGraph>,
 	color: String,
 	_star: Option<IdType>,
     ) -> Box<RSformatNodeTy> {
@@ -357,7 +357,7 @@ pub mod node_formatter {
     }
 
     pub fn format_entities_conditional(
-	original_graph: Rc<RSgraph>,
+	original_graph: Rc<SystemGraph>,
 	color: String,
 	_star: Option<IdType>,
 	ot: OperationType,
@@ -377,7 +377,7 @@ pub mod node_formatter {
 }
 
 pub mod edge_formatter {
-    use super::super::graph::{RSgraph, OperationType};
+    use super::super::graph::{SystemGraph, OperationType};
     use std::rc::Rc;
     use super::super::structure::RSset;
 
@@ -393,7 +393,7 @@ pub mod edge_formatter {
 
 
     pub fn format_entities(
-	original_graph: Rc<RSgraph>,
+	original_graph: Rc<SystemGraph>,
 	color: String,
 	ot: OperationType,
 	set: RSset
@@ -411,7 +411,7 @@ pub mod edge_formatter {
     }
 
     pub fn format_context(
-	original_graph: Rc<RSgraph>,
+	original_graph: Rc<SystemGraph>,
 	color: String,
 	ot: OperationType,
 	set: RSset
@@ -429,7 +429,7 @@ pub mod edge_formatter {
     }
 
     pub fn format_t(
-	original_graph: Rc<RSgraph>,
+	original_graph: Rc<SystemGraph>,
 	color: String,
 	ot: OperationType,
 	set: RSset
@@ -447,7 +447,7 @@ pub mod edge_formatter {
     }
 
     pub fn format_reactants(
-	original_graph: Rc<RSgraph>,
+	original_graph: Rc<SystemGraph>,
 	color: String,
 	ot: OperationType,
 	set: RSset
@@ -465,7 +465,7 @@ pub mod edge_formatter {
     }
 
     pub fn format_reactants_absent(
-	original_graph: Rc<RSgraph>,
+	original_graph: Rc<SystemGraph>,
 	color: String,
 	ot: OperationType,
 	set: RSset
@@ -483,7 +483,7 @@ pub mod edge_formatter {
     }
 
     pub fn format_inhibitors(
-	original_graph: Rc<RSgraph>,
+	original_graph: Rc<SystemGraph>,
 	color: String,
 	ot: OperationType,
 	set: RSset
@@ -501,7 +501,7 @@ pub mod edge_formatter {
     }
 
     pub fn format_inhibitors_present(
-	original_graph: Rc<RSgraph>,
+	original_graph: Rc<SystemGraph>,
 	color: String,
 	ot: OperationType,
 	set: RSset
@@ -519,7 +519,7 @@ pub mod edge_formatter {
     }
 
     pub fn format_products(
-	original_graph: Rc<RSgraph>,
+	original_graph: Rc<SystemGraph>,
 	color: String,
 	ot: OperationType,
 	set: RSset

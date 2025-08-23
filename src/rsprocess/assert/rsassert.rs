@@ -123,8 +123,8 @@ impl RSassert<EdgeRelablerInput> {
 
     pub fn execute(
 	&self,
-	graph: &graph::RSgraph,
-	edge: &<graph::RSgraph as petgraph::visit::GraphBase>::EdgeId,
+	graph: &graph::SystemGraph,
+	edge: &<graph::SystemGraph as petgraph::visit::GraphBase>::EdgeId,
 	translator: &mut translator::Translator,
     ) -> Result<AssertReturnValue, String> {
 	let label = graph.edge_weight(*edge)
@@ -239,8 +239,8 @@ impl RSassert<NodeRelablerInput> {
 
     pub fn execute(
 	&self,
-	graph: &graph::RSgraph,
-	node: &<graph::RSgraph as petgraph::visit::GraphBase>::NodeId,
+	graph: &graph::SystemGraph,
+	node: &<graph::SystemGraph as petgraph::visit::GraphBase>::NodeId,
 	translator: &mut translator::Translator,
     ) -> Result<AssertReturnValue, String> {
 	let structure::RSsystem {available_entities: entities, ..} =

@@ -121,7 +121,7 @@ impl System {
 
 pub enum EvaluatedSystem {
     Graph {
-        graph: graph::RSgraph,
+        graph: graph::SystemGraph,
         translator: Translator,
     },
     System {
@@ -333,12 +333,12 @@ fn save_file(contents: &String, path_string: String) -> Result<(), String> {
 pub fn stats(system: &EvaluatedSystem) -> Result<String, String> {
     match system {
         EvaluatedSystem::System { sys, translator } =>
-	    Ok(statistics::of_RSsystem(translator, sys)),
+	    Ok(sys.statistics(translator)),
         EvaluatedSystem::Graph { graph, translator } => {
             let Some(sys) = graph.node_weights().next() else {
                 return Err("No node found in graph".into());
             };
-            Ok(statistics::of_RSsystem(translator, sys))
+            Ok(sys.statistics(translator))
         }
     }
 }
@@ -349,12 +349,12 @@ pub fn stats(system: &EvaluatedSystem) -> Result<String, String> {
 pub fn target(system: &EvaluatedSystem) -> Result<String, String> {
     let (res, translator) = match system {
         EvaluatedSystem::System { sys, translator } =>
-	    (transitions::target(sys)?, translator),
+	    (sys.target()?, translator),
         EvaluatedSystem::Graph { graph, translator } => {
             let Some(sys) = graph.node_weights().next() else {
                 return Err("No node found in graph".into());
             };
-            (transitions::target(sys)?, translator)
+            (sys.target()?, translator)
         }
     };
     Ok(format!(
@@ -371,13 +371,13 @@ pub fn target(system: &EvaluatedSystem) -> Result<String, String> {
 pub fn traversed(system: &EvaluatedSystem) -> Result<String, String> {
     let (res, translator) = match system {
         EvaluatedSystem::System { sys, translator } => {
-            (transitions::run_separated(sys)?, translator)
+            (sys.run_separated()?, translator)
         }
         EvaluatedSystem::Graph { graph, translator } => {
             let Some(sys) = graph.node_weights().next() else {
                 return Err("No node found in graph".into());
             };
-            (transitions::run_separated(sys)?, translator)
+            (sys.run_separated()?, translator)
         }
     };
 
@@ -414,7 +414,7 @@ pub fn hoop(
     let Some(id) = translator.encode_not_mut(&symbol) else {
         return Err(format!("Symbol {symbol} not found"));
     };
-    let res = match perpetual::lollipops_only_loop_named(res, id) {
+    let res = match res.lollipops_only_loop_named(id) {
         Some(o) => o,
         None => {
             return Err("No loop found.".into());
@@ -448,7 +448,7 @@ pub fn freq(system: &EvaluatedSystem) -> Result<String, String> {
         }
     };
 
-    let res = frequency::naive_frequency(sys)?;
+    let res = frequency::Frequency::naive_frequency(sys)?;
 
     Ok(format!(
         "Frequency of encountered symbols:\n{}",
@@ -476,7 +476,7 @@ pub fn limit_freq(
     let (_, sets) = read_file(translator, experiment, parser_experiment)?;
 
     let res =
-	match frequency::limit_frequency(
+	match frequency::Frequency::limit_frequency(
 	    &sets,
 	    &sys.reaction_rules,
 	    &sys.available_entities)
@@ -515,7 +515,7 @@ pub fn fast_freq(
 
     let (weights, sets) = read_file(translator, experiment, parser_experiment)?;
 
-    let res = match frequency::fast_frequency(
+    let res = match frequency::Frequency::fast_frequency(
         &sets,
         &sys.reaction_rules,
         &sys.available_entities,
@@ -539,7 +539,7 @@ pub fn digraph(system: &mut EvaluatedSystem) -> Result<(), String> {
     if let EvaluatedSystem::System { sys, translator } = system {
 	*system =
             EvaluatedSystem::Graph {
-		graph: graph::digraph(sys.clone())?,
+		graph: sys.clone().digraph()?,
 		translator: translator.to_owned(),
             };
     }
@@ -585,9 +585,9 @@ pub fn bisimilar(
 		b.map_edges(edge_relabeler, translator_b)?;
 	    Ok(format!(
 		"{}",
-		// super::bisimilarity::bisimilarity_kanellakis_smolka(&&a, &&b)
-		// super::bisimilarity::bisimilarity_paige_tarjan_ignore_labels(&&a, &&b)
-		super::bisimilarity::bisimilarity_paige_tarjan(&&a, &&b)
+		// super::bisimilarity::bisimilarity_kanellakis_smolka::bisimilarity(&&a, &&b)
+		// super::bisimilarity::bisimilarity_paige_tarjan::bisimilarity_ignore_labels(&&a, &&b)
+		super::bisimilarity::bisimilarity_paige_tarkan::bisimilarity(&&a, &&b)
 	    ))
 	},
 	_ => { unreachable!() }
@@ -706,7 +706,7 @@ pub fn serialize(system: &EvaluatedSystem, path: String) -> Result<(), String> {
 /// deserialization
 pub fn deserialize(
     input_path: String,
-) -> Result<(graph::RSgraph, Translator), String>
+) -> Result<(graph::SystemGraph, Translator), String>
 {
     // relative path
     let mut path = match env::current_dir() {
