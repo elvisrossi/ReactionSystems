@@ -7,12 +7,12 @@ use super::super::{translator, graph, set, process, system, label};
 /// AssertExpression
 type IntegerType = i64;
 
-#[derive(Debug, Clone)]
-pub struct RSassert<S> {
+#[derive(Clone)]
+pub struct Assert<S> {
     pub tree: Tree<S>
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum Tree<S> {
     Concat(Box<Tree<S>>, Box<Tree<S>>),
     If(Box<Expression<S>>, Box<Tree<S>>),
@@ -22,15 +22,15 @@ pub enum Tree<S> {
     For(Variable<S>, Range<S>, Box<Tree<S>>),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub enum Variable<S> {
     Id(String),
     Special(S)
 }
 
 /// Trait needed for special variables.
-pub(super) trait SpecialVariables<G>: std::fmt::Display + std::fmt::Debug
-    + Sized + Eq + Copy + std::hash::Hash
+pub(super) trait SpecialVariables<G>: translator::PrintableWithTranslator
+    + std::fmt::Debug + Sized + Eq + Copy + std::hash::Hash
 {
     /// Returns the type of the specific special variable.
     fn type_of(&self) -> AssertionTypes;
@@ -46,7 +46,7 @@ pub(super) trait SpecialVariables<G>: std::fmt::Display + std::fmt::Debug
     fn correct_type(&self, other: &AssertReturnValue) -> bool;
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum Expression<S> {
     True,
     False,
@@ -61,13 +61,13 @@ pub enum Expression<S> {
     Binary(Binary, Box<Expression<S>>, Box<Expression<S>>),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum Range<S> {
     IterateOverSet(Box<Expression<S>>),
     IterateInRange(Box<Expression<S>>, Box<Expression<S>>),
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy)]
 pub enum Unary {
     Not,
     Rand,
@@ -79,7 +79,7 @@ pub enum Unary {
     Qualifier(Qualifier),
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy)]
 pub enum QualifierRestricted {
     Entities,
     Context,
@@ -90,32 +90,32 @@ pub enum QualifierRestricted {
     Products,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy)]
 pub enum QualifierLabel {
     AvailableEntities,
     AllReactants,
     AllInhibitors,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy)]
 pub enum QualifierSystem {
     Entities,
     Context,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy)]
 pub enum QualifierEdge {
     Source,
     Target,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy)]
 pub enum QualifierNode {
     Neighbours,
     System,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy)]
 pub enum Qualifier {
     System(QualifierSystem),
     Label(QualifierLabel),
@@ -124,7 +124,7 @@ pub enum Qualifier {
     Node(QualifierNode),
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy)]
 pub enum Binary {
     And,
     Or,
@@ -149,7 +149,7 @@ pub enum Binary {
     CommonSubStr,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub(super) enum AssertionTypes {
     Boolean,
     Integer,
@@ -168,7 +168,7 @@ pub(super) enum AssertionTypes {
     Edge,
 }
 
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+#[derive(Clone, Hash, PartialEq, Eq)]
 pub enum AssertReturnValue {
     Boolean(bool),
     Integer(IntegerType),
@@ -335,7 +335,7 @@ impl Unary {
 	    },
 	    (op, type_exp) => {
 		Err(format!("Expression has incompatible type with operation: \
-			     {type_exp} with operation {op}."))
+			     {type_exp:?} with operation {op:?}."))
 	    }
 	}
     }
@@ -473,8 +473,8 @@ impl Binary {
 		Ok(AssertionTypes::String)
 	    },
 	    _ => {
-		Err(format!("Expressions have incompatible types: {t1} and \
-			     {t2} with operation {self}."))
+		Err(format!("Expressions have incompatible types: {t1:?} and \
+			     {t2:?} with operation {self:?}."))
 	    }
 	}
     }
@@ -492,7 +492,8 @@ impl AssertReturnValue {
 		Ok(())
 	    },
 	    (s, q, val) => {
-		Err(format!("Cannot assign {val} to {s} with qualifier {q}"))
+		Err(format!("Cannot assign {val:?} to {s:?} with qualifier \
+			     {q:?}"))
 	    }
 	}
     }
@@ -530,8 +531,8 @@ impl TypeContext {
 	    if ty_return == ty {
 		Ok(())
 	    } else {
-		Err(format!("Return statements don't agree: {ty_return} and \
-			     {ty} found."))
+		Err(format!("Return statements don't agree: {ty_return:?} and \
+			     {ty:?} found."))
 	    }
 	} else {
 	    self.return_ty = Some(ty);
@@ -556,8 +557,8 @@ impl TypeContext {
 	    (Variable::Id(v), Some(q)) => {
 		match self.data.entry(v.clone()) {
 		    std::collections::hash_map::Entry::Vacant(_ve) => {
-			Err(format!("Variable {v} as no assignment while \
-				     trying to assign to qualification {q}, \
+			Err(format!("Variable {v:?} as no assignment while \
+				     trying to assign to qualification {q:?}, \
 				     assign first a value."))
 		    },
 		    std::collections::hash_map::Entry::Occupied(oe) => {
@@ -568,9 +569,9 @@ impl TypeContext {
 				Ok(())
 			    },
 			    (t, q, ty) => {
-				Err(format!("Variable {v} has type {t}, but \
-					     was assigned with qualifier {q} \
-					     value with type {ty}"))
+				Err(format!("Variable {v:?} has type {t:?}, \
+					     but was assigned with qualifier \
+					     {q:?} value with type {ty:?}."))
 			    }
 			}
 		    }
@@ -580,17 +581,18 @@ impl TypeContext {
 		if s.type_of() == ty {
 		    Ok(())
 		} else {
-		    Err(format!("Variable {s} has type {} but was \
-				 assigned a value of type {ty}.", s.type_of()))
+		    Err(format!("Variable {s:?} has type {:?} but was \
+				 assigned a value of type {ty:?}.",
+				s.type_of()))
 		}
 	    },
 	    (Variable::Special(s), Some(q)) => {
 		if s.type_qualified(q)? == ty {
 		    Ok(())
 		} else {
-		    Err(format!("Variable {s} has type {} but was \
-				 assigned a value of type {ty} with qualifier \
-				 {q}.", s.type_of()))
+		    Err(format!("Variable {s:?} has type {:?} but was \
+				 assigned a value of type {ty:?} with \
+				 qualifier {q:?}.", s.type_of()))
 		}
 	    }
 	}
@@ -604,7 +606,7 @@ impl TypeContext {
     where S: SpecialVariables<G> {
 	let v = match v {
 	    Variable::Special(s) =>
-		return Err(format!("Protected word {s} used in for \
+		return Err(format!("Protected word {s:?} used in for \
 				    assignment.")),
 	    Variable::Id(v) => v
 	};
@@ -622,7 +624,7 @@ impl TypeContext {
 		Ok(())
 	    },
 	    _ => {
-		Err(format!("Range has incorrect type {ty}."))
+		Err(format!("Range has incorrect type {ty:?}."))
 	    },
 	}
     }
@@ -640,7 +642,7 @@ impl TypeContext {
 		if let Some(ty) = self.data.get(v) {
 		    Ok(*ty)
 		} else {
-		    Err(format!("Could not find variable {v}."))
+		    Err(format!("Could not find variable {v:?}."))
 		}
 	    },
 	}
@@ -671,8 +673,8 @@ impl<S> Context<S> {
 	    (Variable::Id(v), Some(q)) => {
 		match self.data.entry(v.clone()) {
 		    std::collections::hash_map::Entry::Vacant(_ve) => {
-			Err(format!("Variable {v} as no assignment while \
-				     trying to assign to qualification {q}, \
+			Err(format!("Variable {v:?} as no assignment while \
+				     trying to assign to qualification {q:?}, \
 				     assign first a value."))
 		    },
 		    std::collections::hash_map::Entry::Occupied(mut oe) => {
@@ -684,9 +686,9 @@ impl<S> Context<S> {
 				Ok(())
 			    },
 			    (val, q, newval) => {
-				Err(format!("Variable {v} has value {val}, but \
-					     was assigned with qualifier {q} \
-					     new value {newval}."))
+				Err(format!("Variable {v:?} has value {val:?}, \
+					     but was assigned with qualifier \
+					     {q:?} new value {newval:?}."))
 			    }
 			}
 		    }
@@ -701,16 +703,16 @@ impl<S> Context<S> {
 		    }
 		    Ok(())
 		} else {
-		    Err(format!("Trying to assign {val} to variable {s}."))
+		    Err(format!("Trying to assign {val:?} to variable {s:?}."))
 		}
 	    },
 	    (Variable::Special(s), Some(q)) => {
 		if let Some(s) = self.special.get_mut(s) {
 		    s.assign_qualified(*q, val)
 		} else {
-		    Err(format!("Trying to assign {val} to variable {s} with \
-				 qualifier {q} but no value for {val} was found\
-				 ."))
+		    Err(format!("Trying to assign {val:?} to variable {s:?} \
+				 with qualifier {q:?} but no value for {val:?} \
+				 was found."))
 		}
 	    }
 	}
@@ -725,12 +727,14 @@ impl<S> Context<S> {
 	    Variable::Id(var) => {
 		self.data.get(var)
 		    .cloned()
-		    .ok_or(format!("Variable {v} used, but no value assigned."))
+		    .ok_or(format!("Variable {v:?} used, but no value \
+				    assigned."))
 	    },
 	    Variable::Special(s) => {
 		self.special.get(s)
 		    .cloned()
-		    .ok_or(format!("Variable {v} used but no value assigned."))
+		    .ok_or(format!("Variable {v:?} used but no value \
+				    assigned."))
 	    },
 	}
     }
@@ -771,7 +775,7 @@ impl AssertReturnValue {
 	    (AssertReturnValue::Element(el), Unary::ToStr) => {
 		Ok(AssertReturnValue::String(
 		    translator.decode(el).ok_or(
-			format!("Could not find element {el}.")
+			format!("Could not find element {el:?}.")
 		    )?
 		))
 	    },
@@ -811,7 +815,8 @@ impl AssertReturnValue {
 		Ok(q.get(&sys))
 	    }
 	    (val, u) => {
-		Err(format!("Incompatible unary operation {u} on value {val}."))
+		Err(format!("Incompatible unary operation {u:?} on value \
+			     {val:?}."))
 	    }
 	}
     }
@@ -897,8 +902,8 @@ impl AssertReturnValue {
 		String(s)
 	    },
 	    (b, val1, val2) =>
-		return Err(format!("Operation {b} on values {val1} and {val2} \
-				    could not be executed."))
+		return Err(format!("Operation {b:?} on values {val1:?} and \
+				    {val2:?} could not be executed."))
 	})
     }
 }
@@ -1008,7 +1013,7 @@ where S: SpecialVariables<G> {
 		Ok(AssertionTypes::RangeInteger)
 	    } else {
 		Err(format!("Expressions in range are not integers, but are: \
-			     {type_exp1} and {type_exp2}."))
+			     {type_exp1:?} and {type_exp2:?}."))
 	    }
 	},
 	Range::IterateOverSet(exp) => {
@@ -1019,7 +1024,7 @@ where S: SpecialVariables<G> {
 		AssertionTypes::RangeNeighbours =>
 		    Ok(AssertionTypes::RangeNeighbours),
 		_ => Err(format!("Expressions in range is not a set or \
-				  neighbours of a node, but is: {type_exp}."))
+				  neighbours of a node, but is: {type_exp:?}."))
 	    }
 	}
     }
@@ -1106,7 +1111,7 @@ where S: SpecialVariables<G> {
 		       .collect::<Vec<_>>()
 		       .into_iter())
 		}
-		_ => Err(format!("{val} is not a set in for cycle."))
+		_ => Err(format!("{val:?} is not a set in for cycle."))
 	    }
 	},
 	Range::IterateInRange(exp1, exp2) => {
@@ -1118,8 +1123,8 @@ where S: SpecialVariables<G> {
 		    Ok((i1..i2).map(AssertReturnValue::Integer)
 		       .collect::<Vec<_>>().into_iter()),
 		(val1, val2) =>
-		    Err(format!("{val1}..{val2} is not a valid integer range \
-				 in for cycle."))
+		    Err(format!("{val1:?}..{val2:?} is not a valid integer \
+				 range in for cycle."))
 	    }
 	}
     }

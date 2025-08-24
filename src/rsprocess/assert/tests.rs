@@ -7,7 +7,7 @@ use super::super::{ environment,
 		    label };
 use super::rsassert::*;
 
-type LocalAssert = RSassert<EdgeRelablerInput>;
+type LocalAssert = Assert<EdgeRelablerInput>;
 
 #[test]
 fn return_true() {

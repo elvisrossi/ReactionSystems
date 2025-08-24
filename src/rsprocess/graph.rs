@@ -99,11 +99,11 @@ where
 {
     fn map_edges(
 	&self,
-	edge_map: &super::structure::RSassert,
+	edge_map: &super::assert::types::Assert,
 	translator: &mut super::translator::Translator
     ) -> Result<
 	    Graph<System,
-		  super::structure::assert::AssertReturnValue, Ty, Ix>
+		  super::assert::types::AssertReturnValue, Ty, Ix>
 	    , String>;
 }
 
@@ -112,9 +112,11 @@ impl<'a> MapEdges<'a, System, Label, Directed, u32>
 {
     fn map_edges(
 	&self,
-	edge_map: &super::structure::RSassert,
+	edge_map: &super::assert::types::Assert,
 	translator: &mut super::translator::Translator
-    )-> Result<Graph<System, super::structure::assert::AssertReturnValue, Directed, u32>, String> {
+    )-> Result<Graph<System, super::assert::types::AssertReturnValue,
+		     Directed, u32>
+	       , String> {
 	use petgraph::graph::EdgeIndex;
 
 	let mut g = Graph::with_capacity(self.node_count(), self.edge_count());

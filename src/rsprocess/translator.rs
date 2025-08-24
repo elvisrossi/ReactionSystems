@@ -1,7 +1,8 @@
 //! Module for translation and keeping track of strings.
 
-use std::collections::HashMap;
 use serde::{Serialize, Deserialize};
+use std::collections::HashMap;
+use std::fmt;
 
 /// precision for printing frequencies
 pub static PRECISION: &usize = &2;
@@ -102,51 +103,3 @@ impl<'a, T> Formatter<'a, T> {
 }
 
 
-
-
-
-
-use super::{
-    structure::{
-        RSassert
-    },
-};
-use std::fmt;
-
-macro_rules! translator_structure {
-    ($name:ident, $type:ty, $dataname:ident, $print_func:ident) => {
-	#[derive(Clone, Debug)]
-	#[allow(dead_code)]
-        pub struct $name<'a> {
-            translator: &'a Translator,
-	    $dataname: &'a $type,
-        }
-
-	#[allow(dead_code)]
-	impl <'a>$name<'a> {
-	    pub fn from(translator: &'a Translator, $dataname: &'a $type) -> Self {
-		$name { translator, $dataname }
-	    }
-	}
-
-	impl<'a> fmt::Display for $name<'a> {
-	    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		$print_func(f, self.translator, self.$dataname)
-	    }
-	}
-    };
-}
-
-
-// RSassert
-
-#[allow(unused_variables)]
-fn print_assert(
-    f: &mut fmt::Formatter,
-    translator: &Translator,
-    assert: &RSassert
-) -> fmt::Result {
-    todo!()
-}
-
-translator_structure!(RSassertDisplay, RSassert, assert, print_assert);

@@ -1,27 +1,24 @@
 //! Crate root
 
-pub mod structure;
-
 pub mod translator;
+mod format_helpers;
 
-pub mod graph;
-pub mod transitions;
-pub mod rsdot;
-pub mod serialize;
-pub mod presets;
+pub mod choices;
+pub mod environment;
+pub mod label;
+pub mod process;
+pub mod reaction;
+pub mod set;
+pub mod system;
+
 pub mod assert;
 pub mod bisimilarity;
 pub mod frequency;
-
-mod format_helpers;
-
-pub mod set;
-pub mod reaction;
-pub mod process;
-pub mod choices;
-pub mod environment;
-pub mod system;
-pub mod label;
+pub mod graph;
+pub mod presets;
+pub mod rsdot;
+pub mod serialize;
+pub mod transitions;
 
 #[cfg(test)]
 mod system_test;

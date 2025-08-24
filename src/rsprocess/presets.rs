@@ -87,7 +87,7 @@ pub enum Instruction {
     FastFrequency { experiment: String, so: SaveOptions },
     Digraph { gso: Vec<GraphSaveOptions> },
     Bisimilarity { system_b: String,
-		   edge_relabeler: Box<super::structure::RSassert>,
+		   edge_relabeler: Box<super::assert::types::Assert>,
 		   so: SaveOptions }
 }
 
@@ -547,11 +547,11 @@ pub fn digraph(system: &mut EvaluatedSystem) -> Result<(), String> {
 /// Computes bisimularity of two provided systems
 pub fn bisimilar(
     system_a: &mut EvaluatedSystem,
-    edge_relabeler: &super::structure::RSassert,
+    edge_relabeler: &super::assert::types::Assert,
     system_b: String
 ) -> Result<String, String>
 {
-    use super::structure::assert::AssertReturnValue;
+    use super::assert::types::AssertReturnValue;
 
     let system_b = read_file(system_a.get_translator(),
 				 system_b.to_string(),

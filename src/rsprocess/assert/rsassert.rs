@@ -1,3 +1,5 @@
+use crate::rsprocess::translator::PrintableWithTranslator;
+
 use super::dsl::*;
 use super::super::{translator, graph, set, system, label};
 use std::collections::HashMap;
@@ -23,7 +25,7 @@ pub mod useful_types_edge_relabeler {
 	};
     }
 
-    export_types!(RSassert, Tree, Variable, Expression, Range);
+    export_types!(Assert, Tree, Variable, Expression, Range);
 
     export_types_no_parameter!(Unary, QualifierRestricted, QualifierLabel,
 			       QualifierSystem, QualifierEdge, QualifierNode,
@@ -35,13 +37,13 @@ pub mod useful_types_edge_relabeler {
 
 // Implementation for graph labeling in bisimulation.
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub enum EdgeRelablerInput {
     Label,
     Edge,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 enum EdgeRelablerInputValues {
     Label(label::Label),
     Edge(petgraph::graph::EdgeIndex),
@@ -61,7 +63,7 @@ impl SpecialVariables<EdgeRelablerInputValues> for EdgeRelablerInput {
 	    (Self::Label, Qualifier::Restricted(_)) =>
 		Ok(AssertionTypes::Set),
 	    (s, q) =>
-		Err(format!("Wrong use of qualifier {q} on variable {s}."))
+		Err(format!("Wrong use of qualifier {q:?} on variable {s:?}."))
 	}
     }
 
@@ -86,7 +88,7 @@ impl SpecialVariables<EdgeRelablerInputValues> for EdgeRelablerInput {
     }
 }
 
-impl std::fmt::Display for EdgeRelablerInput {
+impl std::fmt::Debug for EdgeRelablerInput {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 	match self {
 	    Self::Label => write!(f, "label"),
@@ -95,7 +97,16 @@ impl std::fmt::Display for EdgeRelablerInput {
     }
 }
 
-impl RSassert<EdgeRelablerInput> {
+impl PrintableWithTranslator for EdgeRelablerInput {
+    fn print(&self,
+	     f: &mut std::fmt::Formatter,
+	     _translator: &translator::Translator)
+	     -> std::fmt::Result {
+	write!(f, "{self:?}")
+    }
+}
+
+impl Assert<EdgeRelablerInput> {
     pub fn typecheck(&self) -> Result<(), String> {
 	let mut context = TypeContext::new();
 	let ty = typecheck(&self.tree, &mut context)?;
@@ -113,11 +124,12 @@ impl RSassert<EdgeRelablerInput> {
 		Ok(()),
 	    AssertionTypes::NoType =>
 		Err("No return type, at least one return statement \
-			     required.".into()),
+		     required.".into()),
 	    AssertionTypes::RangeInteger |
 	    AssertionTypes::RangeSet |
 	    AssertionTypes::RangeNeighbours =>
-		Err(format!("Returned type {ty} is not a valid return type.")),
+		Err(format!("Returned type {ty:?} is not a valid return \
+			     type.")),
 	}
     }
 
@@ -149,13 +161,13 @@ impl RSassert<EdgeRelablerInput> {
 // Implementation for node grouping.
 // -----------------------------------------------------------------------------
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub enum NodeRelablerInput {
     Entities,
     Node,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 enum NodeRelablerInputValues {
     Entities(set::Set),
     Node(petgraph::graph::NodeIndex),
@@ -176,7 +188,7 @@ impl SpecialVariables<NodeRelablerInputValues> for NodeRelablerInput {
 	    (Self::Node, Qualifier::Node(QualifierNode::Neighbours)) =>
 		Ok(AssertionTypes::RangeNeighbours),
 	    (s, q) =>
-		Err(format!("Wrong use of qualifier {q} on variable {s}."))
+		Err(format!("Wrong use of qualifier {q:?} on variable {s:?}."))
 	}
     }
 
@@ -201,7 +213,7 @@ impl SpecialVariables<NodeRelablerInputValues> for NodeRelablerInput {
     }
 }
 
-impl std::fmt::Display for NodeRelablerInput {
+impl std::fmt::Debug for NodeRelablerInput {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 	match self {
 	    Self::Entities => write!(f, "entities"),
@@ -210,8 +222,17 @@ impl std::fmt::Display for NodeRelablerInput {
     }
 }
 
+impl PrintableWithTranslator for NodeRelablerInput {
+    fn print(&self,
+	     f: &mut std::fmt::Formatter,
+	     _translator: &translator::Translator)
+	     -> std::fmt::Result {
+	write!(f, "{self:?}")
+    }
+}
 
-impl RSassert<NodeRelablerInput> {
+
+impl Assert<NodeRelablerInput> {
     pub fn typecheck(&self) -> Result<(), String> {
 	let mut context = TypeContext::new();
 	let ty = typecheck(&self.tree, &mut context)?;
@@ -233,7 +254,8 @@ impl RSassert<NodeRelablerInput> {
 	    AssertionTypes::RangeInteger |
 	    AssertionTypes::RangeSet |
 	    AssertionTypes::RangeNeighbours =>
-		Err(format!("Returned type {ty} is not a valid return type.")),
+		Err(format!("Returned type {ty:?} is not a valid return \
+			     type.")),
 	}
     }
 

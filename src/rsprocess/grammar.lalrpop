@@ -2,9 +2,8 @@ use std::rc::Rc;
 use std::str::FromStr;
 use lalrpop_util::ParseError;
 use crate::rsprocess::{set, reaction, process, environment, system, label};
-use crate::rsprocess::structure::rsassert;
+use crate::rsprocess::assert::types;
 use crate::rsprocess::translator::{ Translator, IdType };
-use crate::rsprocess::presets::Instructions;
 use crate::rsprocess::presets;
 use crate::rsprocess::graph;
 
@@ -270,181 +269,181 @@ Env_term: (IdType, process::Process) = {
 // -----------------------------------------------------------------------------
 //                                AssertParser
 // -----------------------------------------------------------------------------
-pub Assert: Box<rsassert::RSassert> = {
+pub Assert: Box<types::Assert> = {
      "label" "{" <f: AssertTree> "}" =>
-	Box::new(rsassert::RSassert{tree: f}),
+	Box::new(types::Assert{tree: f}),
 };
 
-AssertTree: rsassert::Tree = {
+AssertTree: types::Tree = {
     <t1: AssertTree2> ";" <t2: AssertTree> =>
-	rsassert::Tree::Concat(Box::new(t1), Box::new(t2)),
+	types::Tree::Concat(Box::new(t1), Box::new(t2)),
     <t: AssertTree2> => t,
 }
 
-AssertTree2: rsassert::Tree = {
+AssertTree2: types::Tree = {
     #[precedence(level="1")]
     "if" <e: AssertExpression>
     "then" "{" <t: AssertTree> "}" =>
-	rsassert::Tree::If(Box::new(e), Box::new(t)),
+	types::Tree::If(Box::new(e), Box::new(t)),
 
     #[precedence(level="0")]
     "if" <e: AssertExpression>
     "then" "{" <t1: AssertTree> "}"
     "else" "{" <t2: AssertTree> "}" =>
-	rsassert::Tree::IfElse(Box::new(e), Box::new(t1), Box::new(t2)),
+	types::Tree::IfElse(Box::new(e), Box::new(t1), Box::new(t2)),
 
     #[precedence(level="2")]
     "let" <v: AssertVariable> <q: AssertQualifier?> "=" <e: AssertExpression> =>
-	rsassert::Tree::Assignment(v, q, Box::new(e)),
+	types::Tree::Assignment(v, q, Box::new(e)),
 
     #[precedence(level="3")]
     "return" <e: AssertExpression> =>
-	rsassert::Tree::Return(Box::new(e)),
+	types::Tree::Return(Box::new(e)),
 
     #[precedence(level="4")]
     "for" <v: AssertVariable> "in" <r: AssertRange> "{" <t: AssertTree> "}" =>
-	rsassert::Tree::For(v, r, Box::new(t)),
+	types::Tree::For(v, r, Box::new(t)),
 }
 
-AssertVariable: rsassert::Variable = {
+AssertVariable: types::Variable = {
     #[precedence(level="0")]
-    "label" => rsassert::Variable::Special(rsassert::Special::Label),
+    "label" => types::Variable::Special(types::Special::Label),
     #[precedence(level="1")]
-    "edge"  => rsassert::Variable::Special(rsassert::Special::Edge),
+    "edge"  => types::Variable::Special(types::Special::Edge),
     #[precedence(level="2")]
-    <v: Literal> => rsassert::Variable::Id(v),
+    <v: Literal> => types::Variable::Id(v),
 }
 
 
-AssertExpression: rsassert::Expression = {
+AssertExpression: types::Expression = {
     // Unary
     #[precedence(level="0")]
     <unp: AssertUnaryPrefix> <e: AssertExpression> =>
-	rsassert::Expression::Unary(unp, Box::new(e)),
+	types::Expression::Unary(unp, Box::new(e)),
     #[precedence(level="2")]
     <e: AssertExpression> <uns: AssertUnarySuffix> =>
-	rsassert::Expression::Unary(uns, Box::new(e)),
+	types::Expression::Unary(uns, Box::new(e)),
 
     // binary
     #[precedence(level="3")] #[assoc(side="left")]
     <e1: AssertExpression> <b: AssertBinary> <e2: AssertExpression> =>
-	rsassert::Expression::Binary(b, Box::new(e1), Box::new(e2)),
+	types::Expression::Binary(b, Box::new(e1), Box::new(e2)),
     #[precedence(level="1")]
     <b: AssertBinaryPrefix>
     "(" <e1: AssertExpression> "," <e2: AssertExpression> ")" =>
-	rsassert::Expression::Binary(b, Box::new(e1), Box::new(e2)),
+	types::Expression::Binary(b, Box::new(e1), Box::new(e2)),
 
     #[precedence(level="4")]
     "(" <e: AssertExpression> ")" => e,
-    "true" => rsassert::Expression::True,
-    "false" => rsassert::Expression::False,
+    "true" => types::Expression::True,
+    "false" => types::Expression::False,
 
     #[precedence(level="5")]
-    <v: AssertVariable> => rsassert::Expression::Var(v),
+    <v: AssertVariable> => types::Expression::Var(v),
 
     // If changing IntegerType in assert.rs, also change from Num to another
     // similar parser with different return type
     #[precedence(level="6")]
-    <i: Num> => rsassert::Expression::Integer(i),
+    <i: Num> => types::Expression::Integer(i),
 
     #[precedence(level="7")]
-    <lab: AssertLabel> => rsassert::Expression::Label(Box::new(lab)),
-    <set: Set_of_entities> => rsassert::Expression::Set(set),
-    "'" <el: Literal> "'" => rsassert::Expression::Element(translator.encode(el)),
+    <lab: AssertLabel> => types::Expression::Label(Box::new(lab)),
+    <set: Set_of_entities> => types::Expression::Set(set),
+    "'" <el: Literal> "'" => types::Expression::Element(translator.encode(el)),
 
     // strings
     #[precedence(level="8")]
-    PATH => rsassert::Expression::String(<>.trim_end_matches("\"")
+    PATH => types::Expression::String(<>.trim_end_matches("\"")
 					 .trim_start_matches("\"")
 					 .to_string()),
 }
 
-AssertRange: rsassert::Range = {
-    "{" <e: AssertExpression> "}" => rsassert::Range::IterateOverSet(Box::new(e)),
+AssertRange: types::Range = {
+    "{" <e: AssertExpression> "}" => types::Range::IterateOverSet(Box::new(e)),
     "{" <e1: AssertExpression> ".." <e2: AssertExpression> "}" =>
-	rsassert::Range::IterateInRange(Box::new(e1), Box::new(e2)),
+	types::Range::IterateInRange(Box::new(e1), Box::new(e2)),
 }
 
-AssertUnaryPrefix: rsassert::Unary = {
-    "not" => rsassert::Unary::Not,
-    "rand" => rsassert::Unary::Rand,
+AssertUnaryPrefix: types::Unary = {
+    "not" => types::Unary::Not,
+    "rand" => types::Unary::Rand,
 }
 
-AssertUnarySuffix: rsassert::Unary = {
+AssertUnarySuffix: types::Unary = {
     #[precedence(level="0")]
-    "." "empty" => rsassert::Unary::Empty,
-    "." "length" => rsassert::Unary::Length,
-    "." "tostr" => rsassert::Unary::ToStr,
-    "." "toel" => rsassert::Unary::ToEl,
+    "." "empty" => types::Unary::Empty,
+    "." "length" => types::Unary::Length,
+    "." "tostr" => types::Unary::ToStr,
+    "." "toel" => types::Unary::ToEl,
 
     #[precedence(level="1")]
-    "." <q: AssertQualifier> => rsassert::Unary::Qualifier(q),
+    "." <q: AssertQualifier> => types::Unary::Qualifier(q),
 }
 
-AssertQualifierRestricted: rsassert::QualifierRestricted = {
-    "Entities" => rsassert::QualifierRestricted::Entities,
-    "Context" => rsassert::QualifierRestricted::Context,
-    "Reactants" => rsassert::QualifierRestricted::Reactants,
-    "ReactantsAbsent" => rsassert::QualifierRestricted::ReactantsAbsent,
-    "Inhibitors" => rsassert::QualifierRestricted::Inhibitors,
-    "InhibitorsPresent" => rsassert::QualifierRestricted::InhibitorsPresent,
-    "Products" => rsassert::QualifierRestricted::Products,
+AssertQualifierRestricted: types::QualifierRestricted = {
+    "Entities" => types::QualifierRestricted::Entities,
+    "Context" => types::QualifierRestricted::Context,
+    "Reactants" => types::QualifierRestricted::Reactants,
+    "ReactantsAbsent" => types::QualifierRestricted::ReactantsAbsent,
+    "Inhibitors" => types::QualifierRestricted::Inhibitors,
+    "InhibitorsPresent" => types::QualifierRestricted::InhibitorsPresent,
+    "Products" => types::QualifierRestricted::Products,
 }
 
-AssertQualifierLabel: rsassert::QualifierLabel = {
-    "AvailableEntities" => rsassert::QualifierLabel::AvailableEntities,
-    "AllReactants" => rsassert::QualifierLabel::AllReactants,
-    "AllInhibitors" => rsassert::QualifierLabel::AllInhibitors,
+AssertQualifierLabel: types::QualifierLabel = {
+    "AvailableEntities" => types::QualifierLabel::AvailableEntities,
+    "AllReactants" => types::QualifierLabel::AllReactants,
+    "AllInhibitors" => types::QualifierLabel::AllInhibitors,
 }
 
-AssertQualifierSystem: rsassert::QualifierSystem = {
-    "SystemEntities" => rsassert::QualifierSystem::Entities,
-    "SystemContext" => rsassert::QualifierSystem::Context,
+AssertQualifierSystem: types::QualifierSystem = {
+    "SystemEntities" => types::QualifierSystem::Entities,
+    "SystemContext" => types::QualifierSystem::Context,
 }
 
-AssertQualifierEdge: rsassert::QualifierEdge = {
-    "source" => rsassert::QualifierEdge::Source,
-    "target" => rsassert::QualifierEdge::Target,
+AssertQualifierEdge: types::QualifierEdge = {
+    "source" => types::QualifierEdge::Source,
+    "target" => types::QualifierEdge::Target,
 }
 
-AssertQualifierNode: rsassert::QualifierNode = {
-    "neighbours" => rsassert::QualifierNode::Neighbours,
-    "system" => rsassert::QualifierNode::System,
+AssertQualifierNode: types::QualifierNode = {
+    "neighbours" => types::QualifierNode::Neighbours,
+    "system" => types::QualifierNode::System,
 }
 
-AssertQualifier: rsassert::Qualifier = {
-    <q: AssertQualifierSystem> => rsassert::Qualifier::System(q),
-    <q: AssertQualifierLabel> => rsassert::Qualifier::Label(q),
-    <q: AssertQualifierRestricted> => rsassert::Qualifier::Restricted(q),
-    <q: AssertQualifierEdge> => rsassert::Qualifier::Edge(q),
-    <q: AssertQualifierNode> => rsassert::Qualifier::Node(q),
+AssertQualifier: types::Qualifier = {
+    <q: AssertQualifierSystem> => types::Qualifier::System(q),
+    <q: AssertQualifierLabel> => types::Qualifier::Label(q),
+    <q: AssertQualifierRestricted> => types::Qualifier::Restricted(q),
+    <q: AssertQualifierEdge> => types::Qualifier::Edge(q),
+    <q: AssertQualifierNode> => types::Qualifier::Node(q),
 }
 
 
-AssertBinary: rsassert::Binary = {
-    "&&" => rsassert::Binary::And,
-    "||" => rsassert::Binary::Or,
-    "^^" => rsassert::Binary::Xor,
-    "<" => rsassert::Binary::Less,
-    "<=" => rsassert::Binary::LessEq,
-    ">" => rsassert::Binary::More,
-    ">=" => rsassert::Binary::MoreEq,
-    "==" => rsassert::Binary::Eq,
-    "!=" => rsassert::Binary::NotEq,
-    "+" => rsassert::Binary::Plus,
-    "-" => rsassert::Binary::Minus,
-    "*" => rsassert::Binary::Times,
-    "^" => rsassert::Binary::Exponential,
-    "/" => rsassert::Binary::Quotient,
-    "%" => rsassert::Binary::Reminder,
-    "::" => rsassert::Binary::Concat,
+AssertBinary: types::Binary = {
+    "&&" => types::Binary::And,
+    "||" => types::Binary::Or,
+    "^^" => types::Binary::Xor,
+    "<" => types::Binary::Less,
+    "<=" => types::Binary::LessEq,
+    ">" => types::Binary::More,
+    ">=" => types::Binary::MoreEq,
+    "==" => types::Binary::Eq,
+    "!=" => types::Binary::NotEq,
+    "+" => types::Binary::Plus,
+    "-" => types::Binary::Minus,
+    "*" => types::Binary::Times,
+    "^" => types::Binary::Exponential,
+    "/" => types::Binary::Quotient,
+    "%" => types::Binary::Reminder,
+    "::" => types::Binary::Concat,
 }
 
-AssertBinaryPrefix: rsassert::Binary = {
-    "substr" => rsassert::Binary::SubStr,
-    "min" => rsassert::Binary::Min,
-    "max" => rsassert::Binary::Max,
-    "commonsubstr" => rsassert::Binary::CommonSubStr,
+AssertBinaryPrefix: types::Binary = {
+    "substr" => types::Binary::SubStr,
+    "min" => types::Binary::Min,
+    "max" => types::Binary::Max,
+    "commonsubstr" => types::Binary::CommonSubStr,
 }
 
 
@@ -858,17 +857,17 @@ Instruction: presets::Instruction = {
 pub Run: presets::Instructions = {
     #[precedence(level="0")]
     <sys: System> <instr: Separated_Or<Instruction, ",">> =>
-	Instructions { system: presets::System::System { sys },
-		       instructions: instr },
+	presets::Instructions { system: presets::System::System { sys },
+				instructions: instr },
 
     #[precedence(level="1")]
     <sys: System> =>
-	Instructions { system: presets::System::System { sys },
-		       instructions: vec![] },
+	presets::Instructions { system: presets::System::System { sys },
+				instructions: vec![] },
 
     #[precedence(level="2")]
     "Deserialize" "(" <path: Path> ")"
     <instr: Separated_Or<Instruction, ",">> =>
-	Instructions { system: presets::System::Deserialize { path },
-		       instructions: instr },
+	presets::Instructions { system: presets::System::Deserialize { path },
+				instructions: instr },
 }
