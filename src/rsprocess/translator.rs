@@ -20,22 +20,22 @@ pub struct Translator {
 
 impl Translator {
     pub fn new() -> Self {
-        Translator {
-            strings: HashMap::from([("*".into(), 0)]),
-            reverse: HashMap::from([(0, "*".into())]),
-            last_id: 1,
-        }
+	Translator {
+	    strings: HashMap::from([("*".into(), 0)]),
+	    reverse: HashMap::from([(0, "*".into())]),
+	    last_id: 1,
+	}
     }
 
     /// converts a string into an id
     pub fn encode(&mut self, s: impl Into<String>) -> IdType {
-        let s = s.into();
-        let id = *(self.strings.entry(s.clone()).or_insert({
-            self.last_id += 1;
-            self.last_id
-        }));
-        self.reverse.insert(id, s.clone());
-        id
+	let s = s.into();
+	let id = *(self.strings.entry(s.clone()).or_insert({
+	    self.last_id += 1;
+	    self.last_id
+	}));
+	self.reverse.insert(id, s.clone());
+	id
     }
 
     pub fn encode_not_mut(&self, s: impl Into<String>) -> Option<IdType> {
@@ -44,15 +44,15 @@ impl Translator {
 
     /// converts an id into the corresponding string
     pub fn decode(&self, el: IdType) -> Option<String> {
-        self.reverse
-            .get(&el)
-            .map(|x| x.to_string())
+	self.reverse
+	    .get(&el)
+	    .map(|x| x.to_string())
     }
 }
 
 impl Default for Translator {
     fn default() -> Self {
-        Translator::new()
+	Translator::new()
     }
 }
 
@@ -101,5 +101,3 @@ impl<'a, T> Formatter<'a, T> {
 	Self { data, translator }
     }
 }
-
-

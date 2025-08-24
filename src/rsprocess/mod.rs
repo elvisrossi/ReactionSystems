@@ -16,7 +16,7 @@ pub mod bisimilarity;
 pub mod frequency;
 pub mod graph;
 pub mod presets;
-pub mod rsdot;
+pub mod dot;
 pub mod serialize;
 pub mod transitions;
 

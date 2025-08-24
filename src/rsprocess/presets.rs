@@ -12,7 +12,6 @@ use std::rc::Rc;
 use super::*;
 use super::graph::MapEdges;
 use super::set::Set;
-use super::system;
 use super::translator::Translator;
 
 use super::super::grammar;
@@ -626,7 +625,7 @@ pub fn dot(
 	    let edge_formatter =
 		edge_color.generate(Rc::clone(&graph));
 
-            let dot = rsdot::RSDot::with_attr_getters(
+            let dot = dot::Dot::with_attr_getters(
                 &modified_graph,
                 &[],
 		&edge_formatter,

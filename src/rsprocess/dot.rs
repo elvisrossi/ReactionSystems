@@ -16,7 +16,7 @@ use petgraph::
 	NodeRef,
 }};
 
-pub struct RSDot<'a, G>
+pub struct Dot<'a, G>
 where
     G: IntoEdgeReferences + IntoNodeReferences + DataMap,
 {
@@ -30,14 +30,14 @@ static TYPE: [&str; 2] = ["graph", "digraph"];
 static EDGE: [&str; 2] = ["--", "->"];
 static INDENT: &str = "    ";
 
-impl<'a, G> RSDot<'a, G>
+impl<'a, G> Dot<'a, G>
 where
     G: IntoNodeReferences + IntoEdgeReferences + DataMap,
 {
     /// Create a `Dot` formatting wrapper with default configuration.
     #[inline]
     pub fn new(graph: G) -> Self {
-	RSDot {
+	Dot {
 	    graph,
 	    get_edge_attributes: &|_, _| String::new(),
 	    get_node_attributes: &|_, _| String::new(),
@@ -49,7 +49,7 @@ where
     #[inline]
     pub fn with_config(graph: G, config: &'a [Config]) -> Self {
 	let config = Configs::extract(config);
-	RSDot {
+	Dot {
 	    graph,
 	    get_edge_attributes: &|_, _| String::new(),
 	    get_node_attributes: &|_, _| String::new(),
@@ -65,7 +65,7 @@ where
 	get_node_attributes: &'a dyn Fn(G, G::NodeRef) -> String,
     ) -> Self {
 	let config = Configs::extract(config);
-	RSDot {
+	Dot {
 	    graph,
 	    get_edge_attributes,
 	    get_node_attributes,
@@ -167,7 +167,7 @@ macro_rules! make_config_struct {
 
 make_config_struct!();
 
-impl<G> RSDot<'_, G>
+impl<G> Dot<'_, G>
 where
     G: IntoNodeReferences + IntoEdgeReferences + NodeIndexable + GraphProp + DataMap,
 {
@@ -254,7 +254,7 @@ where
     }
 }
 
-impl<G> fmt::Display for RSDot<'_, G>
+impl<G> fmt::Display for Dot<'_, G>
 where
     G: IntoEdgeReferences + IntoNodeReferences + NodeIndexable + GraphProp + DataMap,
     G::EdgeWeight: fmt::Display,
@@ -265,7 +265,7 @@ where
     }
 }
 
-impl<G> fmt::LowerHex for RSDot<'_, G>
+impl<G> fmt::LowerHex for Dot<'_, G>
 where
     G: IntoEdgeReferences + IntoNodeReferences + NodeIndexable + GraphProp + DataMap,
     G::EdgeWeight: fmt::LowerHex,
@@ -276,7 +276,7 @@ where
     }
 }
 
-impl<G> fmt::UpperHex for RSDot<'_, G>
+impl<G> fmt::UpperHex for Dot<'_, G>
 where
     G: IntoEdgeReferences + IntoNodeReferences + NodeIndexable + GraphProp + DataMap,
     G::EdgeWeight: fmt::UpperHex,
@@ -287,7 +287,7 @@ where
     }
 }
 
-impl<G> fmt::Debug for RSDot<'_, G>
+impl<G> fmt::Debug for Dot<'_, G>
 where
     G: IntoEdgeReferences + IntoNodeReferences + NodeIndexable + GraphProp + DataMap,
     G::EdgeWeight: fmt::Debug,

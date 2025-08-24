@@ -1,4 +1,5 @@
-use super::bisimilarity_paige_tarkan::{bisimilarity, bisimilarity_ignore_labels};
+use super::bisimilarity_paige_tarkan::{bisimilarity,
+				       bisimilarity_ignore_labels};
 
 #[test]
 fn identity_paige_tarjan() {

@@ -1,5 +1,6 @@
 //! Definitions for generating graphs from a simulation.
 
+use petgraph::visit::{IntoEdgeReferences, IntoNodeReferences};
 use petgraph::{Graph, Directed};
 use std::rc::Rc;
 
@@ -437,8 +438,6 @@ impl EdgeDisplay {
 
 
 // Node ------------------------------------------------------------------------
-use petgraph::visit::{IntoEdgeReferences, IntoNodeReferences};
-
 type RSdotGraph = Graph<String, String, Directed, u32>;
 type RSformatNodeTy<'a> =
     dyn Fn(
