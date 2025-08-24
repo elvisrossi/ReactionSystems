@@ -9,11 +9,9 @@ use super::label::Label;
 use super::process::Process;
 use super::reaction::Reaction;
 use super::set::Set;
-
-use super::translator::IdType;
-use super::translator::Translator;
-
 use super::transitions::TransitionsIterator;
+use super::translator::{IdType, Translator, PrintableWithTranslator, Formatter};
+
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct System {
@@ -219,6 +217,29 @@ impl Default for System {
     }
 }
 
+impl PrintableWithTranslator for System {
+    fn print(&self, f: &mut std::fmt::Formatter, translator: &Translator)
+	     -> std::fmt::Result {
+	write!(
+	    f,
+	    "[delta: {}, available_entities: {}, context_process: {}, \
+	     reaction_rules: [",
+	    Formatter::from(translator, &*self.delta),
+	    Formatter::from(translator, &self.available_entities),
+	    Formatter::from(translator, &self.context_process)
+	)?;
+	let mut it = self.reaction_rules.iter().peekable();
+	while let Some(el) = it.next() {
+	    if it.peek().is_none() {
+		write!(f, "{}", Formatter::from(translator, el))?;
+	    } else {
+		write!(f, "{}, ", Formatter::from(translator, el))?;
+	    }
+	}
+	write!(f, "] ]")
+    }
+}
+
 
 // -----------------------------------------------------------------------------
 //                                   Loops
@@ -378,7 +399,7 @@ impl System {
 	));
 	result.push_str(&format!(
 	    "{}\n",
-	    translator::SetDisplay::from(translator, &self.available_entities)
+	    translator::Formatter::from(translator, &self.available_entities)
 	));
 
 	let reactants = self
@@ -388,7 +409,7 @@ impl System {
 	result.push_str(&format!(
 	    "The reactants are {}:\n{}\n",
 	    reactants.len(),
-	    translator::SetDisplay::from(translator, &reactants)
+	    translator::Formatter::from(translator, &reactants)
 	));
 
 	let inhibitors = self
@@ -398,7 +419,7 @@ impl System {
 	result.push_str(&format!(
 	    "The inhibitors are {}:\n{}\n",
 	    inhibitors.len(),
-	    translator::SetDisplay::from(translator, &inhibitors)
+	    translator::Formatter::from(translator, &inhibitors)
 	));
 
 	let products = self
@@ -408,28 +429,28 @@ impl System {
 	result.push_str(&format!(
 	    "The products are {}:\n{}\n",
 	    products.len(),
-	    translator::SetDisplay::from(translator, &products)
+	    translator::Formatter::from(translator, &products)
 	));
 
 	let total = reactants.union(&inhibitors.union(&products));
 	result.push_str(&format!(
 	    "The reactions involve {} entities:\n{}\n",
 	    total.len(),
-	    translator::SetDisplay::from(translator, &total)
+	    translator::Formatter::from(translator, &total)
 	));
 
 	let entities_env = self.delta.all_elements();
 	result.push_str(&format!(
 	    "The environment involves {} entities:\n{}\n",
 	    entities_env.len(),
-	    translator::SetDisplay::from(translator, &entities_env)
+	    translator::Formatter::from(translator, &entities_env)
 	));
 
 	let entities_context = self.context_process.all_elements();
 	result.push_str(&format!(
 	    "The context involves {} entities:\n{}\n",
 	    entities_context.len(),
-	    translator::SetDisplay::from(translator, &entities_context)
+	    translator::Formatter::from(translator, &entities_context)
 	));
 
 	let entities_all = total
@@ -440,7 +461,7 @@ impl System {
 	result.push_str(&format!(
 	    "The whole RS involves {} entities:\n{}\n",
 	    entities_all.len(),
-	    translator::SetDisplay::from(translator, &entities_all)
+	    translator::Formatter::from(translator, &entities_all)
 	));
 
 	let possible_e = products
@@ -450,7 +471,7 @@ impl System {
 	result.push_str(&format!(
 	    "There are {} reactants that will never be available:\n{}\n",
 	    missing_e.len(),
-	    translator::SetDisplay::from(translator, &missing_e)
+	    translator::Formatter::from(translator, &missing_e)
 	));
 
 	let entities_not_needed = entities_context.subtraction(&total);
@@ -458,7 +479,7 @@ impl System {
 	    "The context can provide {} entities that will never be used:\
 	     \n{}\n",
 	    entities_not_needed.len(),
-	    translator::SetDisplay::from(translator, &entities_not_needed)
+	    translator::Formatter::from(translator, &entities_not_needed)
 	));
 
 	result.push_str(&format!(

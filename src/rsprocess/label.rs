@@ -1,7 +1,8 @@
-use std::hash::Hash;
 use serde::{Deserialize, Serialize};
+use std::hash::Hash;
 
 use super::set::Set;
+use super::translator::{Translator, PrintableWithTranslator, Formatter};
 
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialOrd)]
 pub struct Label {
@@ -113,5 +114,23 @@ impl Hash for Label {
 	self.inhibitors.hash(state);
 	self.inhibitors_present.hash(state);
 	self.products.hash(state);
+    }
+}
+
+impl PrintableWithTranslator for Label {
+    fn print(&self, f: &mut std::fmt::Formatter, translator: &Translator)
+	     -> std::fmt::Result {
+	write!(
+	    f,
+	    "{{available_entities: {}, context: {}, t: {}, reactants: {}, reactantsi: {}, inihibitors: {}, ireactants: {}, products: {}}}",
+	    Formatter::from(translator, &self.available_entities),
+	    Formatter::from(translator, &self.context),
+	    Formatter::from(translator, &self.t),
+	    Formatter::from(translator, &self.reactants),
+	    Formatter::from(translator, &self.reactants_absent),
+	    Formatter::from(translator, &self.inhibitors),
+	    Formatter::from(translator, &self.inhibitors_present),
+	    Formatter::from(translator, &self.products),
+	)
     }
 }

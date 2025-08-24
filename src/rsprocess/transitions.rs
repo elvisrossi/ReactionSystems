@@ -1,17 +1,21 @@
 //! Module for helper structure for simulation
 
-use super::structure::{RSlabel, RSprocess, RSset, RSsystem};
 use std::rc::Rc;
+
+use super::label::Label;
+use super::process::Process;
+use super::set::Set;
+use super::system::System;
 
 #[derive(Clone, Debug)]
 pub struct TransitionsIterator<'a> {
-    choices_iterator: std::vec::IntoIter<(Rc<RSset>, Rc<RSprocess>)>,
-    system: &'a RSsystem,
+    choices_iterator: std::vec::IntoIter<(Rc<Set>, Rc<Process>)>,
+    system: &'a System,
 }
 
 impl<'a> TransitionsIterator<'a> {
     pub fn from(
-	system: &'a RSsystem
+	system: &'a System
     ) -> Result<TransitionsIterator<'a>, String> {
         match system.delta.unfold(&system.context_process,
 				  &system.available_entities) {
@@ -25,10 +29,10 @@ impl<'a> TransitionsIterator<'a> {
 }
 
 impl<'a> Iterator for TransitionsIterator<'a> {
-    type Item = (RSlabel, RSsystem);
+    type Item = (Label, System);
 
     /// Creates the next arc from the current system.
-    fn next(&mut self) -> Option<(RSlabel, RSsystem)> {
+    fn next(&mut self) -> Option<(Label, System)> {
         let (c, k) = self.choices_iterator.next()?;
         let t = self.system.available_entities.union(c.as_ref());
         let (
@@ -40,11 +44,11 @@ impl<'a> Iterator for TransitionsIterator<'a> {
 	) =
             self.system.reaction_rules.iter().fold(
                 (
-                    RSset::new(), // reactants
-                    RSset::new(), // reactants_absent
-                    RSset::new(), // inhibitors
-                    RSset::new(), // inhibitors_present
-                    RSset::new(), // products
+                    Set::new(), // reactants
+                    Set::new(), // reactants_absent
+                    Set::new(), // inhibitors
+                    Set::new(), // inhibitors_present
+                    Set::new(), // products
                 ),
                 |acc, reaction| {
                     if reaction.enabled(&t) {
@@ -67,7 +71,7 @@ impl<'a> Iterator for TransitionsIterator<'a> {
                 },
             );
 
-        let label = RSlabel::from(
+        let label = Label::from(
             self.system.available_entities.clone(),
             (*c).clone(),
             t,
@@ -77,7 +81,7 @@ impl<'a> Iterator for TransitionsIterator<'a> {
             inhibitors_present,
             products.clone(),
         );
-        let new_system = RSsystem::from(
+        let new_system = System::from(
             Rc::clone(&self.system.delta),
             products,
             (*k).clone(),

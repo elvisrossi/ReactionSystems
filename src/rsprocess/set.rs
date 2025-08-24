@@ -1,7 +1,9 @@
-use super::translator::IdType;
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use std::hash::Hash;
-use serde::{Deserialize, Serialize};
+use std::fmt;
+
+use super::translator::{IdType, Translator, PrintableWithTranslator};
 
 /// Basic set of entities.
 #[derive(Clone, Debug, PartialOrd, Eq, Ord, Serialize, Deserialize)]
@@ -137,5 +139,28 @@ impl IntoIterator for Set {
 
     fn into_iter(self) -> Self::IntoIter {
 	self.identifiers.into_iter()
+    }
+}
+
+impl PrintableWithTranslator for Set {
+    fn print(
+	&self,
+	f: &mut fmt::Formatter,
+	translator: &Translator,
+    ) -> fmt::Result {
+	write!(f, "{{")?;
+	let mut it = self.iter().peekable();
+	while let Some(el) = it.next() {
+	    if it.peek().is_none() {
+		write!(f,
+		       "{}",
+		       translator.decode(*el).unwrap_or("Missing".into()))?;
+	    } else {
+		write!(f,
+		       "{}, ",
+		       translator.decode(*el).unwrap_or("Missing".into()))?;
+	    }
+	}
+	write!(f, "}}")
     }
 }

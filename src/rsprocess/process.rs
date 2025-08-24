@@ -1,11 +1,11 @@
-use super::translator::IdType;
+use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::hash::Hash;
 use std::rc::Rc;
-use serde::{Deserialize, Serialize};
 
-use super::set::Set;
 use super::reaction::Reaction;
+use super::set::Set;
+use super::translator::{IdType, Translator, PrintableWithTranslator, Formatter};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Process {
@@ -118,5 +118,85 @@ impl Process {
 	}
 
 	None
+    }
+}
+
+impl PrintableWithTranslator for Process {
+    fn print(&self, f: &mut std::fmt::Formatter, translator: &Translator)
+	     -> std::fmt::Result {
+	match self {
+	    Self::Nill => {
+		write!(f, "Nill")
+	    },
+	    Self::RecursiveIdentifier { identifier } => {
+		write!(f,
+		       "[{}]",
+		       translator
+		       .decode(*identifier)
+		       .unwrap_or("Missing".into()))
+	    },
+	    Self::EntitySet { entities, next_process, } => {
+		write!(
+		    f,
+		    "{}.{}",
+		    Formatter::from(translator, entities),
+		    Formatter::from(translator, &**next_process)
+		)
+	    },
+	    Self::Guarded { reaction, next_process } => {
+		write!(f,
+		       "?{}?.{}",
+		       Formatter::from(translator, reaction),
+		       Formatter::from(translator, &**next_process))
+	    },
+	    Self::WaitEntity { repeat, repeated_process, next_process, } => {
+		write!(
+		    f,
+		    "({})^{repeat}.{}",
+		    Formatter::from(translator, &**repeated_process),
+		    Formatter::from(translator, &**next_process)
+		)
+	    }
+	    Self::Summation { children } => {
+		write!(f, "[")?;
+		let mut it = children.iter().peekable();
+		while let Some(child) = it.next() {
+		    if it.peek().is_none() {
+			write!(
+			    f,
+			    "{}",
+			    Formatter::from(translator, &**child)
+			)?;
+		    } else {
+			write!(
+			    f,
+			    "{} + ",
+			    Formatter::from(translator, &**child)
+			)?;
+		    }
+		}
+		write!(f, "]")
+	    }
+	    Self::NondeterministicChoice { children } => {
+		write!(f, "[")?;
+		let mut it = children.iter().peekable();
+		while let Some(child) = it.next() {
+		    if it.peek().is_none() {
+			write!(
+			    f,
+			    "{}",
+			    Formatter::from(translator, &**child)
+			)?;
+		    } else {
+			write!(
+			    f,
+			    "{}, ",
+			    Formatter::from(translator, &**child)
+			)?;
+		    }
+		}
+		write!(f, "]")
+	    }
+	}
     }
 }

@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use super::reaction::Reaction;
 use super::set::Set;
 use super::system::System;
-use super::translator::IdType;
+use super::translator::{IdType, Translator, PrintableWithTranslator, PRECISION};
 
 /// structure that holds the frequency of elements of a run or multiple runs,
 /// weighted.  To print use ```translator::FrequencyDisplay```.
@@ -53,6 +53,53 @@ impl Frequency {
 impl Default for Frequency {
     fn default() -> Self {
         Frequency::new()
+    }
+}
+
+impl PrintableWithTranslator for Frequency {
+    fn print(&self, f: &mut std::fmt::Formatter, translator: &Translator)
+	     -> std::fmt::Result {
+	use std::cmp::max;
+	
+	write!(f, "[")?;
+	let mut freq_it = self.frequency_map.iter().peekable();
+
+	let totals = &self.totals;
+	let weights = &self.weights;
+
+	while let Some((e, freq)) = freq_it.next() {
+            write!(f, "{} -> ", translator.decode(*e).unwrap_or("Missing".into()))?;
+
+            let mut total_freq = 0.;
+
+	    let end = max(freq.len(), max(totals.len(), weights.len()));
+
+	    for pos in 0..end {
+		let freq_e = freq.get(pos).copied().unwrap_or(0) as f32;
+		let weight = weights.get(pos).copied().unwrap_or(1) as f32;
+		let total = totals.get(pos).copied().unwrap_or(1) as f32;
+
+		let weighted_freq = (freq_e * weight * 100.) / (total);
+		if pos == end-1 {
+		    #[allow(clippy::uninlined_format_args)]
+		    write!(f, "{weighted_freq:.*}", PRECISION)?;
+		} else {
+		    #[allow(clippy::uninlined_format_args)]
+		    write!(f, "{weighted_freq:.*}, ", PRECISION)?;
+		}
+		total_freq += weighted_freq;
+	    }
+
+            total_freq /= self.total_weights() as f32;
+
+	    #[allow(clippy::uninlined_format_args)]
+            write!(f, " (total: {total_freq:.*})", PRECISION)?;
+
+            if freq_it.peek().is_some() {
+		writeln!(f, ",")?;
+            }
+	}
+	write!(f, "]")
     }
 }
 

@@ -1,5 +1,5 @@
 use super::dsl::*;
-use super::super::{structure, translator, graph};
+use super::super::{translator, graph, set, system, label};
 use std::collections::HashMap;
 
 // ----------------------------------------------------------------------------
@@ -43,7 +43,7 @@ pub enum EdgeRelablerInput {
 
 #[derive(Debug, Clone)]
 enum EdgeRelablerInputValues {
-    Label(structure::RSlabel),
+    Label(label::Label),
     Edge(petgraph::graph::EdgeIndex),
 }
 
@@ -157,7 +157,7 @@ pub enum NodeRelablerInput {
 
 #[derive(Debug, Clone)]
 enum NodeRelablerInputValues {
-    Entities(structure::RSset),
+    Entities(set::Set),
     Node(petgraph::graph::NodeIndex),
 }
 
@@ -243,7 +243,7 @@ impl RSassert<NodeRelablerInput> {
 	node: &<graph::SystemGraph as petgraph::visit::GraphBase>::NodeId,
 	translator: &mut translator::Translator,
     ) -> Result<AssertReturnValue, String> {
-	let structure::RSsystem {available_entities: entities, ..} =
+	let system::System {available_entities: entities, ..} =
 	    graph.node_weight(*node).ok_or("Missing node {{debug: {node:?}}}")?;
 
 	let mut input_vals = HashMap::new();

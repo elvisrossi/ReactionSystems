@@ -1,23 +1,21 @@
 //! Module that holds useful presets for interacting with other modules.
 
+use lalrpop_util::ParseError;
+use petgraph::Graph;
 use std::env;
 use std::fmt::Display;
 use std::fs;
-use std::io;
 use std::io::prelude::*;
+use std::io;
 use std::rc::Rc;
 
-use lalrpop_util::ParseError;
-use petgraph::Graph;
-
-// grammar is defined in lib.rs, calling lalrpop_mod! twice, generates twice
-// the code
-use crate::grammar;
-use crate::rsprocess::graph::MapEdges;
-
-use super::structure::{RSset, RSsystem};
-use super::translator::Translator;
 use super::*;
+use super::graph::MapEdges;
+use super::set::Set;
+use super::system;
+use super::translator::Translator;
+
+use super::super::grammar;
 
 // -----------------------------------------------------------------------------
 //                                 Structures
@@ -96,7 +94,7 @@ pub enum Instruction {
 /// Describes a system or a graph.
 pub enum System {
     Deserialize { path: String },
-    RSsystem { sys: RSsystem },
+    System { sys: system::System },
 }
 
 impl System {
@@ -107,7 +105,7 @@ impl System {
     ) -> Result<EvaluatedSystem, String>
     {
         match self {
-            Self::RSsystem { sys } => Ok(EvaluatedSystem::System {
+            Self::System { sys } => Ok(EvaluatedSystem::System {
                 sys: sys.to_owned(),
                 translator,
             }),
@@ -125,7 +123,7 @@ pub enum EvaluatedSystem {
         translator: Translator,
     },
     System {
-        sys: RSsystem,
+        sys: system::System,
         translator: Translator,
     },
 }
@@ -285,7 +283,7 @@ where
 fn parser_experiment(
     translator: &mut Translator,
     contents: String,
-) -> Result<(Vec<u32>, Vec<RSset>), String> {
+) -> Result<(Vec<u32>, Vec<Set>), String> {
     match grammar::ExperimentParser::new().parse(translator, &contents) {
         Ok(sys) => Ok(sys),
         Err(e) => reformat_error(e, &contents),
@@ -360,7 +358,7 @@ pub fn target(system: &EvaluatedSystem) -> Result<String, String> {
     Ok(format!(
         "After {} steps we arrive at state:\n{}",
         res.0,
-        translator::RSsetDisplay::from(translator, &res.1)
+        translator::Formatter::from(translator, &res.1)
     ))
 }
 
@@ -387,7 +385,7 @@ pub fn traversed(system: &EvaluatedSystem) -> Result<String, String> {
     for (e, _c, _t) in res {
         output.push_str(&format!(
             "{}",
-            translator::RSsetDisplay::from(translator, &e)
+            translator::Formatter::from(translator, &e)
         ));
     }
     Ok(output)
@@ -427,7 +425,7 @@ pub fn hoop(
     for e in res {
         output.push_str(&format!(
             "{}",
-            translator::RSsetDisplay::from(translator, &e)
+            translator::Formatter::from(translator, &e)
         ));
     }
 
@@ -452,7 +450,7 @@ pub fn freq(system: &EvaluatedSystem) -> Result<String, String> {
 
     Ok(format!(
         "Frequency of encountered symbols:\n{}",
-        translator::FrequencyDisplay::from(translator, &res)
+        translator::Formatter::from(translator, &res)
     ))
 }
 
@@ -463,7 +461,7 @@ pub fn limit_freq(
     system: &mut EvaluatedSystem,
     experiment: String
 ) -> Result<String, String> {
-    let (sys, translator): (&RSsystem, &mut Translator) = match system {
+    let (sys, translator): (&system::System, &mut Translator) = match system {
         EvaluatedSystem::System { sys, translator } => (sys, translator),
         EvaluatedSystem::Graph { graph, translator } => {
             let Some(sys) = graph.node_weights().next() else {
@@ -489,7 +487,7 @@ pub fn limit_freq(
 
     Ok(format!(
         "Frequency of encountered symbols:\n{}",
-        translator::FrequencyDisplay::from(translator, &res)
+        translator::Formatter::from(translator, &res)
     ))
 }
 
@@ -503,7 +501,7 @@ pub fn fast_freq(
     experiment: String
 ) -> Result<String, String>
 {
-    let (sys, translator): (&RSsystem, &mut Translator) = match system {
+    let (sys, translator): (&system::System, &mut Translator) = match system {
         EvaluatedSystem::System { sys, translator } => (sys, translator),
         EvaluatedSystem::Graph { graph, translator } => {
             let Some(sys) = graph.node_weights().next() else {
@@ -529,7 +527,7 @@ pub fn fast_freq(
 
     Ok(format!(
         "Frequency of encountered symbols:\n{}",
-        translator::FrequencyDisplay::from(translator, &res)
+        translator::Formatter::from(translator, &res)
     ))
 }
 
@@ -579,9 +577,9 @@ pub fn bisimilar(
     match (system_a, &mut system_b) {
 	(EvaluatedSystem::Graph { graph: a, translator: _ },
 	 EvaluatedSystem::Graph { graph: b, translator: translator_b }) => {
-	    let a: Graph<RSsystem, AssertReturnValue> =
+	    let a: Graph<system::System, AssertReturnValue> =
 		a.map_edges(edge_relabeler, translator_b)?;
-	    let b: Graph<RSsystem, AssertReturnValue> =
+	    let b: Graph<system::System, AssertReturnValue> =
 		b.map_edges(edge_relabeler, translator_b)?;
 	    Ok(format!(
 		"{}",

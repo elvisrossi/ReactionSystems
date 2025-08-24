@@ -1,7 +1,8 @@
 use std::rc::Rc;
 
-use super::set::Set;
 use super::process::Process;
+use super::set::Set;
+use super::translator::{Translator, PrintableWithTranslator, Formatter};
 
 #[derive(Clone, Debug)]
 pub struct Choices {
@@ -96,5 +97,31 @@ impl From<&[(Rc<Set>, Rc<Process>)]> for Choices {
 impl From<Vec<(Rc<Set>, Rc<Process>)>> for Choices {
     fn from(arr: Vec<(Rc<Set>, Rc<Process>)>) -> Self {
 	Choices { context_moves: arr }
+    }
+}
+
+impl PrintableWithTranslator for Choices {
+    fn print(&self, f: &mut std::fmt::Formatter, translator: &Translator)
+	     -> std::fmt::Result {
+	write!(f, "[")?;
+	let mut it = self.iter().peekable();
+	while let Some(el) = it.next() {
+	    if it.peek().is_none() {
+		write!(
+		    f,
+		    "[set: {}, process: {}]",
+		    Formatter::from(translator, &*el.0),
+		    Formatter::from(translator, &*el.1)
+		)?;
+	    } else {
+		write!(
+		    f,
+		    "[set: {}, process: {}], ",
+		    Formatter::from(translator, &*el.0),
+		    Formatter::from(translator, &*el.1)
+		)?;
+	    }
+	}
+	write!(f, "]")
     }
 }

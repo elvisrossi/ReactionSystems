@@ -1,9 +1,10 @@
-// -----------------------------------------------------------------------------
-//                                  Testing
-// -----------------------------------------------------------------------------
-
 use super::dsl::*;
-use super::super::{translator, structure};
+use super::super::{ environment,
+		    process,
+		    translator,
+		    set,
+		    system,
+		    label };
 use super::rsassert::*;
 
 type LocalAssert = RSassert<EdgeRelablerInput>;
@@ -11,7 +12,8 @@ type LocalAssert = RSassert<EdgeRelablerInput>;
 #[test]
 fn return_true() {
     use translator::Translator;
-    use structure::{RSsystem, RSlabel};
+    use system::System;
+    use label::Label;
 
     let tree = LocalAssert {tree: Tree::Return(Box::new(Expression::True))};
     assert!(tree.typecheck().is_ok());
@@ -20,9 +22,9 @@ fn return_true() {
     let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(RSsystem::new());
-    let node_2 = graph.add_node(RSsystem::new());
-    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+    let node_1 = graph.add_node(System::new());
+    let node_2 = graph.add_node(System::new());
+    let edge = graph.add_edge(node_1, node_2, Label::new());
 
     assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Boolean(true))));
@@ -31,7 +33,8 @@ fn return_true() {
 #[test]
 fn concat_1() {
     use translator::Translator;
-    use structure::{RSsystem, RSlabel};
+    use system::System;
+    use label::Label;
 
     let tree = LocalAssert {
 	tree: Tree::Concat(
@@ -48,9 +51,9 @@ fn concat_1() {
     let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(RSsystem::new());
-    let node_2 = graph.add_node(RSsystem::new());
-    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+    let node_1 = graph.add_node(System::new());
+    let node_2 = graph.add_node(System::new());
+    let edge = graph.add_edge(node_1, node_2, Label::new());
 
     assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Boolean(true))));
@@ -59,7 +62,8 @@ fn concat_1() {
 #[test]
 fn concat_2() {
     use translator::Translator;
-    use structure::{RSsystem, RSlabel};
+    use system::System;
+    use label::Label;
 
     let tree = LocalAssert {
 	tree: Tree::Concat(
@@ -76,9 +80,9 @@ fn concat_2() {
     let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(RSsystem::new());
-    let node_2 = graph.add_node(RSsystem::new());
-    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+    let node_1 = graph.add_node(System::new());
+    let node_2 = graph.add_node(System::new());
+    let edge = graph.add_edge(node_1, node_2, Label::new());
 
     assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Boolean(true))));
@@ -87,7 +91,8 @@ fn concat_2() {
 #[test]
 fn return_1() {
     use translator::Translator;
-    use structure::{RSsystem, RSlabel};
+    use system::System;
+    use label::Label;
 
     let tree = LocalAssert {
 	tree: Tree::Concat(
@@ -101,9 +106,9 @@ fn return_1() {
     let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(RSsystem::new());
-    let node_2 = graph.add_node(RSsystem::new());
-    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+    let node_1 = graph.add_node(System::new());
+    let node_2 = graph.add_node(System::new());
+    let edge = graph.add_edge(node_1, node_2, Label::new());
 
     assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Boolean(true))));
@@ -143,7 +148,8 @@ fn return_incompatible_2() {
 #[test]
 fn return_2() {
     use translator::Translator;
-    use structure::{RSsystem, RSlabel};
+    use system::System;
+    use label::Label;
 
     let tree = LocalAssert {
 	tree: Tree::Concat(
@@ -166,9 +172,9 @@ fn return_2() {
     let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(RSsystem::new());
-    let node_2 = graph.add_node(RSsystem::new());
-    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+    let node_1 = graph.add_node(System::new());
+    let node_2 = graph.add_node(System::new());
+    let edge = graph.add_edge(node_1, node_2, Label::new());
 
     assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Boolean(true))));
@@ -178,7 +184,8 @@ fn return_2() {
 #[test]
 fn return_3() {
     use translator::Translator;
-    use structure::{RSsystem, RSlabel};
+    use system::System;
+    use label::Label;
 
     let tree = LocalAssert {
 	tree: Tree::Concat(
@@ -201,9 +208,9 @@ fn return_3() {
     let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(RSsystem::new());
-    let node_2 = graph.add_node(RSsystem::new());
-    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+    let node_1 = graph.add_node(System::new());
+    let node_2 = graph.add_node(System::new());
+    let edge = graph.add_edge(node_1, node_2, Label::new());
 
     assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Boolean(false))));
@@ -212,7 +219,8 @@ fn return_3() {
 #[test]
 fn if_1() {
     use translator::Translator;
-    use structure::{RSsystem, RSlabel};
+    use system::System;
+    use label::Label;
 
     let tree = LocalAssert {
 	tree: Tree::Concat(
@@ -237,9 +245,9 @@ fn if_1() {
     let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(RSsystem::new());
-    let node_2 = graph.add_node(RSsystem::new());
-    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+    let node_1 = graph.add_node(System::new());
+    let node_2 = graph.add_node(System::new());
+    let edge = graph.add_edge(node_1, node_2, Label::new());
 
     assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Boolean(true))));
@@ -248,7 +256,8 @@ fn if_1() {
 #[test]
 fn if_2() {
     use translator::Translator;
-    use structure::{RSsystem, RSlabel};
+    use system::System;
+    use label::Label;
 
     let tree = LocalAssert {
 	tree: Tree::Concat(
@@ -272,9 +281,9 @@ fn if_2() {
     let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(RSsystem::new());
-    let node_2 = graph.add_node(RSsystem::new());
-    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+    let node_1 = graph.add_node(System::new());
+    let node_2 = graph.add_node(System::new());
+    let edge = graph.add_edge(node_1, node_2, Label::new());
 
     assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Boolean(false))));
@@ -283,7 +292,8 @@ fn if_2() {
 #[test]
 fn if_3() {
     use translator::Translator;
-    use structure::{RSsystem, RSlabel};
+    use system::System;
+    use label::Label;
 
     let tree = LocalAssert {
 	tree: Tree::Concat(
@@ -308,9 +318,9 @@ fn if_3() {
     let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(RSsystem::new());
-    let node_2 = graph.add_node(RSsystem::new());
-    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+    let node_1 = graph.add_node(System::new());
+    let node_2 = graph.add_node(System::new());
+    let edge = graph.add_edge(node_1, node_2, Label::new());
 
     assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Boolean(true))));
@@ -341,7 +351,8 @@ fn if_4() {
 #[test]
 fn if_else_1() {
     use translator::Translator;
-    use structure::{RSsystem, RSlabel};
+    use system::System;
+    use label::Label;
 
     let tree = LocalAssert {
 	tree: Tree::Concat(
@@ -369,9 +380,9 @@ fn if_else_1() {
     let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(RSsystem::new());
-    let node_2 = graph.add_node(RSsystem::new());
-    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+    let node_1 = graph.add_node(System::new());
+    let node_2 = graph.add_node(System::new());
+    let edge = graph.add_edge(node_1, node_2, Label::new());
 
     assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Boolean(true))));
@@ -380,7 +391,8 @@ fn if_else_1() {
 #[test]
 fn if_else_2() {
     use translator::Translator;
-    use structure::{RSsystem, RSlabel};
+    use system::System;
+    use label::Label;
 
     let tree = LocalAssert {
 	tree: Tree::Concat(
@@ -408,9 +420,9 @@ fn if_else_2() {
     let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(RSsystem::new());
-    let node_2 = graph.add_node(RSsystem::new());
-    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+    let node_1 = graph.add_node(System::new());
+    let node_2 = graph.add_node(System::new());
+    let edge = graph.add_edge(node_1, node_2, Label::new());
 
     assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Boolean(false))));
@@ -481,7 +493,8 @@ fn assignment_1() {
 #[test]
 fn assignment_2() {
     use translator::Translator;
-    use structure::{RSsystem, RSlabel};
+    use system::System;
+    use label::Label;
 
     let tree = LocalAssert {
 	tree: Tree::Concat(
@@ -507,9 +520,9 @@ fn assignment_2() {
     let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(RSsystem::new());
-    let node_2 = graph.add_node(RSsystem::new());
-    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+    let node_1 = graph.add_node(System::new());
+    let node_2 = graph.add_node(System::new());
+    let edge = graph.add_edge(node_1, node_2, Label::new());
 
     assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Boolean(true))));
@@ -518,7 +531,8 @@ fn assignment_2() {
 #[test]
 fn assignment_3() {
     use translator::Translator;
-    use structure::{RSsystem, RSlabel};
+    use system::System;
+    use label::Label;
 
     let tree = LocalAssert {
 	tree: Tree::Concat(
@@ -546,9 +560,9 @@ fn assignment_3() {
     let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(RSsystem::new());
-    let node_2 = graph.add_node(RSsystem::new());
-    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+    let node_1 = graph.add_node(System::new());
+    let node_2 = graph.add_node(System::new());
+    let edge = graph.add_edge(node_1, node_2, Label::new());
 
     assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Boolean(false))));
@@ -582,7 +596,8 @@ fn assignment_4() {
 #[test]
 fn assignment_5() {
     use translator::Translator;
-    use structure::{RSsystem, RSlabel};
+    use system::System;
+    use label::Label;
 
     let tree = LocalAssert {
 	tree: Tree::Concat(
@@ -611,9 +626,9 @@ fn assignment_5() {
     let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(RSsystem::new());
-    let node_2 = graph.add_node(RSsystem::new());
-    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+    let node_1 = graph.add_node(System::new());
+    let node_2 = graph.add_node(System::new());
+    let edge = graph.add_edge(node_1, node_2, Label::new());
 
     assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Integer(10))));
@@ -622,7 +637,8 @@ fn assignment_5() {
 #[test]
 fn assignment_6() {
     use translator::Translator;
-    use structure::{RSsystem, RSlabel};
+    use system::System;
+    use label::Label;
 
     let tree = LocalAssert {
 	tree: Tree::Concat(
@@ -658,9 +674,9 @@ fn assignment_6() {
     let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(RSsystem::new());
-    let node_2 = graph.add_node(RSsystem::new());
-    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+    let node_1 = graph.add_node(System::new());
+    let node_2 = graph.add_node(System::new());
+    let edge = graph.add_edge(node_1, node_2, Label::new());
 
     assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Integer(10))));
@@ -669,7 +685,8 @@ fn assignment_6() {
 #[test]
 fn assignment_7() {
     use translator::Translator;
-    use structure::{RSsystem, RSlabel};
+    use system::System;
+    use label::Label;
 
     let tree = LocalAssert {
 	tree: Tree::Concat(
@@ -703,9 +720,9 @@ fn assignment_7() {
     let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(RSsystem::new());
-    let node_2 = graph.add_node(RSsystem::new());
-    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+    let node_1 = graph.add_node(System::new());
+    let node_2 = graph.add_node(System::new());
+    let edge = graph.add_edge(node_1, node_2, Label::new());
 
     assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Boolean(true))));
@@ -714,7 +731,8 @@ fn assignment_7() {
 #[test]
 fn assignment_8() {
     use translator::Translator;
-    use structure::{RSsystem, RSlabel};
+    use system::System;
+    use label::Label;
 
     let tree = LocalAssert {
 	tree: Tree::Concat(
@@ -752,9 +770,9 @@ fn assignment_8() {
     let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(RSsystem::new());
-    let node_2 = graph.add_node(RSsystem::new());
-    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+    let node_1 = graph.add_node(System::new());
+    let node_2 = graph.add_node(System::new());
+    let edge = graph.add_edge(node_1, node_2, Label::new());
 
     assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Integer(10))));
@@ -763,7 +781,8 @@ fn assignment_8() {
 #[test]
 fn assignment_9() {
     use translator::Translator;
-    use structure::{RSsystem, RSlabel};
+    use system::System;
+    use label::Label;
 
     let tree = LocalAssert {
 	tree: Tree::Concat(
@@ -799,9 +818,9 @@ fn assignment_9() {
     let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(RSsystem::new());
-    let node_2 = graph.add_node(RSsystem::new());
-    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+    let node_1 = graph.add_node(System::new());
+    let node_2 = graph.add_node(System::new());
+    let edge = graph.add_edge(node_1, node_2, Label::new());
 
     assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Integer(10))));
@@ -810,7 +829,8 @@ fn assignment_9() {
 #[test]
 fn assignment_10() {
     use translator::Translator;
-    use structure::{RSsystem, RSlabel};
+    use system::System;
+    use label::Label;
 
     let tree = LocalAssert {
 	tree: Tree::Concat(
@@ -848,9 +868,9 @@ fn assignment_10() {
     let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(RSsystem::new());
-    let node_2 = graph.add_node(RSsystem::new());
-    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+    let node_1 = graph.add_node(System::new());
+    let node_2 = graph.add_node(System::new());
+    let edge = graph.add_edge(node_1, node_2, Label::new());
 
     assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Integer(10))));
@@ -860,7 +880,9 @@ fn assignment_10() {
 #[test]
 fn for_1() {
     use translator::Translator;
-    use structure::{RSsystem, RSlabel, RSset};
+    use set::Set;
+    use system::System;
+    use label::Label;
 
     let tree = LocalAssert {
 	tree: Tree::Concat(
@@ -868,12 +890,12 @@ fn for_1() {
 		Box::new(Tree::Assignment(
 		    Variable::Id("a".into()),
 		    None,
-		    Box::new(Expression::Set(RSset::new()))
+		    Box::new(Expression::Set(Set::new()))
 		)),
 		Box::new(Tree::Assignment(
 		    Variable::Id("b".into()),
 		    None,
-		    Box::new(Expression::Set(RSset::new()))
+		    Box::new(Expression::Set(Set::new()))
 		)),
 	    )),
 	    Box::new(Tree::For(
@@ -897,9 +919,9 @@ fn for_1() {
     let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(RSsystem::new());
-    let node_2 = graph.add_node(RSsystem::new());
-    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+    let node_1 = graph.add_node(System::new());
+    let node_2 = graph.add_node(System::new());
+    let edge = graph.add_edge(node_1, node_2, Label::new());
 
     assert!(tree.execute(&graph, &edge, &mut tr).is_err());
 }
@@ -908,7 +930,9 @@ fn for_1() {
 #[test]
 fn for_2() {
     use translator::Translator;
-    use structure::{RSsystem, RSlabel, RSset};
+    use set::Set;
+    use system::System;
+    use label::Label;
 
     let tree = LocalAssert {
 	tree: Tree::Concat(
@@ -916,12 +940,12 @@ fn for_2() {
 		Box::new(Tree::Assignment(
 		    Variable::Id("a".into()),
 		    None,
-		    Box::new(Expression::Set(RSset::from([1, 2])))
+		    Box::new(Expression::Set(Set::from([1, 2])))
 		)),
 		Box::new(Tree::Assignment(
 		    Variable::Id("b".into()),
 		    None,
-		    Box::new(Expression::Set(RSset::new()))
+		    Box::new(Expression::Set(Set::new()))
 		)),
 	    )),
 	    Box::new(Tree::For(
@@ -949,9 +973,9 @@ fn for_2() {
     tr.encode("two");
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(RSsystem::new());
-    let node_2 = graph.add_node(RSsystem::new());
-    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+    let node_1 = graph.add_node(System::new());
+    let node_2 = graph.add_node(System::new());
+    let edge = graph.add_edge(node_1, node_2, Label::new());
 
     assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Set(_))));
@@ -960,7 +984,9 @@ fn for_2() {
 #[test]
 fn for_3() {
     use translator::Translator;
-    use structure::{RSsystem, RSlabel, RSset};
+    use set::Set;
+    use system::System;
+    use label::Label;
 
     let tree = LocalAssert {
 	tree: Tree::Concat(
@@ -969,20 +995,20 @@ fn for_3() {
 		    Variable::Id("a".into()),
 		    None,
 		    Box::new(Expression::Label(
-			Box::new(RSlabel::from(RSset::from([1, 2]),
-					       RSset::new(),
-					       RSset::from([1, 2]),
-					       RSset::new(),
-					       RSset::new(),
-					       RSset::new(),
-					       RSset::new(),
-					       RSset::new()))
+			Box::new(Label::from(Set::from([1, 2]),
+					       Set::new(),
+					       Set::from([1, 2]),
+					       Set::new(),
+					       Set::new(),
+					       Set::new(),
+					       Set::new(),
+					       Set::new()))
 		    ))
 		)),
 		Box::new(Tree::Assignment(
 		    Variable::Id("b".into()),
 		    None,
-		    Box::new(Expression::Set(RSset::new()))
+		    Box::new(Expression::Set(Set::new()))
 		)),
 	    )),
 	    Box::new(Tree::For(
@@ -1015,9 +1041,9 @@ fn for_3() {
     tr.encode("two");
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(RSsystem::new());
-    let node_2 = graph.add_node(RSsystem::new());
-    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+    let node_1 = graph.add_node(System::new());
+    let node_2 = graph.add_node(System::new());
+    let edge = graph.add_edge(node_1, node_2, Label::new());
 
     assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Set(_))));
@@ -1026,7 +1052,9 @@ fn for_3() {
 #[test]
 fn for_4() {
     use translator::Translator;
-    use structure::{RSsystem, RSlabel, RSset};
+    use set::Set;
+    use system::System;
+    use label::Label;
 
     let tree = LocalAssert {
 	tree: Tree::Concat(
@@ -1035,20 +1063,20 @@ fn for_4() {
 		    Variable::Id("a".into()),
 		    None,
 		    Box::new(Expression::Label(
-			Box::new(RSlabel::from(RSset::from([1, 2]),
-					       RSset::from([3]),
-					       RSset::from([1, 2, 3]),
-					       RSset::new(),
-					       RSset::new(),
-					       RSset::new(),
-					       RSset::new(),
-					       RSset::new()))
+			Box::new(Label::from(Set::from([1, 2]),
+					       Set::from([3]),
+					       Set::from([1, 2, 3]),
+					       Set::new(),
+					       Set::new(),
+					       Set::new(),
+					       Set::new(),
+					       Set::new()))
 		    ))
 		)),
 		Box::new(Tree::Assignment(
 		    Variable::Id("b".into()),
 		    None,
-		    Box::new(Expression::Set(RSset::new()))
+		    Box::new(Expression::Set(Set::new()))
 		)),
 	    )),
 	    Box::new(Tree::For(
@@ -1082,9 +1110,9 @@ fn for_4() {
     tr.encode("three");
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(RSsystem::new());
-    let node_2 = graph.add_node(RSsystem::new());
-    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+    let node_1 = graph.add_node(System::new());
+    let node_2 = graph.add_node(System::new());
+    let edge = graph.add_edge(node_1, node_2, Label::new());
 
     assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Element(_))));
@@ -1093,7 +1121,9 @@ fn for_4() {
 #[test]
 fn for_5() {
     use translator::Translator;
-    use structure::{RSsystem, RSlabel, RSset};
+    use set::Set;
+    use system::System;
+    use label::Label;
 
     let tree = LocalAssert {
 	tree: Tree::Concat(
@@ -1102,14 +1132,14 @@ fn for_5() {
 		    Variable::Id("a".into()),
 		    None,
 		    Box::new(Expression::Label(
-			Box::new(RSlabel::from(RSset::from([1, 2]),
-					       RSset::from([3]),
-					       RSset::from([1, 2, 3]),
-					       RSset::new(),
-					       RSset::new(),
-					       RSset::new(),
-					       RSset::new(),
-					       RSset::new()))
+			Box::new(Label::from(Set::from([1, 2]),
+					       Set::from([3]),
+					       Set::from([1, 2, 3]),
+					       Set::new(),
+					       Set::new(),
+					       Set::new(),
+					       Set::new(),
+					       Set::new()))
 		    ))
 		)),
 		Box::new(Tree::Assignment(
@@ -1162,9 +1192,9 @@ fn for_5() {
     tr.encode("three");
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(RSsystem::new());
-    let node_2 = graph.add_node(RSsystem::new());
-    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+    let node_1 = graph.add_node(System::new());
+    let node_2 = graph.add_node(System::new());
+    let edge = graph.add_edge(node_1, node_2, Label::new());
 
     assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Integer(3))));
@@ -1173,7 +1203,9 @@ fn for_5() {
 #[test]
 fn for_6() {
     use translator::Translator;
-    use structure::{RSsystem, RSlabel, RSset};
+    use set::Set;
+    use system::System;
+    use label::Label;
 
     let tree = LocalAssert {
 	tree: Tree::Concat(
@@ -1182,21 +1214,21 @@ fn for_6() {
 		    Variable::Id("a".into()),
 		    None,
 		    Box::new(Expression::Label(
-			Box::new(RSlabel::from(RSset::from([1, 2]),
-					       RSset::from([3]),
-					       RSset::from([1, 2, 3]),
-					       RSset::new(),
-					       RSset::new(),
-					       RSset::new(),
-					       RSset::new(),
-					       RSset::new()))
+			Box::new(Label::from(Set::from([1, 2]),
+					       Set::from([3]),
+					       Set::from([1, 2, 3]),
+					       Set::new(),
+					       Set::new(),
+					       Set::new(),
+					       Set::new(),
+					       Set::new()))
 		    ))
 		)),
 		Box::new(Tree::Concat(
 		    Box::new(Tree::Assignment(
 			Variable::Id("b".into()),
 			None,
-			Box::new(Expression::Set(RSset::from([2])))
+			Box::new(Expression::Set(Set::from([2])))
 		    )),
 		    Box::new(Tree::Assignment(
 			Variable::Id("c".into()),
@@ -1252,9 +1284,9 @@ fn for_6() {
     tr.encode("three");
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(RSsystem::new());
-    let node_2 = graph.add_node(RSsystem::new());
-    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+    let node_1 = graph.add_node(System::new());
+    let node_2 = graph.add_node(System::new());
+    let edge = graph.add_edge(node_1, node_2, Label::new());
 
 
     assert!(matches!(tree.execute(&graph, &edge, &mut tr),
@@ -1264,7 +1296,8 @@ fn for_6() {
 #[test]
 fn for_7() {
     use translator::Translator;
-    use structure::{RSsystem, RSlabel};
+    use system::System;
+    use label::Label;
 
     let tree = LocalAssert {
 	tree: Tree::Concat(
@@ -1304,9 +1337,9 @@ fn for_7() {
     let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(RSsystem::new());
-    let node_2 = graph.add_node(RSsystem::new());
-    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+    let node_1 = graph.add_node(System::new());
+    let node_2 = graph.add_node(System::new());
+    let edge = graph.add_edge(node_1, node_2, Label::new());
 
 
     assert!(matches!(tree.execute(&graph, &edge, &mut tr),
@@ -1316,7 +1349,8 @@ fn for_7() {
 #[test]
 fn for_8() {
     use translator::Translator;
-    use structure::{RSsystem, RSlabel};
+    use system::System;
+    use label::Label;
 
     let tree = LocalAssert {
 	tree: Tree::Concat(
@@ -1372,9 +1406,9 @@ fn for_8() {
     let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(RSsystem::new());
-    let node_2 = graph.add_node(RSsystem::new());
-    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+    let node_1 = graph.add_node(System::new());
+    let node_2 = graph.add_node(System::new());
+    let edge = graph.add_edge(node_1, node_2, Label::new());
 
     assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Integer(1))));
@@ -1383,11 +1417,11 @@ fn for_8() {
     let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(RSsystem::new());
-    let node_2 = graph.add_node(RSsystem::new());
-    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
-    let node_3 = graph.add_node(RSsystem::new());
-    graph.add_edge(node_1, node_3, RSlabel::new());
+    let node_1 = graph.add_node(System::new());
+    let node_2 = graph.add_node(System::new());
+    let edge = graph.add_edge(node_1, node_2, Label::new());
+    let node_3 = graph.add_node(System::new());
+    graph.add_edge(node_1, node_3, Label::new());
 
     assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Integer(2))));
@@ -1396,7 +1430,11 @@ fn for_8() {
 #[test]
 fn nodes() {
     use translator::Translator;
-    use structure::{RSsystem, RSlabel, RSset, RSenvironment, RSprocess};
+    use set::Set;
+    use process::Process;
+    use environment::Environment;
+    use system::System;
+    use label::Label;
     use std::rc::Rc;
 
     let tree = LocalAssert {
@@ -1427,7 +1465,7 @@ fn nodes() {
 		    Box::new(Expression::Var(
 			Variable::Id("a".into())
 		    )),
-		    Box::new(Expression::Set(RSset::from([1, 2])))
+		    Box::new(Expression::Set(Set::from([1, 2])))
 		))
 	    )),
 	)
@@ -1438,16 +1476,16 @@ fn nodes() {
     let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(RSsystem::new());
+    let node_1 = graph.add_node(System::new());
     let node_2 = graph.add_node(
-	RSsystem::from(
-	    Rc::new(RSenvironment::new()),
-	    RSset::from([2]),
-	    RSprocess::Nill,
+	System::from(
+	    Rc::new(Environment::new()),
+	    Set::from([2]),
+	    Process::Nill,
 	    Rc::new(vec![])
 	)
     );
-    let edge = graph.add_edge(node_1, node_2, RSlabel::new());
+    let edge = graph.add_edge(node_1, node_2, Label::new());
 
     println!("{:?}", tree.execute(&graph, &edge, &mut tr));
 

@@ -1,10 +1,11 @@
 pub mod graph_map_nodes_ty_from {
-    use super::super::structure::{RSsystem, RSset};
+    use super::super::set::Set;
+    use super::super::system::System;
     use super::super::translator;
     use std::rc::Rc;
 
     type GraphMapNodesFnTy =
-	dyn Fn(petgraph::prelude::NodeIndex, &RSsystem) -> String;
+	dyn Fn(petgraph::prelude::NodeIndex, &System) -> String;
 
     pub fn format_string(
 	s: String
@@ -22,23 +23,23 @@ pub mod graph_map_nodes_ty_from {
 	translator: Rc<translator::Translator>
     ) -> Box<GraphMapNodesFnTy> {
 	Box::new(
-	    move |_, node: &RSsystem|
+	    move |_, node: &System|
 	    format!("{}",
-		    translator::RSsetDisplay::from(&translator,
-						   &node.available_entities))
+		    translator::Formatter::from(&translator,
+						&node.available_entities))
 	)
     }
 
     pub fn format_mask_entities(
 	translator: Rc<translator::Translator>,
-	mask: RSset
+	mask: Set
     ) -> Box<GraphMapNodesFnTy> {
 	Box::new(
-	    move |_, node: &RSsystem| {
+	    move |_, node: &System| {
 		let masked_entities =
 		    node.available_entities.intersection(&mask);
 		format!("{}",
-			translator::RSsetDisplay::from(&translator,
+			translator::Formatter::from(&translator,
 						       &masked_entities))
 	    }
 	)
@@ -46,15 +47,15 @@ pub mod graph_map_nodes_ty_from {
 
     pub fn format_exclude_entities(
 	translator: Rc<translator::Translator>,
-	mask: RSset
+	mask: Set
     ) -> Box<GraphMapNodesFnTy> {
 	Box::new(
-	    move |_, node: &RSsystem| {
+	    move |_, node: &System| {
 		let masked_entities =
 		    node.available_entities.subtraction(&mask);
 		format!("{}",
-			translator::RSsetDisplay::from(&translator,
-						       &masked_entities))
+			translator::Formatter::from(&translator,
+						    &masked_entities))
 	    }
 	)
     }
@@ -63,22 +64,23 @@ pub mod graph_map_nodes_ty_from {
 	translator: Rc<translator::Translator>
     ) -> Box<GraphMapNodesFnTy> {
 	Box::new(
-	    move |_, node: &RSsystem|
+	    move |_, node: &System|
 	    format!("{}",
-		    translator::RSprocessDisplay::from(&translator,
-						       &node.context_process))
+		    translator::Formatter::from(&translator,
+						&node.context_process))
 	)
     }
 }
 
 
 pub mod graph_map_edges_ty_from {
-    use super::super::structure::{RSlabel, RSset};
+    use super::super::set::Set;
+    use super::super::label::Label;
     use super::super::translator;
     use std::rc::Rc;
 
     type GraphMapEdgesFnTy<'a> =
-	dyn Fn(petgraph::prelude::EdgeIndex, &'a RSlabel) -> String + 'a;
+	dyn Fn(petgraph::prelude::EdgeIndex, &'a Label) -> String + 'a;
 
     pub fn format_string<'a>(
 	_translator: Rc<translator::Translator>,
@@ -104,23 +106,23 @@ pub mod graph_map_edges_ty_from {
 	{
 	    pub fn $name<'a>(
 		translator: Rc<translator::Translator>,
-		$mask_name: Option<RSset>,
-		$common_name: Option<RSset>
+		$mask_name: Option<Set>,
+		$common_name: Option<Set>
 	    ) -> Box<GraphMapEdgesFnTy<'a>> {
 		if let Some($mask_name) = $mask_name {
 		    if let Some($common_name) = $common_name {
 			Box::new(
-			    move |_, $edge_name: &RSlabel|
+			    move |_, $edge_name: &Label|
 			    format!("{}",
-				    translator::RSsetDisplay::from(
+				    translator::Formatter::from(
 					&translator, $mask_common
 				    ))
 			)
 		    } else {
 			Box::new(
-			    move |_, $edge_name: &RSlabel|
+			    move |_, $edge_name: &Label|
 			    format!("{}",
-				    translator::RSsetDisplay::from(
+				    translator::Formatter::from(
 					&translator, $mask
 				    ))
 			)
@@ -128,17 +130,17 @@ pub mod graph_map_edges_ty_from {
 		} else {
 		    if let Some($common_name) = $common_name {
 			Box::new(
-			    move |_, $edge_name: &RSlabel|
+			    move |_, $edge_name: &Label|
 			    format!("{}",
-				    translator::RSsetDisplay::from(
+				    translator::Formatter::from(
 					&translator, $common
 				    ))
 			)
 		    } else {
 			Box::new(
-			    move |_, $edge_name: &RSlabel|
+			    move |_, $edge_name: &Label|
 			    format!("{}",
-				    translator::RSsetDisplay::from(
+				    translator::Formatter::from(
 					&translator, $default
 				    ))
 			)
@@ -217,13 +219,14 @@ pub mod graph_map_edges_ty_from {
 
 
 pub mod node_formatter {
-    use super::super::translator::IdType;
-    use super::super::graph::{SystemGraph, OperationType};
     use std::rc::Rc;
-    use super::super::structure::{RSset, RSprocess};
-
     use petgraph::{Graph, Directed};
     use petgraph::visit::IntoNodeReferences;
+
+    use super::super::translator::IdType;
+    use super::super::graph::{SystemGraph, OperationType};
+    use super::super::set::Set;
+    use super::super::process::Process;
 
 
     type RSdotGraph = Graph<String, String, Directed, u32>;
@@ -241,7 +244,7 @@ pub mod node_formatter {
 	Box::new(
 	    move |_, n| {
 		let rssystem = original_graph.node_weight(n.0).unwrap();
-		if rssystem.context_process == RSprocess::Nill {
+		if rssystem.context_process == Process::Nill {
 		    Some(", fillcolor=".to_string() + &color)
 		} else {
 		    None
@@ -260,11 +263,11 @@ pub mod node_formatter {
 	    move |_, n| {
 		let rssystem = original_graph.node_weight(n.0).unwrap();
 		match (Some(s) == star, &rssystem.context_process) {
-		    (true, RSprocess::RecursiveIdentifier { identifier: _ })
+		    (true, Process::RecursiveIdentifier { identifier: _ })
 			=> {
 			    Some(", fillcolor=".to_string() + &color)
 			},
-		    (false, RSprocess::RecursiveIdentifier { identifier: id })
+		    (false, Process::RecursiveIdentifier { identifier: id })
 			if id == &s => {
 			    Some(", fillcolor=".to_string() + &color)
 			},
@@ -279,13 +282,13 @@ pub mod node_formatter {
 	color: String,
 	_star: Option<IdType>,
 	ot: OperationType,
-	set: RSset
+	set: Set
     ) -> Box<RSformatNodeTy> {
 	Box::new(
 	    move |_, n| {
 		let rssystem = original_graph.node_weight(n.0).unwrap();
 		match &rssystem.context_process {
-		    RSprocess::EntitySet { entities, next_process: _ }
+		    Process::EntitySet { entities, next_process: _ }
 		    if ot.evaluate(entities, &set) => {
 			Some(", fillcolor=".to_string() + &color)
 		    },
@@ -304,7 +307,7 @@ pub mod node_formatter {
 	Box::new(
 	    move |_, n| {
 		let rssystem = original_graph.node_weight(n.0).unwrap();
-		if let RSprocess::NondeterministicChoice { children: _ } =
+		if let Process::NondeterministicChoice { children: _ } =
 		    rssystem.context_process
 		{
 		    Some(", fillcolor=".to_string() + &color)
@@ -323,7 +326,7 @@ pub mod node_formatter {
 	Box::new(
 	    move |_, n| {
 		let rssystem = original_graph.node_weight(n.0).unwrap();
-		if let RSprocess::Summation { children: _ } =
+		if let Process::Summation { children: _ } =
 		    rssystem.context_process
 		{
 		    Some(", fillcolor=".to_string() + &color)
@@ -343,7 +346,7 @@ pub mod node_formatter {
 	Box::new(
 	    move |_, n| {
 		let rssystem = original_graph.node_weight(n.0).unwrap();
-		if let RSprocess::WaitEntity { repeat: _,
+		if let Process::WaitEntity { repeat: _,
 					       repeated_process: _,
 					       next_process: _ } =
 		    &rssystem.context_process
@@ -361,7 +364,7 @@ pub mod node_formatter {
 	color: String,
 	_star: Option<IdType>,
 	ot: OperationType,
-	set: RSset
+	set: Set
     ) -> Box<RSformatNodeTy> {
 	Box::new(
 	    move |_, n| {
@@ -377,12 +380,13 @@ pub mod node_formatter {
 }
 
 pub mod edge_formatter {
-    use super::super::graph::{SystemGraph, OperationType};
     use std::rc::Rc;
-    use super::super::structure::RSset;
-
     use petgraph::{Graph, Directed};
     use petgraph::visit::{IntoEdgeReferences, EdgeRef};
+
+    use super::super::graph::{SystemGraph, OperationType};
+    use super::super::set::Set;
+
 
     type RSdotGraph = Graph<String, String, Directed, u32>;
     type RSformatEdgeTy =
@@ -396,7 +400,7 @@ pub mod edge_formatter {
 	original_graph: Rc<SystemGraph>,
 	color: String,
 	ot: OperationType,
-	set: RSset
+	set: Set
     ) -> Box<RSformatEdgeTy> {
 	Box::new(
 	    move |_, e| {
@@ -414,7 +418,7 @@ pub mod edge_formatter {
 	original_graph: Rc<SystemGraph>,
 	color: String,
 	ot: OperationType,
-	set: RSset
+	set: Set
     ) -> Box<RSformatEdgeTy> {
 	Box::new(
 	    move |_, e| {
@@ -432,7 +436,7 @@ pub mod edge_formatter {
 	original_graph: Rc<SystemGraph>,
 	color: String,
 	ot: OperationType,
-	set: RSset
+	set: Set
     ) -> Box<RSformatEdgeTy> {
 	Box::new(
 	    move |_, e| {
@@ -450,7 +454,7 @@ pub mod edge_formatter {
 	original_graph: Rc<SystemGraph>,
 	color: String,
 	ot: OperationType,
-	set: RSset
+	set: Set
     ) -> Box<RSformatEdgeTy> {
 	Box::new(
 	    move |_, e| {
@@ -468,7 +472,7 @@ pub mod edge_formatter {
 	original_graph: Rc<SystemGraph>,
 	color: String,
 	ot: OperationType,
-	set: RSset
+	set: Set
     ) -> Box<RSformatEdgeTy> {
 	Box::new(
 	    move |_, e| {
@@ -486,7 +490,7 @@ pub mod edge_formatter {
 	original_graph: Rc<SystemGraph>,
 	color: String,
 	ot: OperationType,
-	set: RSset
+	set: Set
     ) -> Box<RSformatEdgeTy> {
 	Box::new(
 	    move |_, e| {
@@ -504,7 +508,7 @@ pub mod edge_formatter {
 	original_graph: Rc<SystemGraph>,
 	color: String,
 	ot: OperationType,
-	set: RSset
+	set: Set
     ) -> Box<RSformatEdgeTy> {
 	Box::new(
 	    move |_, e| {
@@ -522,7 +526,7 @@ pub mod edge_formatter {
 	original_graph: Rc<SystemGraph>,
 	color: String,
 	ot: OperationType,
-	set: RSset
+	set: Set
     ) -> Box<RSformatEdgeTy> {
 	Box::new(
 	    move |_, e| {

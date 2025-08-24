@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use super::super::{structure, translator, graph};
+use super::super::{translator, graph, set, process, system, label};
 
 /// If changing IntegerType in assert.rs, also change from Num to another
 /// similar parser with different return type in grammar.lalrpop in
@@ -51,8 +51,8 @@ pub enum Expression<S> {
     True,
     False,
     Integer(IntegerType),
-    Label(Box<structure::RSlabel>),
-    Set(structure::RSset),
+    Label(Box<label::Label>),
+    Set(set::Set),
     Element(translator::IdType),
     String(String),
     Var(Variable<S>),
@@ -173,14 +173,14 @@ pub enum AssertReturnValue {
     Boolean(bool),
     Integer(IntegerType),
     String(String),
-    Label(structure::RSlabel),
-    Set(structure::RSset),
+    Label(label::Label),
+    Set(set::Set),
     Element(translator::IdType),
     Node(petgraph::graph::NodeIndex),
     Edge(petgraph::graph::EdgeIndex),
     Neighbours(petgraph::graph::NodeIndex),
-    System(structure::RSsystem),
-    Context(structure::RSprocess),
+    System(system::System),
+    Context(process::Process),
 }
 
 // -----------------------------------------------------------------------------
@@ -190,8 +190,8 @@ pub enum AssertReturnValue {
 impl QualifierRestricted {
     pub(super) fn referenced_mut<'a>(
 	&self,
-	label: &'a mut structure::RSlabel,
-    ) -> &'a mut structure::RSset {
+	label: &'a mut label::Label,
+    ) -> &'a mut set::Set {
 	match self {
 	    Self::Entities => {&mut label.available_entities},
 	    Self::Context => {&mut label.context},
@@ -205,8 +205,8 @@ impl QualifierRestricted {
 
     pub(super) fn referenced<'a>(
 	&self,
-	label: &'a structure::RSlabel,
-    ) -> &'a structure::RSset {
+	label: &'a label::Label,
+    ) -> &'a set::Set {
 	match self {
 	    Self::Entities => {&label.available_entities},
 	    Self::Context => {&label.context},
@@ -220,7 +220,7 @@ impl QualifierRestricted {
 
     pub(super) fn get(
 	&self,
-	label: &structure::RSlabel,
+	label: &label::Label,
     ) -> AssertReturnValue {
 	AssertReturnValue::Set(self.referenced(label).clone())
     }
@@ -229,7 +229,7 @@ impl QualifierRestricted {
 impl QualifierLabel {
     pub(super) fn get(
 	&self,
-	l: &structure::RSlabel,
+	l: &label::Label,
     ) -> AssertReturnValue {
 	match self {
 	    QualifierLabel::AvailableEntities => {
@@ -249,7 +249,7 @@ impl QualifierLabel {
 impl QualifierSystem {
     pub(super) fn get(
 	&self,
-	l: &structure::RSsystem,
+	l: &system::System,
     ) -> AssertReturnValue {
 	match self {
 	    Self::Context => {

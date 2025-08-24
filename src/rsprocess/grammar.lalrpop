@@ -1,12 +1,7 @@
 use std::rc::Rc;
 use std::str::FromStr;
 use lalrpop_util::ParseError;
-use crate::rsprocess::structure::{ RSset,
-				   RSprocess,
-				   RSenvironment,
-				   RSsystem,
-				   RSlabel,
-				   RSreaction };
+use crate::rsprocess::{set, reaction, process, environment, system, label};
 use crate::rsprocess::structure::rsassert;
 use crate::rsprocess::translator::{ Translator, IdType };
 use crate::rsprocess::presets::Instructions;
@@ -183,14 +178,14 @@ Separated_Or<T, C>: Vec<T> = {
 // -----------------------------------------------------------------------------
 //                                 SetParser
 // -----------------------------------------------------------------------------
-pub Set: RSset = {
+pub Set: set::Set = {
     <s: Set_of_entities> => s
 };
 
-Set_of_entities: RSset = {
-    "{" "}" => RSset::from(vec![]),
+Set_of_entities: set::Set = {
+    "{" "}" => set::Set::from(vec![]),
     "{" <t: Separated_Or<Literal, ",">> "}" =>
-	RSset::from(t.into_iter().map(|t| translator.encode(t))
+	set::Set::from(t.into_iter().map(|t| translator.encode(t))
 						    .collect::<Vec<_>>())
 };
 
@@ -199,57 +194,58 @@ Set_of_entities: RSset = {
 //                               ReactionParser
 // -----------------------------------------------------------------------------
 
-pub Reactions: Vec<RSreaction> = {
+pub Reactions: Vec<reaction::Reaction> = {
     "(" ")" => vec![],
     "(" <s: Separated_Or<Reaction, ";">> ")" => s
 }
 
-Reaction: RSreaction = {
+Reaction: reaction::Reaction = {
     #[precedence(level="1")]
-    "[" <r: Set> "," <i: Set> "," <p: Set> "]" => RSreaction::from(r, i, p),
+    "[" <r: Set> "," <i: Set> "," <p: Set> "]" =>
+	reaction::Reaction::from(r, i, p),
 
     #[precedence(level="0")]
     "[" "r:" <r: Set> "," "i:" <i: Set> "," "p:" <p: Set> "]" =>
-	RSreaction::from(r, i, p),
+	reaction::Reaction::from(r, i, p),
 }
 
 
 // -----------------------------------------------------------------------------
 //                               ContextParser
 // -----------------------------------------------------------------------------
-pub Context: RSprocess = {
-    "[" "]" => RSprocess::NondeterministicChoice{ children: vec![] },
+pub Context: process::Process = {
+    "[" "]" => process::Process::NondeterministicChoice{ children: vec![] },
     "[" <t: Separated_Or<Boxed_CTX_process, ",">> "]" =>
-	RSprocess::NondeterministicChoice{ children: t }
+	process::Process::NondeterministicChoice{ children: t }
 };
 
-Boxed_CTX_process: Rc<RSprocess> = {
+Boxed_CTX_process: Rc<process::Process> = {
     <t: CTX_process> => Rc::new(t)
 }
 
-CTX_process: RSprocess = {
-    "nill" => RSprocess::Nill,
+CTX_process: process::Process = {
+    "nill" => process::Process::Nill,
 
     <c: Set_of_entities> "." <k: CTX_process> =>
-	RSprocess::EntitySet{ entities: c, next_process: Rc::new(k) },
+	process::Process::EntitySet{ entities: c, next_process: Rc::new(k) },
 
     "(" <k: CTX_process>  ")" => k,
 
     "(" <k: Separated<CTX_process, "+">> ")" =>
-	RSprocess::Summation{
+	process::Process::Summation{
 		children: k.into_iter().map(Rc::new).collect::<Vec<_>>()
 	},
 
     "?" <r: Reaction> "?" "." <k: CTX_process> =>
-	RSprocess::Guarded{ reaction: r, next_process: Rc::new(k) },
+	process::Process::Guarded{ reaction: r, next_process: Rc::new(k) },
 
     "<" <n: Num> "," <k1: CTX_process> ">" "." <k: CTX_process> =>
-	RSprocess::WaitEntity{ repeat: n,
+	process::Process::WaitEntity{ repeat: n,
 			       repeated_process: Rc::new(k1),
 			       next_process: Rc::new(k) },
 
     <identifier: LiteralProcess> =>
-	RSprocess::RecursiveIdentifier{
+	process::Process::RecursiveIdentifier{
 		identifier: translator.encode(identifier)
 	}
 };
@@ -258,12 +254,14 @@ CTX_process: RSprocess = {
 // -----------------------------------------------------------------------------
 //                             EnvironmentParser
 // -----------------------------------------------------------------------------
-pub Environment: Box<RSenvironment> = {
-    "[" "]" => Box::new(RSenvironment::new()),
-    "[" <t: Separated_Or<Env_term, ",">> "]" => Box::new(RSenvironment::from(t))
+pub Environment: Box<environment::Environment> = {
+    "[" "]" =>
+	Box::new(environment::Environment::new()),
+    "[" <t: Separated_Or<Env_term, ",">> "]" =>
+	Box::new(environment::Environment::from(t))
 };
 
-Env_term: (IdType, RSprocess) = {
+Env_term: (IdType, process::Process) = {
     <identifier: LiteralProcess> "=" <k: CTX_process> =>
 	(translator.encode(identifier), k)
 };
@@ -450,7 +448,7 @@ AssertBinaryPrefix: rsassert::Binary = {
 }
 
 
-AssertLabel: RSlabel = {
+AssertLabel: label::Label = {
     "["
        "Entities" ":" <e: Set_of_entities> ","
        "Context" ":" <c: Set_of_entities> ","
@@ -459,7 +457,7 @@ AssertLabel: RSlabel = {
        "Inhibitors" ":" <i: Set_of_entities> ","
        "InhibitorsPresent" ":" <i_p: Set_of_entities> ","
        "Products" ":" <p: Set_of_entities> ","
-    "]" => RSlabel::create(e, c, r, r_a, i, i_p, p)
+    "]" => label::Label::create(e, c, r, r_a, i, i_p, p)
 }
 
 // -----------------------------------------------------------------------------
@@ -488,21 +486,21 @@ AssertLabel: RSlabel = {
 // system
 // a system is an environment, a set of entities as initial state, a context and
 // a set of reaction rules.
-pub System: RSsystem = {
+pub System: system::System = {
     "Environment" ":" <delta: Environment>
     "Initial Entities" ":" <available_entities: Set>
     "Context" ":" <context_process: Context>
     "Reactions" ":" <reaction_rules: Reactions>
-	=> RSsystem::from(delta.into(),
-			  available_entities,
-			  context_process,
-			  Rc::new(reaction_rules))
+	=> system::System::from(delta.into(),
+				available_entities,
+				context_process,
+				Rc::new(reaction_rules))
 }
 
 // experiment
 // an experiment is composed by a sequence of weights and a sequence of sets of
 // entities of equal length.
-pub Experiment: (Vec<u32>, Vec<RSset>) = {
+pub Experiment: (Vec<u32>, Vec<set::Set>) = {
     "Weights" ":" <w: Separated_Or<Num, ",">>
     "Sets" ":" <s: Separated_Or<Set_of_entities, ",">>
 	=> (w.into_iter().map(|x| x as u32).collect::<Vec<_>>(), s),
@@ -860,12 +858,12 @@ Instruction: presets::Instruction = {
 pub Run: presets::Instructions = {
     #[precedence(level="0")]
     <sys: System> <instr: Separated_Or<Instruction, ",">> =>
-	Instructions { system: presets::System::RSsystem { sys },
+	Instructions { system: presets::System::System { sys },
 		       instructions: instr },
 
     #[precedence(level="1")]
     <sys: System> =>
-	Instructions { system: presets::System::RSsystem { sys },
+	Instructions { system: presets::System::System { sys },
 		       instructions: vec![] },
 
     #[precedence(level="2")]

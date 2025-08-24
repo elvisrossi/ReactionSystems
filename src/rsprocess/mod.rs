@@ -15,13 +15,13 @@ pub mod frequency;
 
 mod format_helpers;
 
-mod set;
-mod reaction;
-mod process;
-mod choices;
-mod environment;
-mod system;
-mod label;
+pub mod set;
+pub mod reaction;
+pub mod process;
+pub mod choices;
+pub mod environment;
+pub mod system;
+pub mod label;
 
 #[cfg(test)]
 mod system_test;

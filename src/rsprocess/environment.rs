@@ -7,7 +7,7 @@ use super::choices::Choices;
 use super::process::Process;
 use super::reaction::Reaction;
 use super::set::Set;
-use super::translator::IdType;
+use super::translator::{IdType, Translator, PrintableWithTranslator, Formatter};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Environment {
@@ -153,6 +153,33 @@ impl From<Vec<(IdType, Process)>> for Environment {
 	}
     }
 }
+
+impl PrintableWithTranslator for Environment {
+    fn print(&self, f: &mut std::fmt::Formatter, translator: &Translator)
+	     -> std::fmt::Result {
+	write!(f, "{{env:")?;
+	let mut it = self.iter().peekable();
+	while let Some(el) = it.next() {
+	    if it.peek().is_none() {
+		write!(
+		    f,
+		    "({} -> {})",
+		    translator.decode(*el.0).unwrap_or("Missing".into()),
+		    Formatter::from(translator, el.1)
+		)?;
+	    } else {
+		write!(
+		    f,
+		    "({} -> {}), ",
+		    translator.decode(*el.0).unwrap_or("Missing".into()),
+		    Formatter::from(translator, el.1)
+		)?;
+	    }
+	}
+	write!(f, "}}")
+    }
+}
+
 
 // -----------------------------------------------------------------------------
 //                                   Loops

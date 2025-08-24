@@ -3,9 +3,11 @@
 //! Allows to define the 'classical' mechanism to compute in a Reaction System
 //! (RS) Framework.
 
-use std::hash::Hash;
 use serde::{Deserialize, Serialize};
+use std::hash::Hash;
+
 use super::set::Set;
+use super::translator::{Translator, PrintableWithTranslator, Formatter};
 
 /// Basic structure for a reaction.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
@@ -147,5 +149,18 @@ impl Reaction {
 impl Default for Reaction {
     fn default() -> Self {
 	Reaction::new()
+    }
+}
+
+impl PrintableWithTranslator for Reaction {
+    fn print(&self, f: &mut std::fmt::Formatter, translator: &Translator)
+	     -> std::fmt::Result {
+	write!(
+	    f,
+	    "(r: {}, i: {}, p: {})",
+	    Formatter::from(translator, &self.reactants),
+	    Formatter::from(translator, &self.inhibitors),
+	    Formatter::from(translator, &self.products)
+	)
     }
 }
