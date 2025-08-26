@@ -53,7 +53,7 @@ fn traces_1() {
 				  inhibitors: Set::from([1]),
 				  products: Set::from([1]), },
 		     Reaction { reactants: Set::from([2]),
-				  inhibitors: Set::new(),
+				  inhibitors: Set::default(),
 				  products: Set::from([4]), },
 	])
     };
@@ -113,7 +113,7 @@ fn traces_empty_env() {
 				  inhibitors: Set::from([1]),
 				  products: Set::from([1]), },
 		     Reaction { reactants: Set::from([2]),
-				  inhibitors: Set::new(),
+				  inhibitors: Set::default(),
 				  products: Set::from([4]), },
 	])
     };

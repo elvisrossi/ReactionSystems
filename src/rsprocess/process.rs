@@ -4,7 +4,7 @@ use std::hash::Hash;
 use std::rc::Rc;
 
 use super::reaction::Reaction;
-use super::set::Set;
+use super::set::{Set, BasicSet};
 use super::translator::{IdType, Translator, PrintableWithTranslator, Formatter};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -61,7 +61,7 @@ impl Process {
     /// returns all elements used
     pub fn all_elements(&self) -> Set {
 	let mut queue = VecDeque::from([self]);
-	let mut elements = Set::new();
+	let mut elements = Set::default();
 
 	while let Some(el) = queue.pop_front() {
 	    match el {

@@ -5,8 +5,8 @@ use std::rc::Rc;
 
 use super::choices::Choices;
 use super::process::Process;
-use super::reaction::Reaction;
-use super::set::Set;
+use super::reaction::{Reaction, BasicReaction, ExtensionReaction};
+use super::set::{BasicSet, Set};
 use super::translator::{IdType, Translator, PrintableWithTranslator, Formatter};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -30,7 +30,7 @@ impl Environment {
     }
 
     pub fn all_elements(&self) -> Set {
-	let mut acc = Set::new();
+	let mut acc = Set::default();
 	for (_, process) in self.definitions.iter() {
 	    acc.push(&process.all_elements());
 	}
@@ -110,7 +110,7 @@ impl Environment {
 		// short-circuits with try_fold.
 		if children.is_empty() {
 		    Ok(Choices::from(vec![(
-			Rc::new(Set::new()),
+			Rc::new(Set::default()),
 			Rc::new(Process::Nill),
 		    )]))
 		} else {

@@ -4,8 +4,9 @@ use std::rc::Rc;
 
 use super::label::Label;
 use super::process::Process;
-use super::set::Set;
+use super::set::{BasicSet, Set};
 use super::system::System;
+use super::reaction::BasicReaction;
 
 #[derive(Clone, Debug)]
 pub struct TransitionsIterator<'a> {
@@ -44,11 +45,11 @@ impl<'a> Iterator for TransitionsIterator<'a> {
 	) =
             self.system.reaction_rules.iter().fold(
                 (
-                    Set::new(), // reactants
-                    Set::new(), // reactants_absent
-                    Set::new(), // inhibitors
-                    Set::new(), // inhibitors_present
-                    Set::new(), // products
+                    Set::default(), // reactants
+                    Set::default(), // reactants_absent
+                    Set::default(), // inhibitors
+                    Set::default(), // inhibitors_present
+                    Set::default(), // products
                 ),
                 |acc, reaction| {
                     if reaction.enabled(&t) {

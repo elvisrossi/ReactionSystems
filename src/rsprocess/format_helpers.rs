@@ -1,5 +1,5 @@
 pub mod graph_map_nodes_ty_from {
-    use super::super::set::Set;
+    use super::super::set::{BasicSet, Set};
     use super::super::system::System;
     use super::super::translator;
     use std::rc::Rc;
@@ -74,7 +74,7 @@ pub mod graph_map_nodes_ty_from {
 
 
 pub mod graph_map_edges_ty_from {
-    use super::super::set::Set;
+    use super::super::set::{BasicSet, Set};
     use super::super::label::Label;
     use super::super::translator;
     use std::rc::Rc;

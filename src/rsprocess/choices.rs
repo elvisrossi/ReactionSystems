@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use super::process::Process;
-use super::set::Set;
+use super::set::{BasicSet, Set};
 use super::translator::{Translator, PrintableWithTranslator, Formatter};
 
 #[derive(Clone, Debug)]
@@ -18,7 +18,7 @@ impl Choices {
 
     pub fn new_not_empty() -> Self {
 	Choices {
-	    context_moves: vec![(Rc::new(Set::new()),
+	    context_moves: vec![(Rc::new(Set::default()),
 				 Rc::new(Process::Nill))],
 	}
     }

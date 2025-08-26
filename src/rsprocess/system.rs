@@ -7,8 +7,8 @@ use super::environment::Environment;
 use super::graph::SystemGraph;
 use super::label::Label;
 use super::process::Process;
-use super::reaction::Reaction;
-use super::set::Set;
+use super::reaction::{Reaction, ExtensionReaction};
+use super::set::{BasicSet, Set};
 use super::transitions::TransitionsIterator;
 use super::translator::{IdType, Translator, PrintableWithTranslator, Formatter};
 
@@ -27,7 +27,7 @@ impl System {
     pub fn new() -> System {
 	System {
 	    delta: Rc::new(Environment::new()),
-	    available_entities: Set::new(),
+	    available_entities: Set::default(),
 	    context_process: Process::Nill,
 	    reaction_rules: Rc::new(vec![]),
 	}
@@ -405,7 +405,7 @@ impl System {
 	let reactants = self
 	    .reaction_rules
 	    .iter()
-	    .fold(Set::new(), |acc, new| acc.union(&new.reactants));
+	    .fold(Set::default(), |acc, new| acc.union(&new.reactants));
 	result.push_str(&format!(
 	    "The reactants are {}:\n{}\n",
 	    reactants.len(),
@@ -415,7 +415,7 @@ impl System {
 	let inhibitors = self
 	    .reaction_rules
 	    .iter()
-	    .fold(Set::new(), |acc, new| acc.union(&new.inhibitors));
+	    .fold(Set::default(), |acc, new| acc.union(&new.inhibitors));
 	result.push_str(&format!(
 	    "The inhibitors are {}:\n{}\n",
 	    inhibitors.len(),
@@ -425,7 +425,7 @@ impl System {
 	let products = self
 	    .reaction_rules
 	    .iter()
-	    .fold(Set::new(), |acc, new| acc.union(&new.products));
+	    .fold(Set::default(), |acc, new| acc.union(&new.products));
 	result.push_str(&format!(
 	    "The products are {}:\n{}\n",
 	    products.len(),

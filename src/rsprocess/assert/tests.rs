@@ -890,12 +890,12 @@ fn for_1() {
 		Box::new(Tree::Assignment(
 		    Variable::Id("a".into()),
 		    None,
-		    Box::new(Expression::Set(Set::new()))
+		    Box::new(Expression::Set(Set::default()))
 		)),
 		Box::new(Tree::Assignment(
 		    Variable::Id("b".into()),
 		    None,
-		    Box::new(Expression::Set(Set::new()))
+		    Box::new(Expression::Set(Set::default()))
 		)),
 	    )),
 	    Box::new(Tree::For(
@@ -945,7 +945,7 @@ fn for_2() {
 		Box::new(Tree::Assignment(
 		    Variable::Id("b".into()),
 		    None,
-		    Box::new(Expression::Set(Set::new()))
+		    Box::new(Expression::Set(Set::default()))
 		)),
 	    )),
 	    Box::new(Tree::For(
@@ -996,19 +996,19 @@ fn for_3() {
 		    None,
 		    Box::new(Expression::Label(
 			Box::new(Label::from(Set::from([1, 2]),
-					       Set::new(),
+					       Set::default(),
 					       Set::from([1, 2]),
-					       Set::new(),
-					       Set::new(),
-					       Set::new(),
-					       Set::new(),
-					       Set::new()))
+					       Set::default(),
+					       Set::default(),
+					       Set::default(),
+					       Set::default(),
+					       Set::default()))
 		    ))
 		)),
 		Box::new(Tree::Assignment(
 		    Variable::Id("b".into()),
 		    None,
-		    Box::new(Expression::Set(Set::new()))
+		    Box::new(Expression::Set(Set::default()))
 		)),
 	    )),
 	    Box::new(Tree::For(
@@ -1066,17 +1066,17 @@ fn for_4() {
 			Box::new(Label::from(Set::from([1, 2]),
 					       Set::from([3]),
 					       Set::from([1, 2, 3]),
-					       Set::new(),
-					       Set::new(),
-					       Set::new(),
-					       Set::new(),
-					       Set::new()))
+					       Set::default(),
+					       Set::default(),
+					       Set::default(),
+					       Set::default(),
+					       Set::default()))
 		    ))
 		)),
 		Box::new(Tree::Assignment(
 		    Variable::Id("b".into()),
 		    None,
-		    Box::new(Expression::Set(Set::new()))
+		    Box::new(Expression::Set(Set::default()))
 		)),
 	    )),
 	    Box::new(Tree::For(
@@ -1133,13 +1133,13 @@ fn for_5() {
 		    None,
 		    Box::new(Expression::Label(
 			Box::new(Label::from(Set::from([1, 2]),
-					       Set::from([3]),
-					       Set::from([1, 2, 3]),
-					       Set::new(),
-					       Set::new(),
-					       Set::new(),
-					       Set::new(),
-					       Set::new()))
+					     Set::from([3]),
+					     Set::from([1, 2, 3]),
+					     Set::default(),
+					     Set::default(),
+					     Set::default(),
+					     Set::default(),
+					     Set::default()))
 		    ))
 		)),
 		Box::new(Tree::Assignment(
@@ -1217,11 +1217,11 @@ fn for_6() {
 			Box::new(Label::from(Set::from([1, 2]),
 					       Set::from([3]),
 					       Set::from([1, 2, 3]),
-					       Set::new(),
-					       Set::new(),
-					       Set::new(),
-					       Set::new(),
-					       Set::new()))
+					       Set::default(),
+					       Set::default(),
+					       Set::default(),
+					       Set::default(),
+					       Set::default()))
 		    ))
 		)),
 		Box::new(Tree::Concat(

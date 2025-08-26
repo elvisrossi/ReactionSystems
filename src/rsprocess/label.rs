@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::hash::Hash;
 
-use super::set::Set;
+use super::set::{BasicSet, Set};
 use super::translator::{Translator, PrintableWithTranslator, Formatter};
 
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialOrd)]
@@ -19,14 +19,14 @@ pub struct Label {
 impl Label {
     pub fn new() -> Self {
 	Label {
-	    available_entities: Set::new(),
-	    context: Set::new(),
-	    t: Set::new(),
-	    reactants: Set::new(),
-	    reactants_absent: Set::new(),
-	    inhibitors: Set::new(),
-	    inhibitors_present: Set::new(),
-	    products: Set::new(),
+	    available_entities: Set::default(),
+	    context: Set::default(),
+	    t: Set::default(),
+	    reactants: Set::default(),
+	    reactants_absent: Set::default(),
+	    inhibitors: Set::default(),
+	    inhibitors_present: Set::default(),
+	    products: Set::default(),
 	}
     }
 

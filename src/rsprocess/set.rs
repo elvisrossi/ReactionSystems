@@ -5,108 +5,48 @@ use std::fmt;
 
 use super::translator::{IdType, Translator, PrintableWithTranslator};
 
-/// Basic set of entities.
-#[derive(Clone, Debug, PartialOrd, Eq, Ord, Serialize, Deserialize)]
-pub struct Set {
-    pub identifiers: BTreeSet<IdType>,
+
+/// Basic trait for all Set implementations.
+/// Implement IntoIterator for &Self to have .iter() (not required directly by
+/// the trait).
+pub trait BasicSet
+where Self: Clone + Eq + Ord + Default + Serialize + IntoIterator
+    + PrintableWithTranslator,
+for<'de> Self: Deserialize<'de>
+{
+    fn is_subset(&self, other: &Self) -> bool;
+    fn is_disjoint(&self, other: &Self) -> bool;
+    fn union(&self, other: &Self) -> Self;
+    fn push(&mut self, other: &Self);
+    fn extend(&mut self, other: Option<&Self>);
+    fn intersection(&self, other: &Self) -> Self;
+    fn subtraction(&self, other: &Self) -> Self;
+    fn len(&self) -> usize;
+    fn is_empty(&self) -> bool;
 }
 
-impl<const N: usize> From<[IdType; N]> for Set {
-    fn from(arr: [IdType; N]) -> Self {
-	Set {
-	    identifiers: BTreeSet::from(arr),
-	}
-    }
+pub trait ExtensionsSet {
+    fn iter(
+	&self
+    ) -> <&Self as IntoIterator>::IntoIter
+    where for<'b> &'b Self: IntoIterator;
+
+    fn split<'a>(
+	&'a self,
+	trace: &'a [Self]
+    ) -> Option<(&'a [Self], &'a [Self])>
+    where Self: Sized;
 }
 
-impl From<&[IdType]> for Set {
-    fn from(arr: &[IdType]) -> Self {
-	Set {
-	    identifiers: BTreeSet::from_iter(arr.to_vec()),
-	}
-    }
-}
-
-impl From<Vec<IdType>> for Set {
-    fn from(arr: Vec<IdType>) -> Self {
-	Set {
-	    identifiers: BTreeSet::from_iter(arr),
-	}
-    }
-}
-
-impl Set {
-    pub const fn new() -> Self {
-	Set {
-	    identifiers: BTreeSet::new(),
-	}
-    }
-
-    pub fn is_subset(&self, b: &Set) -> bool {
-	self.identifiers.is_subset(&b.identifiers)
-    }
-
-    pub fn is_disjoint(&self, b: &Set) -> bool {
-	self.identifiers.is_disjoint(&b.identifiers)
-    }
-
-    // returns the new set a \cup b
-    pub fn union(&self, b: &Set) -> Set {
-	let mut ret: Set = b.clone();
-	ret.identifiers.extend(self.identifiers.iter());
-	ret
-    }
-
-    pub fn union_option(&mut self, b: Option<&Set>) {
-	if let Some(b) = b {
-	    self.identifiers.extend(b.iter());
-	}
-    }
-
-    /// returns the new set a \cap b
-    pub fn intersection(&self, b: &Set) -> Set {
-	// TODO maybe find more efficient way without copy/clone
-	let res: BTreeSet<_> = b
-	    .identifiers
-	    .intersection(&self.identifiers)
-	    .copied()
-	    .collect();
-	Set { identifiers: res }
-    }
-
-    /// returns the new set a ∖ b
-    pub fn subtraction(&self, b: &Set) -> Set {
-	// TODO maybe find more efficient way without copy/clone
-	let res: BTreeSet<_> = self
-	    .identifiers
-	    .difference(&b.identifiers)
-	    .copied()
-	    .collect();
-	Set { identifiers: res }
-    }
-
-    pub fn iter(&self) -> std::collections::btree_set::Iter<'_, IdType> {
-	self.identifiers.iter()
-    }
-
-    pub fn len(&self) -> usize {
-	self.identifiers.len()
-    }
-
-    pub fn insert(&mut self, el: IdType) -> bool {
-	self.identifiers.insert(el)
-    }
-
-    pub fn push(&mut self, b: &Set) {
-	self.identifiers.extend(b.iter())
-    }
-
-    pub fn is_empty(&self) -> bool {
-	self.identifiers.is_empty()
+/// Implementations for all sets.
+impl<T: BasicSet> ExtensionsSet for T {
+    fn iter(&self) -> <&T as IntoIterator>::IntoIter
+    where for<'b> &'b T: IntoIterator {
+	self.into_iter()
     }
 
     /// Returns the prefix and the loop from a trace.
-    pub fn split<'a>(
+    fn split<'a>(
 	&'a self,
 	trace: &'a [Self]
     ) -> Option<(&'a [Self], &'a [Self])> {
@@ -115,9 +55,69 @@ impl Set {
     }
 }
 
-impl Default for Set {
-    fn default() -> Self {
-	Set::new()
+
+// -----------------------------------------------------------------------------
+
+/// Basic set of entities.
+#[derive(Clone, Debug, Default, PartialOrd, Eq, Ord, Serialize, Deserialize)]
+pub struct Set {
+    pub identifiers: BTreeSet<IdType>,
+}
+
+impl BasicSet for Set {
+    fn is_subset(&self, other: &Self) -> bool {
+	self.identifiers.is_subset(&other.identifiers)
+    }
+
+    fn is_disjoint(&self, other: &Self) -> bool {
+	self.identifiers.is_disjoint(&other.identifiers)
+    }
+
+    // returns the new set a \cup b
+    fn union(&self, other: &Self) -> Self {
+	let mut ret: Set = other.clone();
+	ret.identifiers.extend(self.identifiers.iter());
+	ret
+    }
+
+    fn push(&mut self, b: &Self) {
+	self.identifiers.extend(b.iter())
+    }
+
+    fn extend(&mut self, other: Option<&Self>) {
+	if let Some(other) = other {
+	    self.identifiers.extend(other);
+	}
+    }
+
+    /// returns the new set a \cap b
+    fn intersection(&self, other: &Self) -> Self {
+	// TODO maybe find more efficient way without copy/clone
+	let res: BTreeSet<_> = other
+	    .identifiers
+	    .intersection(&self.identifiers)
+	    .copied()
+	    .collect();
+	Set { identifiers: res }
+    }
+
+    /// returns the new set a ∖ b
+    fn subtraction(&self, other: &Self) -> Self {
+	// TODO maybe find more efficient way without copy/clone
+	let res: BTreeSet<_> = self
+	    .identifiers
+	    .difference(&other.identifiers)
+	    .copied()
+	    .collect();
+	Set { identifiers: res }
+    }
+
+    fn len(&self) -> usize {
+	self.identifiers.len()
+    }
+
+    fn is_empty(&self) -> bool {
+	self.identifiers.is_empty()
     }
 }
 
@@ -142,6 +142,15 @@ impl IntoIterator for Set {
     }
 }
 
+impl<'a> IntoIterator for &'a Set {
+    type Item = &'a IdType;
+    type IntoIter = std::collections::btree_set::Iter<'a, IdType>;
+
+    fn into_iter(self) -> Self::IntoIter {
+	self.identifiers.iter()
+    }
+}
+
 impl PrintableWithTranslator for Set {
     fn print(
 	&self,
@@ -162,5 +171,30 @@ impl PrintableWithTranslator for Set {
 	    }
 	}
 	write!(f, "}}")
+    }
+}
+
+
+impl<const N: usize> From<[IdType; N]> for Set {
+    fn from(arr: [IdType; N]) -> Self {
+	Set {
+	    identifiers: BTreeSet::from(arr),
+	}
+    }
+}
+
+impl From<&[IdType]> for Set {
+    fn from(arr: &[IdType]) -> Self {
+	Set {
+	    identifiers: BTreeSet::from_iter(arr.to_vec()),
+	}
+    }
+}
+
+impl From<Vec<IdType>> for Set {
+    fn from(arr: Vec<IdType>) -> Self {
+	Set {
+	    identifiers: BTreeSet::from_iter(arr),
+	}
     }
 }

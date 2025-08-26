@@ -5,7 +5,7 @@ use petgraph::{Graph, Directed};
 use std::rc::Rc;
 
 use super::label::Label;
-use super::set::Set;
+use super::set::{BasicSet, Set};
 use super::system::System;
 use super::translator::{self, IdType};
 
@@ -19,7 +19,7 @@ fn common_system_entities(graph: &SystemGraph) -> Set {
 	    None => Some(node.1.available_entities.clone()),
 	    Some(acc) => Some(node.1.available_entities.intersection(&acc))
 	}
-    ).unwrap_or(Set::new())
+    ).unwrap_or(Set::default())
 }
 
 macro_rules! common_label {
@@ -39,7 +39,7 @@ macro_rules! common_label {
 			Some($acc_name) => Some($some_expr)
 		    }
 		}
-	    ).unwrap_or(Set::new())
+	    ).unwrap_or(Set::default())
 	}
     };
 }
@@ -218,7 +218,7 @@ impl NodeDisplay {
 	    if self.contains_uncommon() {
 		Rc::new(common_system_entities(current_graph))
 	    } else {
-		Rc::new(Set::new())
+		Rc::new(Set::default())
 	    };
 
 	Box::new(
