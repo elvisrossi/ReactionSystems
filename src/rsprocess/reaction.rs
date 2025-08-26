@@ -171,16 +171,6 @@ impl BasicReaction<Set> for Reaction {
 	}
 }
 
-impl Reaction {
-	pub fn from(reactants: Set, inhibitors: Set, products: Set) -> Self {
-		Reaction {
-			reactants,
-			inhibitors,
-			products,
-		}
-	}
-}
-
 impl PrintableWithTranslator for Reaction {
 	fn print(&self, f: &mut std::fmt::Formatter, translator: &Translator)
 			 -> std::fmt::Result {
@@ -191,5 +181,15 @@ impl PrintableWithTranslator for Reaction {
 			Formatter::from(translator, &self.inhibitors),
 			Formatter::from(translator, &self.products)
 		)
+	}
+}
+
+impl Reaction {
+	pub fn from(reactants: Set, inhibitors: Set, products: Set) -> Self {
+		Reaction {
+			reactants,
+			inhibitors,
+			products,
+		}
 	}
 }

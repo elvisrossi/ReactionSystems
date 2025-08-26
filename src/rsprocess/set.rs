@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, BTreeMap};
 use std::hash::Hash;
 use std::fmt;
 
@@ -75,13 +75,13 @@ impl BasicSet for Set {
 
     // returns the new set a \cup b
     fn union(&self, other: &Self) -> Self {
-	let mut ret: Set = other.clone();
+	let mut ret: Self = other.clone();
 	ret.identifiers.extend(self.identifiers.iter());
 	ret
     }
 
-    fn push(&mut self, b: &Self) {
-	self.identifiers.extend(b.iter())
+    fn push(&mut self, other: &Self) {
+	self.identifiers.extend(other.iter())
     }
 
     fn extend(&mut self, other: Option<&Self>) {
@@ -196,5 +196,163 @@ impl From<Vec<IdType>> for Set {
 	Set {
 	    identifiers: BTreeSet::from_iter(arr),
 	}
+    }
+}
+
+// -----------------------------------------------------------------------------
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize,
+	 Deserialize)]
+pub enum IdState {
+    Positive,
+    Negative
+}
+
+impl std::fmt::Display for IdState {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+	match self {
+	    Self::Positive => write!(f, "+"),
+	    Self::Negative => write!(f, "-")
+	}
+    }
+}
+
+#[derive(Clone, Debug, Default, PartialOrd, Eq, Ord, Serialize, Deserialize)]
+pub struct PositiveSet {
+    pub identifiers: BTreeMap<IdType, IdState>,
+}
+
+impl BasicSet for PositiveSet {
+    fn is_subset(&self, other: &Self) -> bool {
+	for (id, s) in self.iter() {
+	    if let Some(s1) = other.identifiers.get(id) {
+		if s1 != s {
+		    return false
+		}
+	    } else {
+		return false
+	    }
+	}
+	true
+    }
+
+    fn is_disjoint(&self, other: &Self) -> bool {
+	for (id, _s) in self.iter() {
+	    if other.identifiers.contains_key(id) {
+		return false
+	    }
+	}
+	true
+    }
+
+    /// ☞ The operation cannot fail, so we prefer self elements to other,
+    /// but if the reaction system is consistent there wont be any problem.
+    fn union(&self, other: &Self) -> Self {
+	let mut ret: Self = other.clone();
+	ret.identifiers.extend(self.identifiers.iter());
+	ret
+    }
+
+    fn push(&mut self, other: &Self) {
+	self.identifiers.extend(other.iter())
+    }
+
+    fn extend(&mut self, other: Option<&Self>) {
+	if let Some(other) = other {
+	    self.identifiers.extend(other);
+	}
+    }
+
+    /// ☞ only returns values that are shared among both, meaning if they have
+    /// different state (positive, negative) they are considered different.
+    fn intersection(&self, other: &Self) -> Self {
+	let res: BTreeMap<_, _> = other
+	    .identifiers
+	    .iter()
+	    .filter(|(id, s)| {
+		if let Some(s1) = self.identifiers.get(id) && s1 == *s {
+		    true
+		} else {
+		    false
+		}
+	    })
+	    .map(|(id, s)| (*id, *s))
+	    .collect();
+	PositiveSet { identifiers: res }
+    }
+
+    /// ☞ returns a ∖ b, values that are shared but with different state are
+    /// preserved in the subtraction.
+    fn subtraction(&self, other: &Self) -> Self {
+	let res: BTreeMap<_, _> = self
+	    .identifiers
+	    .iter()
+	    .filter(|(id, s)| {
+		if let Some(s1) = other.identifiers.get(id) && s1 == *s {
+		    false
+		} else {
+		    true
+		}
+	    })
+	    .map(|(id, s)| (*id, *s))
+	    .collect();
+	PositiveSet { identifiers: res }
+    }
+
+    fn len(&self) -> usize {
+	self.identifiers.len()
+    }
+
+    fn is_empty(&self) -> bool {
+	self.identifiers.is_empty()
+    }
+}
+
+impl PrintableWithTranslator for PositiveSet {
+    fn print(
+	&self,
+	f: &mut fmt::Formatter,
+	translator: &Translator,
+    ) -> fmt::Result {
+	write!(f, "{{")?;
+	let mut it = self.iter().peekable();
+	while let Some((id, s)) = it.next() {
+	    if it.peek().is_none() {
+		write!(f,
+		       "{}{}",
+		       s,
+		       translator.decode(*id).unwrap_or("Missing".into()))?;
+	    } else {
+		write!(f,
+		       "{}{}, ",
+		       s,
+		       translator.decode(*id).unwrap_or("Missing".into()))?;
+	    }
+	}
+	write!(f, "}}")
+    }
+}
+
+impl PartialEq for PositiveSet {
+    fn eq(&self, other: &Self) -> bool {
+	self.identifiers.eq(&other.identifiers)
+    }
+}
+
+impl IntoIterator for PositiveSet {
+    type Item = (IdType, IdState);
+    type IntoIter = std::collections::btree_map::IntoIter<IdType, IdState>;
+
+    fn into_iter(self) -> Self::IntoIter {
+	self.identifiers.into_iter()
+    }
+}
+
+impl<'a> IntoIterator for &'a PositiveSet {
+    type Item = (&'a IdType, &'a IdState);
+    type IntoIter = std::collections::btree_map::Iter<'a, IdType, IdState>;
+
+    fn into_iter(self) -> Self::IntoIter {
+	self.identifiers.iter()
     }
 }
