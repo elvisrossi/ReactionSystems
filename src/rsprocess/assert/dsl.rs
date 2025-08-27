@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use super::super::{translator, graph, set, process, system, label};
+use super::super::{translator, graph, set, process, system, label, element};
 use super::super::set::BasicSet;
 
 /// If changing IntegerType in assert.rs, also change from Num to another
@@ -54,7 +54,7 @@ pub enum Expression<S> {
     Integer(IntegerType),
     Label(Box<label::Label>),
     Set(set::Set),
-    Element(translator::IdType),
+    Element(element::IdType),
     String(String),
     Var(Variable<S>),
 
@@ -176,7 +176,7 @@ pub enum AssertReturnValue {
     String(String),
     Label(label::Label),
     Set(set::Set),
-    Element(translator::IdType),
+    Element(element::IdType),
     Node(petgraph::graph::NodeIndex),
     Edge(petgraph::graph::EdgeIndex),
     Neighbours(petgraph::graph::NodeIndex),

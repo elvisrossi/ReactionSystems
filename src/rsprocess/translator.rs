@@ -4,10 +4,10 @@ use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
 use std::fmt;
 
+use super::element::IdType;
+
 /// precision for printing frequencies
 pub static PRECISION: &usize = &2;
-
-pub type IdType = u32;
 
 /// Structure that keeps track of association string and id. Ids given
 /// sequentially from 0.

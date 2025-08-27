@@ -3,7 +3,8 @@ use std::str::FromStr;
 use lalrpop_util::ParseError;
 use crate::rsprocess::{set, reaction, process, environment, system, label};
 use crate::rsprocess::assert::types;
-use crate::rsprocess::translator::{ Translator, IdType };
+use crate::rsprocess::element::IdType;
+use crate::rsprocess::translator::Translator;
 use crate::rsprocess::presets;
 use crate::rsprocess::graph;
 

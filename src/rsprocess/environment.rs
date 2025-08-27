@@ -7,7 +7,8 @@ use super::choices::Choices;
 use super::process::Process;
 use super::reaction::{Reaction, BasicReaction, ExtensionReaction};
 use super::set::{BasicSet, Set};
-use super::translator::{IdType, Translator, PrintableWithTranslator, Formatter};
+use super::element::IdType;
+use super::translator::{Translator, PrintableWithTranslator, Formatter};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Environment {

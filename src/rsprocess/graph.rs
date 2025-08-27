@@ -6,8 +6,9 @@ use std::rc::Rc;
 
 use super::label::Label;
 use super::set::{BasicSet, Set};
+use super::element::IdType;
 use super::system::System;
-use super::translator::{self, IdType};
+use super::translator;
 
 pub type SystemGraph = Graph<System, Label, Directed, u32>;
 

@@ -5,7 +5,8 @@ use std::rc::Rc;
 
 use super::reaction::Reaction;
 use super::set::{Set, BasicSet};
-use super::translator::{IdType, Translator, PrintableWithTranslator, Formatter};
+use super::element::IdType;
+use super::translator::{Translator, PrintableWithTranslator, Formatter};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Process {

@@ -5,7 +5,8 @@ use std::collections::HashMap;
 use super::reaction::{Reaction, ExtensionReaction};
 use super::set::{Set, ExtensionsSet};
 use super::system::System;
-use super::translator::{IdType, Translator, PrintableWithTranslator, PRECISION};
+use super::element::IdType;
+use super::translator::{Translator, PrintableWithTranslator, PRECISION};
 
 /// structure that holds the frequency of elements of a run or multiple runs,
 /// weighted.  To print use ```translator::FrequencyDisplay```.

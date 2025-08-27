@@ -3,6 +3,7 @@
 pub mod translator;
 mod format_helpers;
 
+pub mod element;
 pub mod choices;
 pub mod environment;
 pub mod label;
@@ -22,3 +23,6 @@ pub mod transitions;
 
 #[cfg(test)]
 mod system_test;
+
+#[cfg(test)]
+mod set_test;

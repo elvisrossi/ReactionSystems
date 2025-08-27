@@ -9,8 +9,9 @@ use super::label::Label;
 use super::process::Process;
 use super::reaction::{Reaction, ExtensionReaction};
 use super::set::{BasicSet, Set};
+use super::element::IdType;
 use super::transitions::TransitionsIterator;
-use super::translator::{IdType, Translator, PrintableWithTranslator, Formatter};
+use super::translator::{Translator, PrintableWithTranslator, Formatter};
 
 
 #[derive(Clone, Debug, Deserialize, Serialize)]

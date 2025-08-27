@@ -3,8 +3,8 @@ use std::collections::{BTreeSet, BTreeMap};
 use std::hash::Hash;
 use std::fmt;
 
-use super::translator::{IdType, Translator, PrintableWithTranslator};
-
+use super::translator::{Formatter, Translator, PrintableWithTranslator};
+use super::element::{IdType, PositiveType, IdState};
 
 /// Basic trait for all Set implementations.
 /// Implement IntoIterator for &Self to have .iter() (not required directly by
@@ -199,23 +199,117 @@ impl From<Vec<IdType>> for Set {
     }
 }
 
-// -----------------------------------------------------------------------------
+impl Set {
+    /// Converts set to positive set. All elements with the same state.
+    pub fn to_positive_set(&self, state: IdState) -> PositiveSet {
+	PositiveSet { identifiers: self.iter().map(|x| (*x, state)).collect() }
+    }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize,
-	 Deserialize)]
-pub enum IdState {
-    Positive,
-    Negative
-}
-
-impl std::fmt::Display for IdState {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-	match self {
-	    Self::Positive => write!(f, "+"),
-	    Self::Negative => write!(f, "-")
+    /// Computes minimized prohibiting set from reactants and inhibitors.
+    /// Computes the powerset of the smallest reactants ∪ inhibitors set and
+    /// checks for each element of that set if they are also in all other
+    /// unions.
+    pub fn prohibiting_set(
+	reactants: &[Set],
+	inhibitors: &[Set],
+    ) -> Result<Vec<PositiveSet>, String> {
+	if reactants.len() != inhibitors.len() {
+	    return Err(format!("Different length inputs supplied to create \
+				prohibiting set. reactants: {:?}, \
+				inhibitors: {:?}",
+			       reactants, inhibitors))
 	}
+	if let Some((r, i)) =
+	    reactants.iter()
+	    .zip(inhibitors.iter())
+	    .find(|(sr, si)| !sr.intersection(si).is_empty())
+	{
+	    return Err(format!("Element in both reactants and inhibitors when \
+				creating prohibiting set. reactants: {:?}, \
+				inhibitors: {:?}",
+			       r, i))
+	}
+	let union = reactants.iter()
+	    .zip(inhibitors.iter())
+	    .map(|(sr, si)| {
+		sr.to_positive_set(IdState::Negative)
+		    .union(&si.to_positive_set(IdState::Positive))
+	    })
+	    .collect::<Vec<_>>();
+	let union_union = union.iter()
+	    .fold(PositiveSet::default(), |acc, s| acc.union(s));
+	let mut t = union_union.powerset();
+	for set in union.iter() {
+	    t.retain(|el| !el.intersection(set).is_empty());
+	}
+
+	// minimization
+	// remove sets that contain other sets
+	let mut tmp_t = t.clone().into_iter();
+	let mut e = tmp_t.next().unwrap_or_default();
+	loop {
+	    let mut modified = false;
+	    t.retain(|set| {
+		if *set == e {
+		    true
+		} else if e.is_subset(set) {
+		    modified = true;
+		    false
+		} else {
+		    true
+		}
+	    });
+	    if !modified {
+		e = {
+		    match tmp_t.next() {
+			Some(a) => a,
+			None => break,
+		    }
+		};
+	    }
+	}
+
+	// replace pair of sets that have a common negative-positive element
+	// with set without
+	// cannot happen, caught by error "Element in both ..." above
+
+	// for e in t.clone() {
+	//     let mut removed_e = false;
+	//     let mut position = 0;
+	//     let mut removed_elements = vec![];
+	//     t.retain(|set| {
+	//	if set == &e {
+	//	    position += 1;
+	//	    true
+	//	} else if removed_e {
+	//	    true
+	//	} else if let elements = set.opposite_intersection(&e)
+	//	    && !elements.is_empty()
+	//	{
+	//	    removed_e = true;
+	//	    removed_elements.extend(elements);
+	//	    false
+	//	} else {
+	//	    position += 1;
+	//	    true
+	//	}
+	//     });
+	//     if removed_e {
+	//	let mut set = t.get(position).unwrap().clone();
+	//	set = set.subtraction(&Set::from(removed_elements.clone())
+	//			      .to_positive_set(IdState::Positive));
+	//	set = set.subtraction(&Set::from(removed_elements)
+	//			      .to_positive_set(IdState::Negative));
+	//	t.remove(position);
+	//	t.push(set);
+	//     }
+	// }
+
+	Ok(t)
     }
 }
+
+// -----------------------------------------------------------------------------
 
 #[derive(Clone, Debug, Default, PartialOrd, Eq, Ord, Serialize, Deserialize)]
 pub struct PositiveSet {
@@ -319,14 +413,16 @@ impl PrintableWithTranslator for PositiveSet {
 	while let Some((id, s)) = it.next() {
 	    if it.peek().is_none() {
 		write!(f,
-		       "{}{}",
-		       s,
-		       translator.decode(*id).unwrap_or("Missing".into()))?;
+		       "{}",
+		       Formatter::from(translator,
+				       &PositiveType { id: *id, state: *s })
+		)?;
 	    } else {
 		write!(f,
-		       "{}{}, ",
-		       s,
-		       translator.decode(*id).unwrap_or("Missing".into()))?;
+		       "{}, ",
+		       Formatter::from(translator,
+				       &PositiveType { id: *id, state: *s })
+		)?;
 	    }
 	}
 	write!(f, "}}")
@@ -336,6 +432,12 @@ impl PrintableWithTranslator for PositiveSet {
 impl PartialEq for PositiveSet {
     fn eq(&self, other: &Self) -> bool {
 	self.identifiers.eq(&other.identifiers)
+    }
+}
+
+impl Hash for PositiveSet {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+	self.identifiers.hash(state)
     }
 }
 
@@ -354,5 +456,62 @@ impl<'a> IntoIterator for &'a PositiveSet {
 
     fn into_iter(self) -> Self::IntoIter {
 	self.identifiers.iter()
+    }
+}
+
+
+impl<const N: usize> From<[(IdType, IdState); N]> for PositiveSet {
+    fn from(arr: [(IdType, IdState); N]) -> Self {
+	PositiveSet {
+	    identifiers: BTreeMap::from(arr),
+	}
+    }
+}
+
+impl From<&[(IdType, IdState)]> for PositiveSet {
+    fn from(arr: &[(IdType, IdState)]) -> Self {
+	PositiveSet {
+	    identifiers: BTreeMap::from_iter(arr.to_vec()),
+	}
+    }
+}
+
+impl From<Vec<(IdType, IdState)>> for PositiveSet {
+    fn from(arr: Vec<(IdType, IdState)>) -> Self {
+	PositiveSet {
+	    identifiers: BTreeMap::from_iter(arr),
+	}
+    }
+}
+
+impl PositiveSet {
+    pub fn powerset(&self) -> Vec<Self> {
+	self.into_iter().fold({
+	    let mut asd = Vec::with_capacity(2_usize.pow(self.len() as u32));
+	    asd.push(vec![]);
+	    asd
+	}, |mut p, x| {
+	    let i = p.clone().into_iter()
+		.map(|mut s| {
+		    s.push(x);
+		    s
+		});
+	    p.extend(i);
+	    p
+	}).into_iter()
+	    .map(|x| Self::from(x.into_iter()
+				.map(|(el, s)| (*el, *s))
+				.collect::<Vec<_>>()))
+	    .collect::<Vec<_>>()
+    }
+
+    pub fn opposite_intersection(&self, other: &Self) -> Vec<IdType> {
+	let mut ret = vec![];
+	for (el, state) in self {
+	    if let Some(state2) = other.identifiers.get(el) && *state == !*state2 {
+		ret.push(*el);
+	    }
+	}
+	ret
     }
 }

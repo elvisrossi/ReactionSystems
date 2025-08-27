@@ -223,7 +223,7 @@ pub mod node_formatter {
     use petgraph::{Graph, Directed};
     use petgraph::visit::IntoNodeReferences;
 
-    use super::super::translator::IdType;
+    use super::super::element::IdType;
     use super::super::graph::{SystemGraph, OperationType};
     use super::super::set::Set;
     use super::super::process::Process;
