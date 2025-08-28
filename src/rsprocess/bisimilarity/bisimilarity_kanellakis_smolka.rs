@@ -1,6 +1,6 @@
 //! Bisimilarity by Kanellakis and Smolka from The algorithmics of bisimilarity
 //! by Luca Aceto, Anna Ingolfsdottir and Jirí Srba; pages 105 to 110
-//! https://doi.org/10.1017/CBO9780511792588.004
+//! <https://doi.org/10.1017/CBO9780511792588.004>
 
 use std::collections::{BTreeSet, HashMap, HashSet};
 

@@ -1,6 +1,6 @@
 //! Bisimilarity by Paige and Tarjan from Three Partition Refinement Algorithms
 //! by Robert Paige L., Robert Endre Tarjan; pages 977 to 983
-//! https://doi.org/10.1137/0216062
+//! <https://doi.org/10.1137/0216062>
 
 use std::cell::RefCell;
 use std::collections::hash_map::Entry;
