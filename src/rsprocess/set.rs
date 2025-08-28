@@ -206,9 +206,9 @@ impl Set {
     }
 
     /// Computes minimized prohibiting set from reactants and inhibitors.
-    /// Computes the powerset of the smallest reactants ∪ inhibitors set and
-    /// checks for each element of that set if they are also in all other
-    /// unions.
+    /// Computes the powerset of the union of all reactants ∪ inhibitors sets
+    /// and checks for each element of that set if they are also in all other
+    /// unions. Then minimizes the result.
     pub fn prohibiting_set(
 	reactants: &[Set],
 	inhibitors: &[Set],
@@ -229,43 +229,49 @@ impl Set {
 				inhibitors: {:?}",
 			       r, i))
 	}
-	let union = reactants.iter()
-	    .zip(inhibitors.iter())
-	    .map(|(sr, si)| {
-		sr.to_positive_set(IdState::Negative)
-		    .union(&si.to_positive_set(IdState::Positive))
-	    })
-	    .collect::<Vec<_>>();
-	let union_union = union.iter()
-	    .fold(PositiveSet::default(), |acc, s| acc.union(s));
-	let mut t = union_union.powerset();
-	for set in union.iter() {
-	    t.retain(|el| !el.intersection(set).is_empty());
-	}
+
+	let mut t = {
+	    let union = reactants.iter()
+		.zip(inhibitors.iter())
+		.map(|(sr, si)| {
+		    sr.to_positive_set(IdState::Negative)
+			.union(&si.to_positive_set(IdState::Positive))
+		})
+		.collect::<Vec<_>>();
+	    let union_union = union.iter()
+		.fold(PositiveSet::default(), |acc, s| acc.union(s));
+	    let mut t = union_union.powerset();
+	    for set in union.iter() {
+		t.retain(|el| !el.intersection(set).is_empty());
+	    }
+	    t
+	};
 
 	// minimization
 	// remove sets that contain other sets
-	let mut tmp_t = t.clone().into_iter();
-	let mut e = tmp_t.next().unwrap_or_default();
-	loop {
-	    let mut modified = false;
-	    t.retain(|set| {
-		if *set == e {
-		    true
-		} else if e.is_subset(set) {
-		    modified = true;
-		    false
-		} else {
-		    true
-		}
-	    });
-	    if !modified {
-		e = {
-		    match tmp_t.next() {
-			Some(a) => a,
-			None => break,
+	{
+	    let mut tmp_t = t.clone().into_iter();
+	    let mut e = tmp_t.next().unwrap_or_default();
+	    loop {
+		let mut modified = false;
+		t.retain(|set| {
+		    if *set == e {
+			true
+		    } else if e.is_subset(set) {
+			modified = true;
+			false
+		    } else {
+			true
 		    }
-		};
+		});
+		if !modified {
+		    e = {
+			match tmp_t.next() {
+			    Some(a) => a,
+			    None => break,
+			}
+		    };
+		}
 	    }
 	}
 
