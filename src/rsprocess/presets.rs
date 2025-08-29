@@ -12,6 +12,7 @@ use std::rc::Rc;
 use super::*;
 use super::graph::MapEdges;
 use super::set::Set;
+use super::system::{ExtensionsSystem};
 use super::translator::Translator;
 
 use super::super::grammar;

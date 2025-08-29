@@ -22,9 +22,9 @@ fn return_true() {
     let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(System::new());
-    let node_2 = graph.add_node(System::new());
-    let edge = graph.add_edge(node_1, node_2, Label::new());
+    let node_1 = graph.add_node(System::default());
+    let node_2 = graph.add_node(System::default());
+    let edge = graph.add_edge(node_1, node_2, Label::default());
 
     assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Boolean(true))));
@@ -51,9 +51,9 @@ fn concat_1() {
     let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(System::new());
-    let node_2 = graph.add_node(System::new());
-    let edge = graph.add_edge(node_1, node_2, Label::new());
+    let node_1 = graph.add_node(System::default());
+    let node_2 = graph.add_node(System::default());
+    let edge = graph.add_edge(node_1, node_2, Label::default());
 
     assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Boolean(true))));
@@ -80,9 +80,9 @@ fn concat_2() {
     let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(System::new());
-    let node_2 = graph.add_node(System::new());
-    let edge = graph.add_edge(node_1, node_2, Label::new());
+    let node_1 = graph.add_node(System::default());
+    let node_2 = graph.add_node(System::default());
+    let edge = graph.add_edge(node_1, node_2, Label::default());
 
     assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Boolean(true))));
@@ -106,9 +106,9 @@ fn return_1() {
     let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(System::new());
-    let node_2 = graph.add_node(System::new());
-    let edge = graph.add_edge(node_1, node_2, Label::new());
+    let node_1 = graph.add_node(System::default());
+    let node_2 = graph.add_node(System::default());
+    let edge = graph.add_edge(node_1, node_2, Label::default());
 
     assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Boolean(true))));
@@ -172,9 +172,9 @@ fn return_2() {
     let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(System::new());
-    let node_2 = graph.add_node(System::new());
-    let edge = graph.add_edge(node_1, node_2, Label::new());
+    let node_1 = graph.add_node(System::default());
+    let node_2 = graph.add_node(System::default());
+    let edge = graph.add_edge(node_1, node_2, Label::default());
 
     assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Boolean(true))));
@@ -208,9 +208,9 @@ fn return_3() {
     let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(System::new());
-    let node_2 = graph.add_node(System::new());
-    let edge = graph.add_edge(node_1, node_2, Label::new());
+    let node_1 = graph.add_node(System::default());
+    let node_2 = graph.add_node(System::default());
+    let edge = graph.add_edge(node_1, node_2, Label::default());
 
     assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Boolean(false))));
@@ -245,9 +245,9 @@ fn if_1() {
     let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(System::new());
-    let node_2 = graph.add_node(System::new());
-    let edge = graph.add_edge(node_1, node_2, Label::new());
+    let node_1 = graph.add_node(System::default());
+    let node_2 = graph.add_node(System::default());
+    let edge = graph.add_edge(node_1, node_2, Label::default());
 
     assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Boolean(true))));
@@ -281,9 +281,9 @@ fn if_2() {
     let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(System::new());
-    let node_2 = graph.add_node(System::new());
-    let edge = graph.add_edge(node_1, node_2, Label::new());
+    let node_1 = graph.add_node(System::default());
+    let node_2 = graph.add_node(System::default());
+    let edge = graph.add_edge(node_1, node_2, Label::default());
 
     assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Boolean(false))));
@@ -318,9 +318,9 @@ fn if_3() {
     let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(System::new());
-    let node_2 = graph.add_node(System::new());
-    let edge = graph.add_edge(node_1, node_2, Label::new());
+    let node_1 = graph.add_node(System::default());
+    let node_2 = graph.add_node(System::default());
+    let edge = graph.add_edge(node_1, node_2, Label::default());
 
     assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Boolean(true))));
@@ -380,9 +380,9 @@ fn if_else_1() {
     let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(System::new());
-    let node_2 = graph.add_node(System::new());
-    let edge = graph.add_edge(node_1, node_2, Label::new());
+    let node_1 = graph.add_node(System::default());
+    let node_2 = graph.add_node(System::default());
+    let edge = graph.add_edge(node_1, node_2, Label::default());
 
     assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Boolean(true))));
@@ -420,9 +420,9 @@ fn if_else_2() {
     let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(System::new());
-    let node_2 = graph.add_node(System::new());
-    let edge = graph.add_edge(node_1, node_2, Label::new());
+    let node_1 = graph.add_node(System::default());
+    let node_2 = graph.add_node(System::default());
+    let edge = graph.add_edge(node_1, node_2, Label::default());
 
     assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Boolean(false))));
@@ -520,9 +520,9 @@ fn assignment_2() {
     let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(System::new());
-    let node_2 = graph.add_node(System::new());
-    let edge = graph.add_edge(node_1, node_2, Label::new());
+    let node_1 = graph.add_node(System::default());
+    let node_2 = graph.add_node(System::default());
+    let edge = graph.add_edge(node_1, node_2, Label::default());
 
     assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Boolean(true))));
@@ -560,9 +560,9 @@ fn assignment_3() {
     let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(System::new());
-    let node_2 = graph.add_node(System::new());
-    let edge = graph.add_edge(node_1, node_2, Label::new());
+    let node_1 = graph.add_node(System::default());
+    let node_2 = graph.add_node(System::default());
+    let edge = graph.add_edge(node_1, node_2, Label::default());
 
     assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Boolean(false))));
@@ -626,9 +626,9 @@ fn assignment_5() {
     let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(System::new());
-    let node_2 = graph.add_node(System::new());
-    let edge = graph.add_edge(node_1, node_2, Label::new());
+    let node_1 = graph.add_node(System::default());
+    let node_2 = graph.add_node(System::default());
+    let edge = graph.add_edge(node_1, node_2, Label::default());
 
     assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Integer(10))));
@@ -674,9 +674,9 @@ fn assignment_6() {
     let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(System::new());
-    let node_2 = graph.add_node(System::new());
-    let edge = graph.add_edge(node_1, node_2, Label::new());
+    let node_1 = graph.add_node(System::default());
+    let node_2 = graph.add_node(System::default());
+    let edge = graph.add_edge(node_1, node_2, Label::default());
 
     assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Integer(10))));
@@ -720,9 +720,9 @@ fn assignment_7() {
     let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(System::new());
-    let node_2 = graph.add_node(System::new());
-    let edge = graph.add_edge(node_1, node_2, Label::new());
+    let node_1 = graph.add_node(System::default());
+    let node_2 = graph.add_node(System::default());
+    let edge = graph.add_edge(node_1, node_2, Label::default());
 
     assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Boolean(true))));
@@ -770,9 +770,9 @@ fn assignment_8() {
     let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(System::new());
-    let node_2 = graph.add_node(System::new());
-    let edge = graph.add_edge(node_1, node_2, Label::new());
+    let node_1 = graph.add_node(System::default());
+    let node_2 = graph.add_node(System::default());
+    let edge = graph.add_edge(node_1, node_2, Label::default());
 
     assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Integer(10))));
@@ -818,9 +818,9 @@ fn assignment_9() {
     let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(System::new());
-    let node_2 = graph.add_node(System::new());
-    let edge = graph.add_edge(node_1, node_2, Label::new());
+    let node_1 = graph.add_node(System::default());
+    let node_2 = graph.add_node(System::default());
+    let edge = graph.add_edge(node_1, node_2, Label::default());
 
     assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Integer(10))));
@@ -868,9 +868,9 @@ fn assignment_10() {
     let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(System::new());
-    let node_2 = graph.add_node(System::new());
-    let edge = graph.add_edge(node_1, node_2, Label::new());
+    let node_1 = graph.add_node(System::default());
+    let node_2 = graph.add_node(System::default());
+    let edge = graph.add_edge(node_1, node_2, Label::default());
 
     assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Integer(10))));
@@ -919,9 +919,9 @@ fn for_1() {
     let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(System::new());
-    let node_2 = graph.add_node(System::new());
-    let edge = graph.add_edge(node_1, node_2, Label::new());
+    let node_1 = graph.add_node(System::default());
+    let node_2 = graph.add_node(System::default());
+    let edge = graph.add_edge(node_1, node_2, Label::default());
 
     assert!(tree.execute(&graph, &edge, &mut tr).is_err());
 }
@@ -973,9 +973,9 @@ fn for_2() {
     tr.encode("two");
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(System::new());
-    let node_2 = graph.add_node(System::new());
-    let edge = graph.add_edge(node_1, node_2, Label::new());
+    let node_1 = graph.add_node(System::default());
+    let node_2 = graph.add_node(System::default());
+    let edge = graph.add_edge(node_1, node_2, Label::default());
 
     assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Set(_))));
@@ -1041,9 +1041,9 @@ fn for_3() {
     tr.encode("two");
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(System::new());
-    let node_2 = graph.add_node(System::new());
-    let edge = graph.add_edge(node_1, node_2, Label::new());
+    let node_1 = graph.add_node(System::default());
+    let node_2 = graph.add_node(System::default());
+    let edge = graph.add_edge(node_1, node_2, Label::default());
 
     assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Set(_))));
@@ -1110,9 +1110,9 @@ fn for_4() {
     tr.encode("three");
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(System::new());
-    let node_2 = graph.add_node(System::new());
-    let edge = graph.add_edge(node_1, node_2, Label::new());
+    let node_1 = graph.add_node(System::default());
+    let node_2 = graph.add_node(System::default());
+    let edge = graph.add_edge(node_1, node_2, Label::default());
 
     assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Element(_))));
@@ -1192,9 +1192,9 @@ fn for_5() {
     tr.encode("three");
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(System::new());
-    let node_2 = graph.add_node(System::new());
-    let edge = graph.add_edge(node_1, node_2, Label::new());
+    let node_1 = graph.add_node(System::default());
+    let node_2 = graph.add_node(System::default());
+    let edge = graph.add_edge(node_1, node_2, Label::default());
 
     assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Integer(3))));
@@ -1284,9 +1284,9 @@ fn for_6() {
     tr.encode("three");
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(System::new());
-    let node_2 = graph.add_node(System::new());
-    let edge = graph.add_edge(node_1, node_2, Label::new());
+    let node_1 = graph.add_node(System::default());
+    let node_2 = graph.add_node(System::default());
+    let edge = graph.add_edge(node_1, node_2, Label::default());
 
 
     assert!(matches!(tree.execute(&graph, &edge, &mut tr),
@@ -1337,9 +1337,9 @@ fn for_7() {
     let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(System::new());
-    let node_2 = graph.add_node(System::new());
-    let edge = graph.add_edge(node_1, node_2, Label::new());
+    let node_1 = graph.add_node(System::default());
+    let node_2 = graph.add_node(System::default());
+    let edge = graph.add_edge(node_1, node_2, Label::default());
 
 
     assert!(matches!(tree.execute(&graph, &edge, &mut tr),
@@ -1406,9 +1406,9 @@ fn for_8() {
     let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(System::new());
-    let node_2 = graph.add_node(System::new());
-    let edge = graph.add_edge(node_1, node_2, Label::new());
+    let node_1 = graph.add_node(System::default());
+    let node_2 = graph.add_node(System::default());
+    let edge = graph.add_edge(node_1, node_2, Label::default());
 
     assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Integer(1))));
@@ -1417,11 +1417,11 @@ fn for_8() {
     let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(System::new());
-    let node_2 = graph.add_node(System::new());
-    let edge = graph.add_edge(node_1, node_2, Label::new());
-    let node_3 = graph.add_node(System::new());
-    graph.add_edge(node_1, node_3, Label::new());
+    let node_1 = graph.add_node(System::default());
+    let node_2 = graph.add_node(System::default());
+    let edge = graph.add_edge(node_1, node_2, Label::default());
+    let node_3 = graph.add_node(System::default());
+    graph.add_edge(node_1, node_3, Label::default());
 
     assert!(matches!(tree.execute(&graph, &edge, &mut tr),
 		     Ok(AssertReturnValue::Integer(2))));
@@ -1476,16 +1476,16 @@ fn nodes() {
     let mut tr = Translator::new();
 
     let mut graph = petgraph::Graph::new();
-    let node_1 = graph.add_node(System::new());
+    let node_1 = graph.add_node(System::default());
     let node_2 = graph.add_node(
 	System::from(
-	    Rc::new(Environment::new()),
+	    Rc::new(Environment::default()),
 	    Set::from([2]),
 	    Process::Nill,
 	    Rc::new(vec![])
 	)
     );
-    let edge = graph.add_edge(node_1, node_2, Label::new());
+    let edge = graph.add_edge(node_1, node_2, Label::default());
 
     println!("{:?}", tree.execute(&graph, &edge, &mut tr));
 

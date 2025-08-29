@@ -256,7 +256,7 @@ CTX_process: process::Process = {
 // -----------------------------------------------------------------------------
 pub Environment: Box<environment::Environment> = {
     "[" "]" =>
-	Box::new(environment::Environment::new()),
+	Box::new(environment::Environment::default()),
     "[" <t: Separated_Or<Env_term, ",">> "]" =>
 	Box::new(environment::Environment::from(t))
 };

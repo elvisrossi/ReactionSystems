@@ -1,94 +1,147 @@
+use petgraph::graph::DiGraph;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::fmt::Debug;
 use std::hash::Hash;
 use std::rc::Rc;
 
-use super::environment::Environment;
-use super::graph::SystemGraph;
-use super::label::Label;
-use super::process::Process;
-use super::reaction::{Reaction, ExtensionReaction};
-use super::set::{BasicSet, Set};
-use super::element::IdType;
+use super::environment::{Environment, BasicEnvironment, PositiveEnvironment};
+use super::label::{BasicLabel, Label, PositiveLabel};
+use super::process::{BasicProcess, PositiveProcess, Process};
+use super::reaction::{BasicReaction, ExtensionReaction, PositiveReaction, Reaction};
+use super::set::{BasicSet, PositiveSet, Set};
+use super::element::{IdState, IdType};
 use super::transitions::TransitionsIterator;
 use super::translator::{Translator, PrintableWithTranslator, Formatter};
 
+pub trait BasicSystem
+where Self: Clone + Debug + Serialize + Default + Eq + Hash
+    + PrintableWithTranslator,
+for<'de> Self: Deserialize<'de> {
+    type Set: BasicSet;
+    type Reaction: BasicReaction<Set = Self::Set>;
+    type Label: BasicLabel<Set = Self::Set>;
+    type Process: BasicProcess<Set = Self::Set>;
+    type Environment: BasicEnvironment<Set = Self::Set, Process = Self::Process>;
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct System {
-    pub delta: Rc<Environment>,
-    pub available_entities: Set,
-    pub context_process: Process,
-    pub reaction_rules: Rc<Vec<Reaction>>,
+    fn to_transitions_iterator(
+	&self
+    ) -> Result<impl Iterator<Item = (Self::Label, Self)>, String>;
+
+    fn environment(&self) -> &Self::Environment;
+    fn available_entities(&self) -> &Self::Set;
+    fn context(&self) -> &Self::Process;
+    fn reactions(&self) -> &Vec<Self::Reaction>;
 }
 
-type Trace = Vec<(Option<Rc<Label>>, Rc<System>)>;
+type Trace<L, S> = Vec<(Option<Rc<L>>, Rc<S>)>;
 
-impl System {
-    pub fn new() -> System {
-	System {
-	    delta: Rc::new(Environment::new()),
-	    available_entities: Set::default(),
-	    context_process: Process::Nill,
-	    reaction_rules: Rc::new(vec![]),
-	}
-    }
-
-    pub fn from(
-	delta: Rc<Environment>,
-	available_entities: Set,
-	context_process: Process,
-	reaction_rules: Rc<Vec<Reaction>>,
-    ) -> System {
-	System {
-	    delta: Rc::clone(&delta),
-	    available_entities,
-	    context_process,
-	    reaction_rules: Rc::clone(&reaction_rules),
-	}
-    }
-
-    pub fn to_transitions_iterator<'a>(
-	&'a self
-    ) -> Result<TransitionsIterator<'a>, String> {
-	TransitionsIterator::from(self)
-    }
-
-
-    /// see oneTransition, transition, smartTransition, smartOneTransition
-    pub fn one_transition(
+pub trait ExtensionsSystem: BasicSystem {
+    fn one_transition(
 	&self
-    ) -> Result<Option<(Label, System)>, String> {
+    ) -> Result<Option<(Self::Label, Self)>, String>;
+
+    fn nth_transition(
+	&self,
+	n: usize,
+    ) -> Result<Option<(Self::Label, Self)>, String>;
+
+    fn all_transitions(
+	&self
+    ) -> Result<Vec<(Self::Label, Self)>, String>;
+
+    fn run(
+	&self
+    ) -> Result<Vec<Rc<Self>>, String>;
+
+    fn digraph(self) -> Result<DiGraph<Self, Self::Label>, String>;
+
+    fn target(&self) -> Result<(i64, Self::Set), String>;
+
+    #[allow(clippy::type_complexity)]
+    fn run_separated(
+	&self
+    ) -> Result<Vec<(Self::Set, Self::Set, Self::Set)>, String>;
+
+    fn traces(
+	self,
+	n: usize,
+    ) -> Result<Vec<Trace<Self::Label, Self>>, String>;
+}
+
+impl<T: BasicSystem> ExtensionsSystem for T {
+    /// see oneTransition, transition, smartTransition, smartOneTransition
+    fn one_transition(
+	&self
+    ) -> Result<Option<(Self::Label, Self)>, String> {
 	let mut tr = self.to_transitions_iterator()?;
 	Ok(tr.next())
     }
 
-
-    pub fn nth_transition(
+    fn nth_transition(
 	&self,
 	n: usize,
-    ) -> Result<Option<(Label, System)>, String> {
+    ) -> Result<Option<(Self::Label, Self)>, String> {
 	let mut tr = self.to_transitions_iterator()?;
 	Ok(tr.nth(n))
     }
 
-
     /// see allTransitions, smartAllTransitions
-    pub fn all_transitions(
+    fn all_transitions(
 	&self
-    ) -> Result<Vec<(Label, System)>, String> {
+    ) -> Result<Vec<(Self::Label, Self)>, String> {
 	let tr = self.to_transitions_iterator()?;
 	Ok(tr.collect::<Vec<_>>())
     }
 
-
-    /// see oneTarget, smartOneTarget, target, smartTarget
-    pub fn target(
+    /// see oneRun, run, smartOneRunEK, smartRunEK
+    fn run(
 	&self
-    ) -> Result<(i64, Set), String> {
+    ) -> Result<Vec<Rc<Self>>, String> {
+	let mut res = vec![Rc::new(self.clone())];
+	while let Some((_, next_sys)) = res.last().unwrap().one_transition()? {
+	    res.push(Rc::new(next_sys));
+	}
+	Ok(res)
+    }
+
+    /// Creates a graph starting from a system as root node.
+    fn digraph(self) -> Result<DiGraph<Self, Self::Label>, String> {
+	use petgraph::Graph;
+
+	let mut graph = Graph::default();
+	let node = graph.add_node(self.clone());
+
+	let mut association = HashMap::new();
+	association.insert(self.clone(), node);
+
+	let mut stack = vec![self];
+
+	while let Some(current) = stack.pop() {
+	    // depth first
+	    let current_node = *association.get(&current).unwrap();
+
+	    for (label, next) in current.to_transitions_iterator()? {
+		// if not already visited
+		let next_node = association.entry(next.clone()).or_insert_with(|| {
+		    stack.push(next.clone());
+		    graph.add_node(next)
+		});
+		graph.add_edge(current_node, *next_node, label);
+	    }
+	}
+	Ok(graph)
+    }
+
+    /// Returns the state in one of the terminal states and the number of steps
+    /// to arrive at the last state.
+    /// see oneTarget, smartOneTarget, target, smartTarget
+    fn target(
+	&self
+    ) -> Result<(i64, Self::Set), String> {
 	let current = self.one_transition()?;
 	if current.is_none() {
-	    return Ok((0, self.available_entities.clone()));
+	    return Ok((0, self.available_entities().clone()));
 	}
 	let mut n = 1;
 	let mut current = current.unwrap().1;
@@ -96,25 +149,13 @@ impl System {
 	    current = next;
 	    n += 1;
 	}
-	Ok((n, current.available_entities.clone()))
+	Ok((n, current.available_entities().clone()))
     }
-
-    /// see oneRun, run, smartOneRunEK, smartRunEK
-    pub fn run(
-	self
-    ) -> Result<Vec<Rc<Self>>, String> {
-	let mut res = vec![Rc::new(self)];
-	while let Some((_, next_sys)) = res.last().unwrap().one_transition()? {
-	    res.push(Rc::new(next_sys));
-	}
-	Ok(res)
-    }
-
 
     /// see smartOneRunECT, smartRunECT
-    pub fn run_separated(
+    fn run_separated(
 	&self
-    ) -> Result<Vec<(Set, Set, Set)>, String> {
+    ) -> Result<Vec<(Self::Set, Self::Set, Self::Set)>, String> {
 	let mut res = vec![];
 	let current = self.one_transition()?;
 	if current.is_none() {
@@ -132,16 +173,21 @@ impl System {
 	Ok(res)
     }
 
-    pub fn traces(
+    /// Return the first n traces. Equivalent to visiting the execution tree
+    /// depth first and returning the first n leaf nodes and their path to the
+    /// root.
+    fn traces(
 	self,
 	n: usize,
-    ) -> Result<Vec<Trace>, String> {
+    ) -> Result<Vec<Trace<Self::Label, Self>>, String> {
 	if n == 0 {
 	    return Ok(vec![])
 	}
 	let mut n = n;
-	let mut res : Vec<Trace> = vec![];
-	let mut current_trace: Trace = vec![(None, Rc::new(self))];
+	let mut res : Vec<Trace<Self::Label, Self>>
+	    = vec![];
+	let mut current_trace: Trace<Self::Label, Self>
+	    = vec![(None, Rc::new(self))];
 	let mut branch = vec![0];
 	let mut depth = 0;
 	let mut new_branch = true;
@@ -187,6 +233,46 @@ impl System {
     }
 }
 
+// -----------------------------------------------------------------------------
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct System {
+    pub delta: Rc<Environment>,
+    pub available_entities: Set,
+    pub context_process: Process,
+    pub reaction_rules: Rc<Vec<Reaction>>,
+}
+
+impl BasicSystem for System {
+    type Set = Set;
+    type Reaction = Reaction;
+    type Label = Label;
+    type Process = Process;
+    type Environment = Environment;
+
+    fn to_transitions_iterator(
+	&self
+    ) -> Result<impl Iterator<Item = (Self::Label, Self)>, String> {
+	TransitionsIterator::<Self::Set, Self, Self::Process>::from(self)
+    }
+
+    fn environment(&self) -> &Self::Environment {
+	&self.delta
+    }
+
+    fn available_entities(&self) -> &Self::Set {
+	&self.available_entities
+    }
+
+    fn context(&self) -> &Self::Process {
+	&self.context_process
+    }
+
+    fn reactions(&self) -> &Vec<Self::Reaction> {
+	&self.reaction_rules
+    }
+}
+
 /// Equality does not care about delta or reaction rules. Only entities and
 /// context is compared
 impl PartialEq for System {
@@ -214,7 +300,10 @@ impl Hash for System {
 
 impl Default for System {
     fn default() -> Self {
-	System::new()
+	Self { delta: Rc::new(Environment::default()),
+	       available_entities: Set::default(),
+	       context_process: Process::Nill,
+	       reaction_rules: Rc::new(Vec::default()) }
     }
 }
 
@@ -238,6 +327,23 @@ impl PrintableWithTranslator for System {
 	    }
 	}
 	write!(f, "] ]")
+    }
+}
+
+
+impl System {
+    pub fn from(
+	delta: Rc<Environment>,
+	available_entities: Set,
+	context_process: Process,
+	reaction_rules: Rc<Vec<Reaction>>,
+    ) -> System {
+	System {
+	    delta: Rc::clone(&delta),
+	    available_entities,
+	    context_process,
+	    reaction_rules: Rc::clone(&reaction_rules),
+	}
     }
 }
 
@@ -340,43 +446,6 @@ impl System {
 }
 
 // -----------------------------------------------------------------------------
-//                                   Graph
-// -----------------------------------------------------------------------------
-
-impl System {
-    /// Creates a graph starting from a system as root node
-    pub fn digraph(
-	self
-    ) -> Result<SystemGraph, String> {
-	use petgraph::Graph;
-
-	let mut graph = Graph::default();
-	let node = graph.add_node(self.clone());
-
-	let mut association = HashMap::new();
-	association.insert(self.clone(), node);
-
-	let mut stack = vec![self];
-
-	while let Some(current) = stack.pop() {
-	    // depth first
-	    let current_node = *association.get(&current).unwrap();
-
-	    for (label, next) in TransitionsIterator::from(&current)? {
-		// if not already visited
-		let next_node = association.entry(next.clone()).or_insert_with(|| {
-		    stack.push(next.clone());
-		    graph.add_node(next)
-		});
-		graph.add_edge(current_node, *next_node, label);
-	    }
-	}
-	Ok(graph)
-    }
-}
-
-
-// -----------------------------------------------------------------------------
 //                                 Statistics
 // -----------------------------------------------------------------------------
 
@@ -388,7 +457,7 @@ impl System {
 	&self,
 	translator: &Translator,
     ) -> String {
-	use super::translator;
+	use super::translator::Formatter;
 
 	let mut result: String = "Statistics:\n".into();
 	result.push_str(
@@ -400,7 +469,7 @@ impl System {
 	));
 	result.push_str(&format!(
 	    "{}\n",
-	    translator::Formatter::from(translator, &self.available_entities)
+	    Formatter::from(translator, &self.available_entities)
 	));
 
 	let reactants = self
@@ -410,7 +479,7 @@ impl System {
 	result.push_str(&format!(
 	    "The reactants are {}:\n{}\n",
 	    reactants.len(),
-	    translator::Formatter::from(translator, &reactants)
+	    Formatter::from(translator, &reactants)
 	));
 
 	let inhibitors = self
@@ -420,7 +489,7 @@ impl System {
 	result.push_str(&format!(
 	    "The inhibitors are {}:\n{}\n",
 	    inhibitors.len(),
-	    translator::Formatter::from(translator, &inhibitors)
+	    Formatter::from(translator, &inhibitors)
 	));
 
 	let products = self
@@ -430,28 +499,28 @@ impl System {
 	result.push_str(&format!(
 	    "The products are {}:\n{}\n",
 	    products.len(),
-	    translator::Formatter::from(translator, &products)
+	    Formatter::from(translator, &products)
 	));
 
 	let total = reactants.union(&inhibitors.union(&products));
 	result.push_str(&format!(
 	    "The reactions involve {} entities:\n{}\n",
 	    total.len(),
-	    translator::Formatter::from(translator, &total)
+	    Formatter::from(translator, &total)
 	));
 
 	let entities_env = self.delta.all_elements();
 	result.push_str(&format!(
 	    "The environment involves {} entities:\n{}\n",
 	    entities_env.len(),
-	    translator::Formatter::from(translator, &entities_env)
+	    Formatter::from(translator, &entities_env)
 	));
 
 	let entities_context = self.context_process.all_elements();
 	result.push_str(&format!(
 	    "The context involves {} entities:\n{}\n",
 	    entities_context.len(),
-	    translator::Formatter::from(translator, &entities_context)
+	    Formatter::from(translator, &entities_context)
 	));
 
 	let entities_all = total
@@ -462,7 +531,7 @@ impl System {
 	result.push_str(&format!(
 	    "The whole RS involves {} entities:\n{}\n",
 	    entities_all.len(),
-	    translator::Formatter::from(translator, &entities_all)
+	    Formatter::from(translator, &entities_all)
 	));
 
 	let possible_e = products
@@ -472,7 +541,7 @@ impl System {
 	result.push_str(&format!(
 	    "There are {} reactants that will never be available:\n{}\n",
 	    missing_e.len(),
-	    translator::Formatter::from(translator, &missing_e)
+	    Formatter::from(translator, &missing_e)
 	));
 
 	let entities_not_needed = entities_context.subtraction(&total);
@@ -480,7 +549,7 @@ impl System {
 	    "The context can provide {} entities that will never be used:\
 	     \n{}\n",
 	    entities_not_needed.len(),
-	    translator::Formatter::from(translator, &entities_not_needed)
+	    Formatter::from(translator, &entities_not_needed)
 	));
 
 	result.push_str(&format!(
@@ -513,5 +582,167 @@ impl System {
 	);
 
 	result
+    }
+}
+
+
+// -----------------------------------------------------------------------------
+//                              Positive System
+// -----------------------------------------------------------------------------
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct PositiveSystem {
+    pub delta: Rc<PositiveEnvironment>,
+    pub available_entities: PositiveSet,
+    pub context_process: PositiveProcess,
+    pub reaction_rules: Rc<Vec<PositiveReaction>>,
+}
+
+impl BasicSystem for PositiveSystem {
+    type Set = PositiveSet;
+    type Reaction = PositiveReaction;
+    type Label = PositiveLabel;
+    type Process = PositiveProcess;
+    type Environment = PositiveEnvironment;
+
+    fn to_transitions_iterator(
+	&self
+    ) -> Result<impl Iterator<Item = (Self::Label, Self)>, String> {
+	TransitionsIterator::<Self::Set, Self, Self::Process>::from(self)
+    }
+
+    fn environment(&self) -> &Self::Environment {
+	&self.delta
+    }
+
+    fn available_entities(&self) -> &Self::Set {
+	&self.available_entities
+    }
+
+    fn context(&self) -> &Self::Process {
+	&self.context_process
+    }
+
+    fn reactions(&self) -> &Vec<Self::Reaction> {
+	&self.reaction_rules
+    }
+}
+
+/// Equality does not care about delta or reaction rules. Only entities and
+/// context is compared
+impl PartialEq for PositiveSystem {
+    // we ignore delta and reaction rules
+    fn eq(&self, other: &PositiveSystem) -> bool {
+	self.available_entities == other.available_entities &&
+	    self.context_process == other.context_process
+    }
+}
+
+/// Equality does not care about delta or reaction rules. Only entities and
+/// context is compared
+impl Eq for PositiveSystem {}
+
+/// Hash does not care about delta or reaction rules. Only entities and
+/// context is hashed
+impl Hash for PositiveSystem {
+    // ignores delta and reaction rules
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+	self.available_entities.hash(state);
+	self.context_process.hash(state);
+    }
+}
+
+impl Default for PositiveSystem {
+    fn default() -> Self {
+	Self { delta: Rc::new(PositiveEnvironment::default()),
+	       available_entities: PositiveSet::default(),
+	       context_process: PositiveProcess::default(),
+	       reaction_rules: Rc::new(Vec::default()) }
+    }
+}
+
+impl PrintableWithTranslator for PositiveSystem {
+    fn print(&self, f: &mut std::fmt::Formatter, translator: &Translator)
+	     -> std::fmt::Result {
+	write!(
+	    f,
+	    "[delta: {}, available_entities: {}, context_process: {}, \
+	     reaction_rules: [",
+	    Formatter::from(translator, &*self.delta),
+	    Formatter::from(translator, &self.available_entities),
+	    Formatter::from(translator, &self.context_process)
+	)?;
+	let mut it = self.reaction_rules.iter().peekable();
+	while let Some(el) = it.next() {
+	    if it.peek().is_none() {
+		write!(f, "{}", Formatter::from(translator, el))?;
+	    } else {
+		write!(f, "{}, ", Formatter::from(translator, el))?;
+	    }
+	}
+	write!(f, "] ]")
+    }
+}
+
+impl From<System> for PositiveSystem {
+    /// Converts from a normal system to a positive one, replaces every reaction
+    /// {r, i, p} with a positive reaction {r ∪ ¬i, p} and with {t, el} for each
+    /// el ∈ p for p in some reaction and t ∈ prohibiting set of a with respect
+    /// all reactions that contains el in the products.
+    /// Should never fail.
+    fn from(value: System) -> Self {
+	let new_env = Rc::new((&*value.delta).into());
+	let new_available_entities =
+	    value.available_entities.to_positive_set(IdState::Positive);
+	let new_context = value.context_process.into();
+	let new_reactions = {
+	    let mut res = vec![];
+	    let old_reactions = &value.reaction_rules;
+	    old_reactions.iter()
+		.for_each(
+		    |r| res.push(PositiveReaction::create(r.reactants.clone(),
+							  r.inhibitors.clone(),
+							  r.products.clone())));
+	    let all_products = Reaction::all_products(old_reactions);
+	    for el in all_products {
+		let p =
+		    Reaction::all_reactions_with_product(old_reactions, &el);
+		let prohib_set =
+		    Set::prohibiting_set(
+			&p.iter().map(|p| p.reactants.clone())
+			    .collect::<Vec<_>>(),
+			&p.iter().map(|p| p.inhibitors.clone())
+			    .collect::<Vec<_>>())
+		    .unwrap();
+		for s in prohib_set {
+		    res.push(PositiveReaction {
+			reactants: s,
+			products: PositiveSet::from([(el, IdState::Negative)])
+		    })
+		}
+	    }
+	    Rc::new(res)
+	};
+
+	Self { delta: new_env,
+	       available_entities: new_available_entities,
+	       context_process: new_context,
+	       reaction_rules: new_reactions }
+    }
+}
+
+impl PositiveSystem {
+    pub fn from(
+	delta: Rc<PositiveEnvironment>,
+	available_entities: PositiveSet,
+	context_process: PositiveProcess,
+	reaction_rules: Rc<Vec<PositiveReaction>>,
+    ) -> Self {
+	Self {
+	    delta: Rc::clone(&delta),
+	    available_entities,
+	    context_process,
+	    reaction_rules: Rc::clone(&reaction_rules),
+	}
     }
 }

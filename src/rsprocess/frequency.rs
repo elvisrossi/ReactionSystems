@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use super::reaction::{Reaction, ExtensionReaction};
 use super::set::{Set, ExtensionsSet};
-use super::system::System;
+use super::system::{System, ExtensionsSystem};
 use super::element::IdType;
 use super::translator::{Translator, PrintableWithTranslator, PRECISION};
 

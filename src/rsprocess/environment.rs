@@ -1,36 +1,49 @@
 use serde::{Deserialize, Serialize};
 use std::cmp;
 use std::collections::{HashMap, HashSet};
+use std::fmt::Debug;
 use std::rc::Rc;
 
-use super::choices::Choices;
-use super::process::Process;
+use super::choices::{BasicChoices, Choices, PositiveChoices};
+use super::process::{BasicProcess, PositiveProcess, Process};
 use super::reaction::{Reaction, BasicReaction, ExtensionReaction};
-use super::set::{BasicSet, Set};
+use super::set::{BasicSet, PositiveSet, Set};
 use super::element::IdType;
 use super::translator::{Translator, PrintableWithTranslator, Formatter};
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+pub trait BasicEnvironment
+where Self: Clone + Debug + Default + Serialize + PrintableWithTranslator,
+for<'a> Self: Deserialize<'a> {
+    type Id;
+    type Set: BasicSet;
+    type Choices: BasicChoices;
+    type Process: BasicProcess<Set = Self::Set, Id = Self::Id>;
+
+    fn get(&self, k: Self::Id) -> Option<&Self::Process>;
+    fn all_elements(&self) -> Self::Set;
+    fn unfold(
+	&self,
+	context: &Self::Process,
+	entities: &Self::Set,
+    ) -> Result<Self::Choices, String>;
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Environment {
     definitions: HashMap<IdType, Process>,
 }
 
-impl Environment {
-    pub fn new() -> Environment {
-	Environment {
-	    definitions: HashMap::new(),
-	}
-    }
+impl BasicEnvironment for Environment {
+    type Process = Process;
+    type Set = Set;
+    type Choices = Choices;
+    type Id = IdType;
 
-    pub fn get(&self, k: IdType) -> Option<&Process> {
+    fn get(&self, k: IdType) -> Option<&Process> {
 	self.definitions.get(&k)
     }
 
-    pub fn iter(&self) -> std::collections::hash_map::Iter<'_, u32, Process> {
-	self.definitions.iter()
-    }
-
-    pub fn all_elements(&self) -> Set {
+    fn all_elements(&self) -> Set {
 	let mut acc = Set::default();
 	for (_, process) in self.definitions.iter() {
 	    acc.push(&process.all_elements());
@@ -42,14 +55,14 @@ impl Environment {
     /// definitions environment. choices::Choices is a list of context moves
     /// mapping a set of entities and the continuation.
     /// see unfold
-    pub fn unfold(
+    fn unfold(
 	&self,
 	context_process: &Process,
 	current_entities: &Set,
     ) -> Result<Choices, String> {
 	match context_process {
 	    Process::Nill => {
-		Ok(Choices::new())
+		Ok(Choices::default())
 	    },
 	    Process::RecursiveIdentifier { identifier } => {
 		let newprocess = self.get(*identifier);
@@ -70,7 +83,7 @@ impl Environment {
 		    Ok(Choices::from([(Rc::new(reaction.products.clone()),
 					 Rc::clone(next_process))]))
 		} else {
-		    Ok(Choices::new())
+		    Ok(Choices::default())
 		}
 	    }
 	    Process::WaitEntity { repeat, repeated_process: _, next_process, }
@@ -97,7 +110,7 @@ impl Environment {
 	    }
 	    Process::Summation { children } => {
 		// short-circuits with try_fold.
-		children.iter().try_fold(Choices::new(), |mut acc, x| {
+		children.iter().try_fold(Choices::default(), |mut acc, x| {
 		    match self.unfold(x, current_entities) {
 			Ok(mut choices) => {
 			    acc.append(&mut choices);
@@ -115,42 +128,12 @@ impl Environment {
 			Rc::new(Process::Nill),
 		    )]))
 		} else {
-		    children.iter().try_fold(Choices::new(), |mut acc, x| {
+		    children.iter().try_fold(Choices::default(), |mut acc, x| {
 			acc.shuffle(self.unfold(x, current_entities)?);
 			Ok(acc)
 		    })
 		}
 	    }
-	}
-    }
-}
-
-impl Default for Environment {
-    fn default() -> Self {
-	Environment::new()
-    }
-}
-
-impl<const N: usize> From<[(IdType, Process); N]> for Environment {
-    fn from(arr: [(IdType, Process); N]) -> Self {
-	Environment {
-	    definitions: HashMap::from(arr),
-	}
-    }
-}
-
-impl From<&[(IdType, Process)]> for Environment {
-    fn from(arr: &[(IdType, Process)]) -> Self {
-	Environment {
-	    definitions: HashMap::from_iter(arr.to_vec()),
-	}
-    }
-}
-
-impl From<Vec<(IdType, Process)>> for Environment {
-    fn from(arr: Vec<(IdType, Process)>) -> Self {
-	Environment {
-	    definitions: HashMap::from_iter(arr),
 	}
     }
 }
@@ -178,6 +161,36 @@ impl PrintableWithTranslator for Environment {
 	    }
 	}
 	write!(f, "}}")
+    }
+}
+
+impl Environment {
+    pub fn iter(&self) -> std::collections::hash_map::Iter<'_, u32, Process> {
+	self.definitions.iter()
+    }
+}
+
+impl<const N: usize> From<[(IdType, Process); N]> for Environment {
+    fn from(arr: [(IdType, Process); N]) -> Self {
+	Environment {
+	    definitions: HashMap::from(arr),
+	}
+    }
+}
+
+impl From<&[(IdType, Process)]> for Environment {
+    fn from(arr: &[(IdType, Process)]) -> Self {
+	Environment {
+	    definitions: HashMap::from_iter(arr.to_vec()),
+	}
+    }
+}
+
+impl From<Vec<(IdType, Process)>> for Environment {
+    fn from(arr: Vec<(IdType, Process)>) -> Self {
+	Environment {
+	    definitions: HashMap::from_iter(arr),
+	}
     }
 }
 
@@ -509,4 +522,168 @@ impl Environment {
     }
 
     // TODO: weak confluence
+}
+
+// -----------------------------------------------------------------------------
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct PositiveEnvironment {
+    definitions: HashMap<IdType, PositiveProcess>,
+}
+
+impl BasicEnvironment for PositiveEnvironment {
+    type Id = IdType;
+    type Set = PositiveSet;
+    type Choices = PositiveChoices;
+    type Process = PositiveProcess;
+
+    fn get(&self, k: Self::Id) -> Option<&Self::Process> {
+	self.definitions.get(&k)
+    }
+
+    fn all_elements(&self) -> Self::Set {
+	let mut acc = Self::Set::default();
+	for (_, process) in self.definitions.iter() {
+	    acc.push(&process.all_elements());
+	}
+	acc
+    }
+
+    fn unfold(
+	&self,
+	context: &Self::Process,
+	entities: &Self::Set,
+    ) -> Result<Self::Choices, String> {
+	match context {
+	    PositiveProcess::Nill => {
+		Ok(Self::Choices::default())
+	    },
+	    PositiveProcess::RecursiveIdentifier { identifier } => {
+		let newprocess = self.get(*identifier);
+		if let Some(newprocess) = newprocess {
+		    self.unfold(newprocess, entities)
+		} else {
+		    Err(format!("Missing symbol in context: {identifier}"))
+		}
+	    }
+	    PositiveProcess::EntitySet { entities, next_process, } => {
+		Ok(Self::Choices::from([(
+		    Rc::new(entities.clone()),
+		    Rc::clone(next_process),
+		)]))
+	    },
+	    PositiveProcess::Guarded { reaction, next_process } => {
+		if reaction.enabled(entities) {
+		    Ok(Self::Choices::from([(Rc::new(reaction.products.clone()),
+					     Rc::clone(next_process))]))
+		} else {
+		    Ok(Self::Choices::default())
+		}
+	    }
+	    PositiveProcess::WaitEntity { repeat, repeated_process: _, next_process, }
+	    if *repeat <= 0 => {
+		self.unfold(next_process, entities)
+	    },
+	    PositiveProcess::WaitEntity { repeat, repeated_process, next_process, }
+	    if *repeat == 1 => {
+		let mut choices1 = self.unfold(repeated_process,
+					       entities)?;
+		choices1.replace(Rc::clone(next_process));
+		Ok(choices1)
+	    }
+	    PositiveProcess::WaitEntity { repeat, repeated_process, next_process, } =>
+	    {
+		let mut choices1 = self.unfold(repeated_process,
+					  entities)?;
+		choices1.replace(Rc::new(PositiveProcess::WaitEntity {
+		    repeat: (*repeat - 1),
+		    repeated_process: Rc::clone(repeated_process),
+		    next_process: Rc::clone(next_process),
+		}));
+		Ok(choices1)
+	    }
+	    PositiveProcess::Summation { children } => {
+		// short-circuits with try_fold.
+		children.iter().try_fold(
+		    Self::Choices::default(),
+		    |mut acc, x| {
+			match self.unfold(x, entities) {
+			    Ok(mut choices) => {
+				acc.append(&mut choices);
+				Ok(acc)
+			    }
+			    Err(e) => Err(e),
+			}
+		    })
+	    }
+	    PositiveProcess::NondeterministicChoice { children } => {
+		// short-circuits with try_fold.
+		if children.is_empty() {
+		    Ok(Self::Choices::from(vec![(
+			Rc::new(Self::Set::default()),
+			Rc::new(Self::Process::default()),
+		    )]))
+		} else {
+		    children.iter().try_fold(
+			Self::Choices::default(),
+			|mut acc, x| {
+			    acc.shuffle(self.unfold(x, entities)?);
+			    Ok(acc)
+			})
+		}
+	    }
+	}
+    }
+}
+
+impl PrintableWithTranslator for PositiveEnvironment {
+    fn print(&self, f: &mut std::fmt::Formatter, translator: &Translator)
+	     -> std::fmt::Result {
+	write!(f, "{{env:")?;
+	let mut it = self.iter().peekable();
+	while let Some(el) = it.next() {
+	    if it.peek().is_none() {
+		write!(
+		    f,
+		    "({} -> {})",
+		    translator.decode(*el.0).unwrap_or("Missing".into()),
+		    Formatter::from(translator, el.1)
+		)?;
+	    } else {
+		write!(
+		    f,
+		    "({} -> {}), ",
+		    translator.decode(*el.0).unwrap_or("Missing".into()),
+		    Formatter::from(translator, el.1)
+		)?;
+	    }
+	}
+	write!(f, "}}")
+    }
+}
+
+impl PositiveEnvironment {
+    pub fn iter(
+	&self
+    ) -> impl std::iter::Iterator<Item = (&u32, &PositiveProcess)> {
+	self.definitions.iter()
+    }
+}
+
+impl From<&Environment> for PositiveEnvironment {
+    fn from(value: &Environment) -> Self {
+	PositiveEnvironment {
+	    definitions: value
+		.definitions
+		.iter()
+		.map(|(id, proc)| (*id, proc.into()))
+		.collect::<HashMap<_, _>>()
+	}
+    }
+}
+
+impl From<Environment> for PositiveEnvironment {
+    fn from(value: Environment) -> Self {
+	(&value).into()
+    }
 }

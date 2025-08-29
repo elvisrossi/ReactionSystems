@@ -14,6 +14,8 @@ where Self: Clone + Eq + Ord + Default + Serialize + IntoIterator
     + PrintableWithTranslator,
 for<'de> Self: Deserialize<'de>
 {
+    type Element;
+
     fn is_subset(&self, other: &Self) -> bool;
     fn is_disjoint(&self, other: &Self) -> bool;
     fn union(&self, other: &Self) -> Self;
@@ -23,6 +25,7 @@ for<'de> Self: Deserialize<'de>
     fn subtraction(&self, other: &Self) -> Self;
     fn len(&self) -> usize;
     fn is_empty(&self) -> bool;
+    fn contains(&self, el: &Self::Element) -> bool;
 }
 
 pub trait ExtensionsSet {
@@ -65,6 +68,8 @@ pub struct Set {
 }
 
 impl BasicSet for Set {
+    type Element = IdType;
+
     fn is_subset(&self, other: &Self) -> bool {
 	self.identifiers.is_subset(&other.identifiers)
     }
@@ -118,6 +123,10 @@ impl BasicSet for Set {
 
     fn is_empty(&self) -> bool {
 	self.identifiers.is_empty()
+    }
+
+    fn contains(&self, el: &Self::Element) -> bool {
+	self.identifiers.contains(el)
     }
 }
 
@@ -323,6 +332,8 @@ pub struct PositiveSet {
 }
 
 impl BasicSet for PositiveSet {
+    type Element = PositiveType;
+
     fn is_subset(&self, other: &Self) -> bool {
 	for (id, s) in self.iter() {
 	    if let Some(s1) = other.identifiers.get(id) {
@@ -405,6 +416,14 @@ impl BasicSet for PositiveSet {
 
     fn is_empty(&self) -> bool {
 	self.identifiers.is_empty()
+    }
+
+    fn contains(&self, el: &Self::Element) -> bool {
+	if let Some(e) = self.identifiers.get(&el.id) && *e == el.state {
+	    true
+	} else {
+	    false
+	}
     }
 }
 

@@ -6,6 +6,7 @@
 use serde::{Deserialize, Serialize};
 use std::hash::Hash;
 
+use super::element::{IdState, IdType};
 use super::set::{BasicSet, ExtensionsSet, Set, PositiveSet};
 use super::translator::{Translator, PrintableWithTranslator, Formatter};
 
@@ -161,7 +162,7 @@ impl BasicReaction for Reaction {
 
 	/// returns true if ```current_state``` enables the reaction
 	/// see enable
-	fn enabled(&self, current_state: &Set) -> bool {
+	fn enabled(&self, current_state: &Self::Set) -> bool {
 		self.reactants.is_subset(current_state)
 			&& self.inhibitors.is_disjoint(current_state)
 	}
@@ -169,7 +170,7 @@ impl BasicReaction for Reaction {
 	/// Computes the result of a single reaction (if enabled returns the
 	/// products) otherwise returns None.
 	/// see result
-	fn compute_step(&self, state: &Set) -> Option<&Set> {
+	fn compute_step(&self, state: &Self::Set) -> Option<&Self::Set> {
 		if self.enabled(state) {
 			Some(&self.products)
 		} else {
@@ -195,6 +196,29 @@ impl Reaction {
 	pub fn from(reactants: Set, inhibitors: Set, products: Set) -> Self {
 		Reaction { reactants, inhibitors, products }
 	}
+
+	pub fn all_products(reactions: &[Self]) -> Set {
+		reactions.iter().fold(
+			Set::default(),
+			|acc, r|
+			acc.union(&r.products)
+		)
+	}
+
+	pub fn all_reactions_with_product<'a>(
+		reactions: &'a [Self],
+		el: &IdType
+	) -> Vec<&'a Self> {
+		reactions.iter().fold(
+			vec![],
+			|mut acc, r| {
+				if r.products.contains(el) {
+					acc.push(r);
+				}
+				acc
+			}
+		)
+	}
 }
 
 // -----------------------------------------------------------------------------
@@ -208,11 +232,11 @@ pub struct PositiveReaction {
 impl BasicReaction for PositiveReaction {
 	type Set = PositiveSet;
 
-	fn enabled(&self, state: &PositiveSet) -> bool {
+	fn enabled(&self, state: &Self::Set) -> bool {
 		self.reactants.is_subset(state)
 	}
 
-	fn compute_step(&self, state: &PositiveSet) -> Option<&PositiveSet> {
+	fn compute_step(&self, state: &Self::Set) -> Option<&Self::Set> {
 		if self.enabled(state) {
 			Some(&self.products)
 		} else {
@@ -235,6 +259,14 @@ impl PrintableWithTranslator for PositiveReaction {
 
 impl PositiveReaction {
 	pub fn from(reactants: PositiveSet, products: PositiveSet) -> Self {
-		PositiveReaction { reactants, products }
+		Self { reactants, products }
+	}
+
+	pub fn create(reactants: Set, inhibitors: Set, products: Set) -> Self {
+		Self { reactants:
+			   reactants.to_positive_set(IdState::Positive).union(
+				   &inhibitors.to_positive_set(IdState::Negative)
+			   ),
+			   products: products.to_positive_set(IdState::Positive) }
 	}
 }
