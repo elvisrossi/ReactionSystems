@@ -845,7 +845,6 @@ Instruction: presets::Instruction = {
 	presets::Instruction::FastFrequency { experiment: p, so },
     "Digraph" ">" <gso: Separated_Or<GraphSaveOptions, "|">> =>
 	presets::Instruction::Digraph { gso },
-    // <edge_relabeler: Assert>
     "Bisimilarity" "(" <p: Path> ")" "relabel" <edge_relabeler: Assert>
     ">" <so: SaveOptions> =>
 	presets::Instruction::Bisimilarity {

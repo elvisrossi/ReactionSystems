@@ -162,20 +162,20 @@ where
     // relative path
     let mut path = match env::current_dir() {
         Ok(p) => p,
-        Err(_) => return Err("Error getting current directory.".into()),
+        Err(e) => return Err(format!("Error getting current directory: {e}")),
     };
     path = path.join(path_string);
 
     // we read the file with a buffer
     let f = match fs::File::open(path) {
         Ok(f) => f,
-        Err(_) => return Err("Error opening file.".into()),
+        Err(e) => return Err(format!("Error opening file: {e}.")),
     };
     let mut buf_reader = io::BufReader::new(f);
     let mut contents = String::new();
     match buf_reader.read_to_string(&mut contents) {
         Ok(_) => {}
-        Err(_) => return Err("Error reading file.".into()),
+        Err(e) => return Err(format!("Error reading file: {e}")),
     }
 
     // parse
@@ -215,7 +215,7 @@ where
 
 	    let mut err = format!(
 		"Unrecognized token {}{}{} \
-		 between positions {l} and {r}. ",
+		 between positions {l} and {r}.",
 		"\"".red(),
 		t.to_string().red(),
 		"\"".red(),
@@ -252,7 +252,7 @@ where
 	    let line_pos_r = r - left_new_line;
 
 	    err.push_str(
-		&format!(".\nLine {} position {} to {}:\n{}{}{}{}",
+		&format!("\nLine {} position {} to {}:\n{}{}{}{}",
 			 line_number,
 			 line_pos_l,
 			 line_pos_r,
@@ -334,7 +334,7 @@ pub fn stats(system: &EvaluatedSystem) -> Result<String, String> {
 	    Ok(sys.statistics(translator)),
         EvaluatedSystem::Graph { graph, translator } => {
             let Some(sys) = graph.node_weights().next() else {
-                return Err("No node found in graph".into());
+                return Err("No node found in graph.".into());
             };
             Ok(sys.statistics(translator))
         }
@@ -350,7 +350,7 @@ pub fn target(system: &EvaluatedSystem) -> Result<String, String> {
 	    (sys.target()?, translator),
         EvaluatedSystem::Graph { graph, translator } => {
             let Some(sys) = graph.node_weights().next() else {
-                return Err("No node found in graph".into());
+                return Err("No node found in graph.".into());
             };
             (sys.target()?, translator)
         }
@@ -373,7 +373,7 @@ pub fn traversed(system: &EvaluatedSystem) -> Result<String, String> {
         }
         EvaluatedSystem::Graph { graph, translator } => {
             let Some(sys) = graph.node_weights().next() else {
-                return Err("No node found in graph".into());
+                return Err("No node found in graph.".into());
             };
             (sys.run_separated()?, translator)
         }
@@ -381,7 +381,7 @@ pub fn traversed(system: &EvaluatedSystem) -> Result<String, String> {
 
     let mut output = String::new();
 
-    output.push_str("The trace is composed by the set of entities:");
+    output.push_str("The trace is composed by the set of entities: ");
     for (e, _c, _t) in res {
         output.push_str(&format!(
             "{}",
@@ -394,7 +394,7 @@ pub fn traversed(system: &EvaluatedSystem) -> Result<String, String> {
 /// Finds the looping list of states in a reaction system with a perpetual
 /// context. IMPORTANT: for loops, we assume Delta defines the process constant
 /// x = Q.x and the context process is x .
-/// equivalent to main_do(loop,Es)
+ /// equivalent to main_do(loop,Es)
 pub fn hoop(
     system: &EvaluatedSystem,
     symbol: String
@@ -403,14 +403,14 @@ pub fn hoop(
         EvaluatedSystem::System { sys, translator } => (sys, translator),
         EvaluatedSystem::Graph { graph, translator } => {
             let Some(sys) = graph.node_weights().next() else {
-                return Err("No node found in graph".into());
+                return Err("No node found in graph.".into());
             };
             (sys, translator)
         }
     };
     // we retrieve the id for "x" and use it to find the corresponding loop
     let Some(id) = translator.encode_not_mut(&symbol) else {
-        return Err(format!("Symbol {symbol} not found"));
+        return Err(format!("Symbol {symbol} not found."));
     };
     let res = match res.lollipops_only_loop_named(id) {
         Some(o) => o,
@@ -421,7 +421,7 @@ pub fn hoop(
 
     let mut output = String::new();
 
-    output.push_str("The loop is composed by the sets:");
+    output.push_str("The loop is composed by the sets: ");
     for e in res {
         output.push_str(&format!(
             "{}",
@@ -440,7 +440,7 @@ pub fn freq(system: &EvaluatedSystem) -> Result<String, String> {
         EvaluatedSystem::System { sys, translator } => (sys, translator),
         EvaluatedSystem::Graph { graph, translator } => {
             let Some(sys) = graph.node_weights().next() else {
-                return Err("No node found in graph".into());
+                return Err("No node found in graph.".into());
             };
             (sys, translator)
         }
@@ -465,7 +465,7 @@ pub fn limit_freq(
         EvaluatedSystem::System { sys, translator } => (sys, translator),
         EvaluatedSystem::Graph { graph, translator } => {
             let Some(sys) = graph.node_weights().next() else {
-                return Err("No node found in graph".into());
+                return Err("No node found in graph.".into());
             };
             (sys, translator)
         }

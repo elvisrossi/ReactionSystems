@@ -1,0 +1,7 @@
+Environment: [ x = {b}.x, y = {a, c}.y ]
+Initial Entities: {a, b}
+Context: [({a,b}.{a}.{a,c}.x + {a,b}.{a}.{a}.y)]
+Reactions: ([{a}, {b}, {b}]; [{b}, {a}, {a}]; [{c}, {}, {d}])
+
+Loop (x) > Print,
+Loop (y) > Print

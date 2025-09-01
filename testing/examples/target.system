@@ -1,0 +1,6 @@
+Environment: [x = {a}.y, y =({a}.{a, b}.nill + {b}.nill) ]
+Initial Entities: {a, b}
+Context: [({a,b}.{a}.{a,c}.x + {a,b}.{a}.{a}.nill)]
+Reactions: ([{a,b}, {c}, {b}])
+
+Target > Print

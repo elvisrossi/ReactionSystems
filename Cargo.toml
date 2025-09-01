@@ -2,6 +2,7 @@
 name = "reactionsystems"
 version = "0.1.0"
 edition = "2024"
+exclude = ["*.system", "*.experiment", "/testing/", "*.serial"]
 
 [build-dependencies]
 lalrpop = "0.22"

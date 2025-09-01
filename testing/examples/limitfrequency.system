@@ -1,0 +1,6 @@
+Environment: [ x = {b}.{c}.x ]
+Initial Entities: {a, b}
+Context: [({a,b}.{a}.{a,c}.x + {a,b}.{a}.{a}.nill)]
+Reactions: ([{a}, {b}, {b}]; [{b}, {a}, {a}]; [{c}, {b}, {c}])
+
+LimitFrequency("limitfrequency.experiment") > Print

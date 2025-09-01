@@ -1,0 +1,16 @@
+Environment: [x = {a}.y, y =({a}.x + {b}.y) ]
+Initial Entities: {a, b}
+Context: [({a,b}.{a}.{a,c}.x + {a,b}.{a}.{a}.nill)]
+Reactions: ([{a,b}, {c}, {b}])
+
+Digraph > Dot
+        | Entities " - " Context " - entities masked: " MaskEntities {a}
+	| Entities
+	| Entities < {a} ? "blue" ! "white"
+	| ! "black"
+	> Print,
+
+Digraph > GraphML
+	| Entities
+	| Entities
+	> Print
