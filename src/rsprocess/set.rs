@@ -170,13 +170,9 @@ impl PrintableWithTranslator for Set {
 	let mut it = self.iter().peekable();
 	while let Some(el) = it.next() {
 	    if it.peek().is_none() {
-		write!(f,
-		       "{}",
-		       translator.decode(*el).unwrap_or("Missing".into()))?;
+		write!(f, "{}", Formatter::from(translator, el))?;
 	    } else {
-		write!(f,
-		       "{}, ",
-		       translator.decode(*el).unwrap_or("Missing".into()))?;
+		write!(f, "{}, ", Formatter::from(translator, el))?;
 	    }
 	}
 	write!(f, "}}")

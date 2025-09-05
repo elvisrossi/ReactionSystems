@@ -6,7 +6,7 @@ use std::rc::Rc;
 
 use super::choices::{BasicChoices, Choices, PositiveChoices};
 use super::process::{BasicProcess, PositiveProcess, Process};
-use super::reaction::{Reaction, BasicReaction, ExtensionReaction};
+use super::reaction::{BasicReaction, ExtensionReaction, PositiveReaction, Reaction};
 use super::set::{BasicSet, PositiveSet, Set};
 use super::element::IdType;
 use super::translator::{Translator, PrintableWithTranslator, Formatter};
@@ -18,6 +18,7 @@ for<'a> Self: Deserialize<'a> {
     type Set: BasicSet;
     type Choices: BasicChoices;
     type Process: BasicProcess<Set = Self::Set, Id = Self::Id>;
+    type Reaction: BasicReaction<Set = Self::Set>;
 
     fn get(&self, k: Self::Id) -> Option<&Self::Process>;
     fn all_elements(&self) -> Self::Set;
@@ -27,6 +28,229 @@ for<'a> Self: Deserialize<'a> {
 	entities: &Self::Set,
     ) -> Result<Self::Choices, String>;
 }
+
+pub trait ExtensionsEnvironment: BasicEnvironment {
+    fn iter(
+	&self
+    ) -> <&Self as IntoIterator>::IntoIter
+    where for<'b> &'b Self: IntoIterator;
+}
+
+impl<T: BasicEnvironment> ExtensionsEnvironment for T {
+    fn iter(
+	&self
+    ) -> <&Self as IntoIterator>::IntoIter
+    where for<'b> &'b Self: IntoIterator {
+	self.into_iter()
+    }
+}
+
+// -----------------------------------------------------------------------------
+//                                   Loops
+// -----------------------------------------------------------------------------
+
+pub trait LoopEnvironment: BasicEnvironment {
+    #[allow(clippy::type_complexity)]
+    fn lollipops_decomposed(
+	&self,
+	reaction_rules: &[Self::Reaction],
+	available_entities: &Self::Set,
+    ) -> Vec<(Vec<Self::Set>, Vec<Self::Set>)>;
+
+    fn lollipops_prefix_len_loop_decomposed(
+	&self,
+	reaction_rules: &[Self::Reaction],
+	available_entities: &Self::Set,
+    ) -> Vec<(usize, Vec<Self::Set>)>;
+
+    fn lollipops_only_loop_decomposed(
+	&self,
+	reaction_rules: &[Self::Reaction],
+	available_entities: &Self::Set,
+    ) -> Vec<Vec<Self::Set>>;
+
+    #[allow(clippy::type_complexity)]
+    fn lollipops_decomposed_named(
+	&self,
+	reaction_rules: &[Self::Reaction],
+	available_entities: &Self::Set,
+	symb: Self::Id,
+    ) -> Option<(Vec<Self::Set>, Vec<Self::Set>)>;
+
+    fn lollipops_prefix_len_loop_decomposed_named(
+	&self,
+	reaction_rules: &[Self::Reaction],
+	available_entities: &Self::Set,
+	symb: Self::Id,
+    ) -> Option<(usize, Vec<Self::Set>)>;
+
+    fn lollipops_only_loop_decomposed_named(
+	&self,
+	reaction_rules: &[Self::Reaction],
+	available_entities: &Self::Set,
+	symb: Self::Id,
+    ) -> Option<Vec<Self::Set>>;
+}
+
+
+impl<T: BasicEnvironment + ExtensionsEnvironment> LoopEnvironment for T
+where for<'a> &'a T: IntoIterator<Item = (&'a T::Id, &'a T::Process)>,
+      T::Id: Eq
+{
+    /// A special case of systems is when the context recursively provides
+    /// always the same set of entities.  The corresponding computation is
+    /// infinite.  It consists of a finite sequence of states followed by a
+    /// looping sequence.  IMPORTANT: We return all loops for all X = Q.X, by
+    /// varing X.  The set of reactions Rs and the context x are constant.  Each
+    /// state of the computation is distinguished by the current entities E.
+    /// Under these assumptions, the predicate lollipop finds the Prefixes and
+    /// the Loops sequences of entities.
+    /// see lollipop
+    fn lollipops_decomposed(
+	&self,
+	reaction_rules: &[Self::Reaction],
+	available_entities: &Self::Set,
+    ) -> Vec<(Vec<Self::Set>, Vec<Self::Set>)> {
+	// FIXME: i think we are only interested in "x", not all symbols that
+	// satisfy X = pre(Q, rec(X))
+	let filtered = self.iter().filter_map(|l| l.1.filter_delta(l.0));
+
+	let find_loop_fn =
+	    |q| T::Reaction::find_loop(reaction_rules,
+				       available_entities.clone(),
+				       q);
+
+	filtered.map(find_loop_fn).collect::<Vec<_>>()
+    }
+
+
+    fn lollipops_prefix_len_loop_decomposed(
+	&self,
+	reaction_rules: &[Self::Reaction],
+	available_entities: &Self::Set,
+    ) -> Vec<(usize, Vec<Self::Set>)> {
+	let filtered = self.iter().filter_map(|l| l.1.filter_delta(l.0));
+
+	let find_loop_fn =
+	    |q| T::Reaction::find_prefix_len_loop(reaction_rules,
+						  available_entities.clone(),
+						  q);
+
+	filtered.map(find_loop_fn).collect::<Vec<_>>()
+    }
+
+
+    /// see loop
+    fn lollipops_only_loop_decomposed(
+	&self,
+	reaction_rules: &[Self::Reaction],
+	available_entities: &Self::Set,
+    ) -> Vec<Vec<Self::Set>> {
+	let filtered = self.iter().filter_map(|l| l.1.filter_delta(l.0));
+
+	let find_loop_fn =
+	    |q| T::Reaction::find_only_loop(reaction_rules,
+					    available_entities,
+					    q);
+
+	filtered.map(find_loop_fn).collect::<Vec<_>>()
+    }
+
+
+
+    /// A special case of systems is when the context recursively provides
+    /// always the same set of entities.  The corresponding computation is
+    /// infinite.  It consists of a finite sequence of states followed by a
+    /// looping sequence.  IMPORTANT: We return all loops for all X = Q.X, by
+    /// varing X.  The set of reactions Rs and the context x are constant.  Each
+    /// state of the computation is distinguished by the current entities E.
+    /// Under these assumptions, the predicate lollipop finds the Prefixes and
+    /// the Loops sequences of entities.
+    /// see lollipop
+    fn lollipops_decomposed_named(
+	&self,
+	reaction_rules: &[Self::Reaction],
+	available_entities: &Self::Set,
+	symb: Self::Id,
+    ) -> Option<(Vec<Self::Set>, Vec<Self::Set>)> {
+	let filtered = self
+	    .iter()
+	    .filter_map(
+		|l|
+		if *l.0 == symb {
+		    l.1.filter_delta(&symb)
+		} else {
+		    None
+		}
+	    )
+	    .next();
+
+	let find_loop_fn = |q| T::Reaction::find_loop(reaction_rules,
+						      available_entities.clone(),
+						      q);
+
+	filtered.map(find_loop_fn)
+    }
+
+
+
+    fn lollipops_prefix_len_loop_decomposed_named(
+	&self,
+	reaction_rules: &[Self::Reaction],
+	available_entities: &Self::Set,
+	symb: Self::Id,
+    ) -> Option<(usize, Vec<Self::Set>)> {
+	let filtered = self
+	    .iter()
+	    .filter_map(
+		|l|
+		if *l.0 == symb {
+		    l.1.filter_delta(&symb)
+		} else {
+		    None
+		}
+	    )
+	    .next();
+
+	let find_loop_fn = |q|
+	T::Reaction::find_prefix_len_loop(reaction_rules,
+					  available_entities.clone(),
+					  q);
+
+	filtered.map(find_loop_fn)
+    }
+
+
+    /// see loop
+    fn lollipops_only_loop_decomposed_named(
+	&self,
+	reaction_rules: &[Self::Reaction],
+	available_entities: &Self::Set,
+	symb: Self::Id,
+    ) -> Option<Vec<Self::Set>> {
+	let filtered = self
+	    .iter()
+	    .filter_map(
+		|l|
+		if *l.0 == symb {
+		    l.1.filter_delta(&symb)
+		} else {
+		    None
+		}
+	    )
+	    .next();
+
+	let find_loop_fn =
+	    |q| T::Reaction::find_only_loop(reaction_rules,
+					    available_entities,
+					    q);
+
+	filtered.map(find_loop_fn)
+    }
+}
+
+
+// -----------------------------------------------------------------------------
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Environment {
@@ -38,6 +262,7 @@ impl BasicEnvironment for Environment {
     type Set = Set;
     type Choices = Choices;
     type Id = IdType;
+    type Reaction = Reaction;
 
     fn get(&self, k: IdType) -> Option<&Process> {
 	self.definitions.get(&k)
@@ -148,14 +373,14 @@ impl PrintableWithTranslator for Environment {
 		write!(
 		    f,
 		    "({} -> {})",
-		    translator.decode(*el.0).unwrap_or("Missing".into()),
+		    Formatter::from(translator, el.0),
 		    Formatter::from(translator, el.1)
 		)?;
 	    } else {
 		write!(
 		    f,
 		    "({} -> {}), ",
-		    translator.decode(*el.0).unwrap_or("Missing".into()),
+		    Formatter::from(translator, el.0),
 		    Formatter::from(translator, el.1)
 		)?;
 	    }
@@ -164,8 +389,20 @@ impl PrintableWithTranslator for Environment {
     }
 }
 
-impl Environment {
-    pub fn iter(&self) -> std::collections::hash_map::Iter<'_, u32, Process> {
+impl IntoIterator for Environment {
+    type Item = (IdType, Process);
+    type IntoIter = std::collections::hash_map::IntoIter<IdType, Process>;
+
+    fn into_iter(self) -> Self::IntoIter {
+	self.definitions.into_iter()
+    }
+}
+
+impl<'a> IntoIterator for &'a Environment {
+    type Item = (&'a IdType, &'a Process);
+    type IntoIter = std::collections::hash_map::Iter<'a, IdType, Process>;
+
+    fn into_iter(self) -> Self::IntoIter {
 	self.definitions.iter()
     }
 }
@@ -193,166 +430,6 @@ impl From<Vec<(IdType, Process)>> for Environment {
 	}
     }
 }
-
-
-// -----------------------------------------------------------------------------
-//                                   Loops
-// -----------------------------------------------------------------------------
-
-
-impl Environment {
-    /// A special case of systems is when the context recursively provides
-    /// always the same set of entities.  The corresponding computation is
-    /// infinite.  It consists of a finite sequence of states followed by a
-    /// looping sequence.  IMPORTANT: We return all loops for all X = Q.X, by
-    /// varing X.  The set of reactions Rs and the context x are constant.  Each
-    /// state of the computation is distinguished by the current entities E.
-    /// Under these assumptions, the predicate lollipop finds the Prefixes and
-    /// the Loops sequences of entities.
-    /// see lollipop
-    pub fn lollipops_decomposed(
-	&self,
-	reaction_rules: &[Reaction],
-	available_entities: &Set,
-    ) -> Vec<(Vec<Set>, Vec<Set>)> {
-	// FIXME: i think we are only interested in "x", not all symbols that
-	// satisfy X = pre(Q, rec(X))
-	let filtered = self.iter().filter_map(|l| l.1.filter_delta(l.0));
-
-	let find_loop_fn =
-	    |q| Reaction::find_loop(reaction_rules,
-				    available_entities.clone(),
-				    q);
-
-	filtered.map(find_loop_fn).collect::<Vec<_>>()
-    }
-
-
-    pub fn lollipops_prefix_len_loop_decomposed(
-	&self,
-	reaction_rules: &[Reaction],
-	available_entities: &Set,
-    ) -> Vec<(usize, Vec<Set>)> {
-	let filtered = self.iter().filter_map(|l| l.1.filter_delta(l.0));
-
-	let find_loop_fn =
-	    |q| Reaction::find_prefix_len_loop(reaction_rules,
-					       available_entities.clone(),
-					       q);
-
-	filtered.map(find_loop_fn).collect::<Vec<_>>()
-    }
-
-
-    /// see loop
-    pub fn lollipops_only_loop_decomposed(
-	&self,
-	reaction_rules: &[Reaction],
-	available_entities: &Set,
-    ) -> Vec<Vec<Set>> {
-	let filtered = self.iter().filter_map(|l| l.1.filter_delta(l.0));
-
-	let find_loop_fn =
-	    |q| Reaction::find_only_loop(reaction_rules,
-					 available_entities.clone(),
-					 q);
-
-	filtered.map(find_loop_fn).collect::<Vec<_>>()
-    }
-
-
-
-    /// A special case of systems is when the context recursively provides
-    /// always the same set of entities.  The corresponding computation is
-    /// infinite.  It consists of a finite sequence of states followed by a
-    /// looping sequence.  IMPORTANT: We return all loops for all X = Q.X, by
-    /// varing X.  The set of reactions Rs and the context x are constant.  Each
-    /// state of the computation is distinguished by the current entities E.
-    /// Under these assumptions, the predicate lollipop finds the Prefixes and
-    /// the Loops sequences of entities.
-    /// see lollipop
-    pub fn lollipops_decomposed_named(
-	&self,
-	reaction_rules: &[Reaction],
-	available_entities: &Set,
-	symb: IdType,
-    ) -> Option<(Vec<Set>, Vec<Set>)> {
-	let filtered = self
-	    .iter()
-	    .filter_map(
-		|l|
-		if *l.0 == symb {
-		    l.1.filter_delta(&symb)
-		} else {
-		    None
-		}
-	    )
-	    .next();
-
-	let find_loop_fn = |q| Reaction::find_loop(reaction_rules,
-						   available_entities.clone(),
-						   q);
-
-	filtered.map(find_loop_fn)
-    }
-
-
-
-    pub fn lollipops_prefix_len_loop_decomposed_named(
-	&self,
-	reaction_rules: &[Reaction],
-	available_entities: &Set,
-	symb: IdType,
-    ) -> Option<(usize, Vec<Set>)> {
-	let filtered = self
-	    .iter()
-	    .filter_map(
-		|l|
-		if *l.0 == symb {
-		    l.1.filter_delta(&symb)
-		} else {
-		    None
-		}
-	    )
-	    .next();
-
-	let find_loop_fn = |q|
-	Reaction::find_prefix_len_loop(reaction_rules,
-				       available_entities.clone(),
-				       q);
-
-	filtered.map(find_loop_fn)
-    }
-
-
-    /// see loop
-    pub fn lollipops_only_loop_decomposed_named(
-	&self,
-	reaction_rules: &[Reaction],
-	available_entities: &Set,
-	symb: IdType,
-    ) -> Option<Vec<Set>> {
-	let filtered = self
-	    .iter()
-	    .filter_map(
-		|l|
-		if *l.0 == symb {
-		    l.1.filter_delta(&symb)
-		} else {
-		    None
-		}
-	    )
-	    .next();
-
-	let find_loop_fn =
-	    |q| Reaction::find_only_loop(reaction_rules,
-					 available_entities.clone(),
-					 q);
-
-	filtered.map(find_loop_fn)
-    }
-}
-
 
 
 // -----------------------------------------------------------------------------
@@ -536,6 +613,7 @@ impl BasicEnvironment for PositiveEnvironment {
     type Set = PositiveSet;
     type Choices = PositiveChoices;
     type Process = PositiveProcess;
+    type Reaction = PositiveReaction;
 
     fn get(&self, k: Self::Id) -> Option<&Self::Process> {
 	self.definitions.get(&k)
@@ -646,14 +724,14 @@ impl PrintableWithTranslator for PositiveEnvironment {
 		write!(
 		    f,
 		    "({} -> {})",
-		    translator.decode(*el.0).unwrap_or("Missing".into()),
+		    Formatter::from(translator, el.0),
 		    Formatter::from(translator, el.1)
 		)?;
 	    } else {
 		write!(
 		    f,
 		    "({} -> {}), ",
-		    translator.decode(*el.0).unwrap_or("Missing".into()),
+		    Formatter::from(translator, el.0),
 		    Formatter::from(translator, el.1)
 		)?;
 	    }
@@ -662,10 +740,20 @@ impl PrintableWithTranslator for PositiveEnvironment {
     }
 }
 
-impl PositiveEnvironment {
-    pub fn iter(
-	&self
-    ) -> impl std::iter::Iterator<Item = (&u32, &PositiveProcess)> {
+impl IntoIterator for PositiveEnvironment {
+    type Item = (IdType, PositiveProcess);
+    type IntoIter = std::collections::hash_map::IntoIter<IdType, PositiveProcess>;
+
+    fn into_iter(self) -> Self::IntoIter {
+	self.definitions.into_iter()
+    }
+}
+
+impl<'a> IntoIterator for &'a PositiveEnvironment {
+    type Item = (&'a IdType, &'a PositiveProcess);
+    type IntoIter = std::collections::hash_map::Iter<'a, IdType, PositiveProcess>;
+
+    fn into_iter(self) -> Self::IntoIter {
 	self.definitions.iter()
     }
 }

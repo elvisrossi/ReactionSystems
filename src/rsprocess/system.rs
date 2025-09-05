@@ -5,12 +5,13 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::rc::Rc;
 
-use super::environment::{Environment, BasicEnvironment, PositiveEnvironment};
+use super::environment::{Environment, BasicEnvironment, PositiveEnvironment,
+			 ExtensionsEnvironment, LoopEnvironment};
 use super::label::{BasicLabel, Label, PositiveLabel};
 use super::process::{BasicProcess, PositiveProcess, Process};
 use super::reaction::{BasicReaction, ExtensionReaction, PositiveReaction, Reaction};
 use super::set::{BasicSet, PositiveSet, Set};
-use super::element::{IdState, IdType};
+use super::element::IdState;
 use super::transitions::TransitionsIterator;
 use super::translator::{Translator, PrintableWithTranslator, Formatter};
 
@@ -234,6 +235,129 @@ impl<T: BasicSystem> ExtensionsSystem for T {
 }
 
 // -----------------------------------------------------------------------------
+//                                    Loop
+// -----------------------------------------------------------------------------
+
+pub trait LoopSystem: BasicSystem {
+    type Env: BasicEnvironment;
+
+    #[allow(clippy::type_complexity)]
+    fn lollipops(&self) -> Vec<(Vec<Self::Set>, Vec<Self::Set>)>;
+
+    fn lollipops_only_loop(self) -> Vec<Vec<Self::Set>>;
+
+    #[allow(clippy::type_complexity)]
+    fn lollipops_named(
+	&self,
+	symb: <Self::Env as BasicEnvironment>::Id
+    ) -> Option<(Vec<Self::Set>, Vec<Self::Set>)>;
+
+    fn lollipops_only_loop_named(
+	&self,
+	symb: <Self::Env as BasicEnvironment>::Id
+    ) -> Option<Vec<Self::Set>>;
+}
+
+impl<S, E, R: ExtensionReaction<Set = S>,
+     T: BasicSystem<Reaction = R, Environment = E, Set = S>>
+    LoopSystem for T
+where E: BasicEnvironment<Reaction = R, Set = S> + ExtensionsEnvironment,
+for<'a> &'a E: IntoIterator<Item = (&'a E::Id, &'a E::Process)>,
+      E::Id: Eq,
+{
+    type Env = E;
+
+    /// A special case of systems is when the context recursively provides
+    /// always the same set of entities.  The corresponding computation is
+    /// infinite.  It consists of a finite sequence of states followed by a
+    /// looping sequence.  IMPORTANT: We return all loops for all X = Q.X, by
+    /// varing X.  The set of reactions Rs and the context x are constant.  Each
+    /// state of the computation is distinguished by the current entities E.
+    /// Under these assumptions, the predicate lollipop finds the Prefixes and
+    /// the Loops sequences of entities.
+    /// see lollipop
+    fn lollipops(
+	&self
+    ) -> Vec<(Vec<Self::Set>, Vec<Self::Set>)> {
+	self.environment().lollipops_decomposed(
+	    self.reactions(),
+	    self.available_entities(),
+	)
+    }
+
+    /// Only returns the loop part of the lollipop, returns for all X, where
+    /// X = Q.X
+    /// see loop
+    fn lollipops_only_loop(
+	self
+    ) -> Vec<Vec<Self::Set>> {
+	let filtered =
+	    self.environment().iter().filter_map(
+		|l|
+		l.1.filter_delta(l.0)
+	    );
+
+	let find_loop_fn = |q| {
+	    R::find_only_loop(self.reactions(),
+			      self.available_entities(),
+			      q)
+	};
+
+	filtered.map(find_loop_fn).collect::<Vec<_>>()
+    }
+
+    /// A special case of systems is when the context recursively provides
+    /// always the same set of entities.  The corresponding computation is
+    /// infinite.  It consists of a finite sequence of states followed by a
+    /// looping sequence.  IMPORTANT: We return all loops for all X = Q.X, by
+    /// varing X.  The set of reactions Rs and the context x are constant.  Each
+    /// state of the computation is distinguished by the current entities E.
+    /// Under these assumptions, the predicate lollipop finds the Prefixes and
+    /// the Loops sequences of entities.
+    /// see lollipop
+    fn lollipops_named(
+	&self,
+	symb: E::Id
+    ) -> Option<(Vec<Self::Set>, Vec<Self::Set>)> {
+	self.environment().lollipops_decomposed_named(
+	    self.reactions(),
+	    self.available_entities(),
+	    symb,
+	)
+    }
+
+    /// Only returns the loop part of the lollipop, returns for all X, where
+    /// X = Q.X
+    /// see loop
+    fn lollipops_only_loop_named(
+	&self,
+	symb: E::Id
+    ) -> Option<Vec<Self::Set>> {
+	let filtered = self
+	    .environment()
+	    .iter()
+	    .filter_map(
+		|l|
+		if *l.0 == symb {
+		    l.1.filter_delta(&symb)
+		} else {
+		    None
+		}
+	    )
+	    .next();
+
+	let find_loop_fn = |q| {
+	    R::find_only_loop(self.reactions(),
+			      self.available_entities(),
+			      q)
+	};
+
+	filtered.map(find_loop_fn)
+    }
+}
+
+
+// -----------------------------------------------------------------------------
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct System {
@@ -347,103 +471,6 @@ impl System {
     }
 }
 
-
-// -----------------------------------------------------------------------------
-//                                   Loops
-// -----------------------------------------------------------------------------
-
-impl System {
-    /// A special case of systems is when the context recursively provides
-    /// always the same set of entities.  The corresponding computation is
-    /// infinite.  It consists of a finite sequence of states followed by a
-    /// looping sequence.  IMPORTANT: We return all loops for all X = Q.X, by
-    /// varing X.  The set of reactions Rs and the context x are constant.  Each
-    /// state of the computation is distinguished by the current entities E.
-    /// Under these assumptions, the predicate lollipop finds the Prefixes and
-    /// the Loops sequences of entities.
-    /// see lollipop
-    pub fn lollipops(
-	&self
-    ) -> Vec<(Vec<Set>, Vec<Set>)> {
-	self.delta.lollipops_decomposed(
-	    &self.reaction_rules,
-	    &self.available_entities,
-	)
-    }
-
-
-    /// Only returns the loop part of the lollipop, returns for all X, where
-    /// X = Q.X
-    /// see loop
-    pub fn lollipops_only_loop(
-	self
-    ) -> Vec<Vec<Set>> {
-	let filtered =
-	    self.delta.iter().filter_map(
-		|l|
-		l.1.filter_delta(l.0)
-	    );
-
-	let find_loop_fn = |q| {
-	    Reaction::find_only_loop(&self.reaction_rules,
-				     self.available_entities.clone(),
-				     q)
-	};
-
-	filtered.map(find_loop_fn).collect::<Vec<_>>()
-    }
-
-
-    /// A special case of systems is when the context recursively provides
-    /// always the same set of entities.  The corresponding computation is
-    /// infinite.  It consists of a finite sequence of states followed by a
-    /// looping sequence.  IMPORTANT: We return all loops for all X = Q.X, by
-    /// varing X.  The set of reactions Rs and the context x are constant.  Each
-    /// state of the computation is distinguished by the current entities E.
-    /// Under these assumptions, the predicate lollipop finds the Prefixes and
-    /// the Loops sequences of entities.
-    /// see lollipop
-    pub fn lollipops_named(
-	&self,
-	symb: IdType
-    ) -> Option<(Vec<Set>, Vec<Set>)> {
-	self.delta.lollipops_decomposed_named(
-	    &self.reaction_rules,
-	    &self.available_entities,
-	    symb,
-	)
-    }
-
-
-    /// Only returns the loop part of the lollipop, returns for all X, where
-    /// X = Q.X
-    /// see loop
-    pub fn lollipops_only_loop_named(
-	&self,
-	symb: IdType
-    ) -> Option<Vec<Set>> {
-	let filtered = self
-	    .delta
-	    .iter()
-	    .filter_map(
-		|l|
-		if *l.0 == symb {
-		    l.1.filter_delta(&symb)
-		} else {
-		    None
-		}
-	    )
-	    .next();
-
-	let find_loop_fn = |q| {
-	    Reaction::find_only_loop(&self.reaction_rules,
-				     self.available_entities.clone(),
-				     q)
-	};
-
-	filtered.map(find_loop_fn)
-    }
-}
 
 // -----------------------------------------------------------------------------
 //                                 Statistics

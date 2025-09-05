@@ -9,7 +9,7 @@ fn main() {
 
     match presets::run(input) {
 	Ok(()) => {},
-	Err(e) => {println!("{e}")}
+	Err(e) => println!("{e}")
     }
 
     println!("{} milliseconds elapsed", now.elapsed().as_millis());

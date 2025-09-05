@@ -5,6 +5,17 @@ use super::translator::PrintableWithTranslator;
 
 pub type IdType = u32;
 
+impl PrintableWithTranslator for IdType {
+    fn print(&self,
+	     f: &mut fmt::Formatter,
+	     translator: &super::translator::Translator
+    ) -> fmt::Result {
+	write!(f, "{}", translator.decode(*self).unwrap_or("Missing".into()))
+    }
+}
+
+// -----------------------------------------------------------------------------
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum IdState {
     Positive,
@@ -30,7 +41,6 @@ impl std::ops::Not for IdState {
 	}
     }
 }
-
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct PositiveType {

@@ -399,6 +399,8 @@ pub fn hoop(
     system: &EvaluatedSystem,
     symbol: String
 ) -> Result<String, String> {
+    use system::LoopSystem;
+
     let (res, translator) = match system {
         EvaluatedSystem::System { sys, translator } => (sys, translator),
         EvaluatedSystem::Graph { graph, translator } => {
@@ -436,6 +438,8 @@ pub fn hoop(
 /// (deterministic) terminating Reaction System.
 /// equivalent to main_do(freq, PairList)
 pub fn freq(system: &EvaluatedSystem) -> Result<String, String> {
+    use frequency::BasicFrequency;
+    
     let (sys, translator) = match system {
         EvaluatedSystem::System { sys, translator } => (sys, translator),
         EvaluatedSystem::Graph { graph, translator } => {
@@ -461,6 +465,8 @@ pub fn limit_freq(
     system: &mut EvaluatedSystem,
     experiment: String
 ) -> Result<String, String> {
+    use frequency::BasicFrequency;
+    
     let (sys, translator): (&system::System, &mut Translator) = match system {
         EvaluatedSystem::System { sys, translator } => (sys, translator),
         EvaluatedSystem::Graph { graph, translator } => {
@@ -499,8 +505,9 @@ pub fn limit_freq(
 pub fn fast_freq(
     system: &mut EvaluatedSystem,
     experiment: String
-) -> Result<String, String>
-{
+) -> Result<String, String> {
+    use frequency::BasicFrequency;
+
     let (sys, translator): (&system::System, &mut Translator) = match system {
         EvaluatedSystem::System { sys, translator } => (sys, translator),
         EvaluatedSystem::Graph { graph, translator } => {
@@ -513,17 +520,18 @@ pub fn fast_freq(
 
     let (weights, sets) = read_file(translator, experiment, parser_experiment)?;
 
-    let res = match frequency::Frequency::fast_frequency(
-        &sets,
-        &sys.reaction_rules,
-        &sys.available_entities,
-        &weights,
-    ) {
-        Some(e) => e,
-        None => {
-            return Err("Error calculating frequency.".into());
-        }
-    };
+    let res =
+	match frequency::Frequency::fast_frequency(
+            &sets,
+            &sys.reaction_rules,
+            &sys.available_entities,
+            &weights,
+	) {
+            Some(e) => e,
+            None => {
+		return Err("Error calculating frequency.".into());
+            }
+	};
 
     Ok(format!(
         "Frequency of encountered symbols:\n{}",

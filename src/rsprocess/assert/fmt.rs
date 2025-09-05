@@ -308,8 +308,7 @@ where S: PrintableWithTranslator {
 		write!(f, "{}", Formatter::from(translator, &**l)),
 	    Self::Set(set) => write!(f, "{}", Formatter::from(translator, set)),
 	    Self::Element(el) =>
-		write!(f, "'{}'",
-		       translator.decode(*el).unwrap_or("Missing".into())),
+		write!(f, "'{}'", Formatter::from(translator, el)),
 	    Self::String(s) => write!(f, r#""{s}""#),
 	    Self::Var(v) => write!(f, "{}", Formatter::from(translator, v)),
 	    Self::Unary(u, exp) => {
@@ -452,8 +451,7 @@ impl PrintableWithTranslator for AssertReturnValue {
 	    Self::Set(set) =>
 		write!(f, "{}", Formatter::from(translator, set)),
 	    Self::Element(el) =>
-		write!(f, "{}",
-		       translator.decode(*el).unwrap_or("Missing".into())),
+		write!(f, "{}", Formatter::from(translator, el)),
 	    Self::Edge(edge) => write!(f, "{{edge: {edge:?}}}"),
 	    Self::Node(node) => write!(f, "{{node: {node:?}}}"),
 	    Self::Neighbours(node) =>
