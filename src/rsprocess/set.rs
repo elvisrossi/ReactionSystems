@@ -80,9 +80,7 @@ impl BasicSet for Set {
 
     // returns the new set a \cup b
     fn union(&self, other: &Self) -> Self {
-	let mut ret: Self = other.clone();
-	ret.identifiers.extend(self.identifiers.iter());
-	ret
+	self.iter().chain(other.iter()).cloned().collect::<Vec<_>>().into()
     }
 
     fn push(&mut self, other: &Self) {
@@ -355,9 +353,8 @@ impl BasicSet for PositiveSet {
     /// ☞ The operation cannot fail, so we prefer self elements to other,
     /// but if the reaction system is consistent there wont be any problem.
     fn union(&self, other: &Self) -> Self {
-	let mut ret: Self = other.clone();
-	ret.identifiers.extend(self.identifiers.iter());
-	ret
+	self.iter().chain(other.iter()).map(|(a, b)| (*a, *b))
+	    .collect::<Vec<_>>().into()
     }
 
     fn push(&mut self, other: &Self) {
