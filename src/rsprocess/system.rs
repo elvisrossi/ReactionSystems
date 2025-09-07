@@ -5,29 +5,29 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::rc::Rc;
 
-use super::environment::{Environment, BasicEnvironment, PositiveEnvironment,
-			 ExtensionsEnvironment, LoopEnvironment};
+use super::element::IdState;
+use super::environment::{
+    BasicEnvironment, Environment, ExtensionsEnvironment, LoopEnvironment, PositiveEnvironment,
+};
 use super::label::{BasicLabel, Label, PositiveLabel};
 use super::process::{BasicProcess, PositiveProcess, Process};
 use super::reaction::{BasicReaction, ExtensionReaction, PositiveReaction, Reaction};
 use super::set::{BasicSet, PositiveSet, Set};
-use super::element::IdState;
 use super::transitions::TransitionsIterator;
-use super::translator::{Translator, PrintableWithTranslator, Formatter};
+use super::translator::{Formatter, PrintableWithTranslator, Translator};
 
 pub trait BasicSystem
-where Self: Clone + Debug + Serialize + Default + Eq + Hash
-    + PrintableWithTranslator,
-for<'de> Self: Deserialize<'de> {
+where
+    Self: Clone + Debug + Serialize + Default + Eq + Hash + PrintableWithTranslator,
+    for<'de> Self: Deserialize<'de>,
+{
     type Set: BasicSet;
     type Reaction: BasicReaction<Set = Self::Set>;
     type Label: BasicLabel<Set = Self::Set>;
     type Process: BasicProcess<Set = Self::Set>;
     type Environment: BasicEnvironment<Set = Self::Set, Process = Self::Process>;
 
-    fn to_transitions_iterator(
-	&self
-    ) -> Result<impl Iterator<Item = (Self::Label, Self)>, String>;
+    fn to_transitions_iterator(&self) -> Result<impl Iterator<Item = (Self::Label, Self)>, String>;
 
     fn environment(&self) -> &Self::Environment;
     fn available_entities(&self) -> &Self::Set;
@@ -38,199 +38,164 @@ for<'de> Self: Deserialize<'de> {
 type Trace<L, S> = Vec<(Option<Rc<L>>, Rc<S>)>;
 
 pub trait ExtensionsSystem: BasicSystem {
-    fn one_transition(
-	&self
-    ) -> Result<Option<(Self::Label, Self)>, String>;
+    fn one_transition(&self) -> Result<Option<(Self::Label, Self)>, String>;
 
-    fn nth_transition(
-	&self,
-	n: usize,
-    ) -> Result<Option<(Self::Label, Self)>, String>;
+    fn nth_transition(&self, n: usize) -> Result<Option<(Self::Label, Self)>, String>;
 
-    fn all_transitions(
-	&self
-    ) -> Result<Vec<(Self::Label, Self)>, String>;
+    fn all_transitions(&self) -> Result<Vec<(Self::Label, Self)>, String>;
 
-    fn run(
-	&self
-    ) -> Result<Vec<Rc<Self>>, String>;
+    fn run(&self) -> Result<Vec<Rc<Self>>, String>;
 
     fn digraph(self) -> Result<DiGraph<Self, Self::Label>, String>;
 
     fn target(&self) -> Result<(i64, Self::Set), String>;
 
     #[allow(clippy::type_complexity)]
-    fn run_separated(
-	&self
-    ) -> Result<Vec<(Self::Set, Self::Set, Self::Set)>, String>;
+    fn run_separated(&self) -> Result<Vec<(Self::Set, Self::Set, Self::Set)>, String>;
 
-    fn traces(
-	self,
-	n: usize,
-    ) -> Result<Vec<Trace<Self::Label, Self>>, String>;
+    fn traces(self, n: usize) -> Result<Vec<Trace<Self::Label, Self>>, String>;
 }
 
 impl<T: BasicSystem> ExtensionsSystem for T {
     /// see oneTransition, transition, smartTransition, smartOneTransition
-    fn one_transition(
-	&self
-    ) -> Result<Option<(Self::Label, Self)>, String> {
-	let mut tr = self.to_transitions_iterator()?;
-	Ok(tr.next())
+    fn one_transition(&self) -> Result<Option<(Self::Label, Self)>, String> {
+        let mut tr = self.to_transitions_iterator()?;
+        Ok(tr.next())
     }
 
-    fn nth_transition(
-	&self,
-	n: usize,
-    ) -> Result<Option<(Self::Label, Self)>, String> {
-	let mut tr = self.to_transitions_iterator()?;
-	Ok(tr.nth(n))
+    fn nth_transition(&self, n: usize) -> Result<Option<(Self::Label, Self)>, String> {
+        let mut tr = self.to_transitions_iterator()?;
+        Ok(tr.nth(n))
     }
 
     /// see allTransitions, smartAllTransitions
-    fn all_transitions(
-	&self
-    ) -> Result<Vec<(Self::Label, Self)>, String> {
-	let tr = self.to_transitions_iterator()?;
-	Ok(tr.collect::<Vec<_>>())
+    fn all_transitions(&self) -> Result<Vec<(Self::Label, Self)>, String> {
+        let tr = self.to_transitions_iterator()?;
+        Ok(tr.collect::<Vec<_>>())
     }
 
     /// see oneRun, run, smartOneRunEK, smartRunEK
-    fn run(
-	&self
-    ) -> Result<Vec<Rc<Self>>, String> {
-	let mut res = vec![Rc::new(self.clone())];
-	while let Some((_, next_sys)) = res.last().unwrap().one_transition()? {
-	    res.push(Rc::new(next_sys));
-	}
-	Ok(res)
+    fn run(&self) -> Result<Vec<Rc<Self>>, String> {
+        let mut res = vec![Rc::new(self.clone())];
+        while let Some((_, next_sys)) = res.last().unwrap().one_transition()? {
+            res.push(Rc::new(next_sys));
+        }
+        Ok(res)
     }
 
     /// Creates a graph starting from a system as root node.
     fn digraph(self) -> Result<DiGraph<Self, Self::Label>, String> {
-	use petgraph::Graph;
+        use petgraph::Graph;
 
-	let mut graph = Graph::default();
-	let node = graph.add_node(self.clone());
+        let mut graph = Graph::default();
+        let node = graph.add_node(self.clone());
 
-	let mut association = HashMap::new();
-	association.insert(self.clone(), node);
+        let mut association = HashMap::new();
+        association.insert(self.clone(), node);
 
-	let mut stack = vec![self];
+        let mut stack = vec![self];
 
-	while let Some(current) = stack.pop() {
-	    // depth first
-	    let current_node = *association.get(&current).unwrap();
+        while let Some(current) = stack.pop() {
+            // depth first
+            let current_node = *association.get(&current).unwrap();
 
-	    for (label, next) in current.to_transitions_iterator()? {
-		// if not already visited
-		let next_node = association.entry(next.clone()).or_insert_with(|| {
-		    stack.push(next.clone());
-		    graph.add_node(next)
-		});
-		graph.add_edge(current_node, *next_node, label);
-	    }
-	}
-	Ok(graph)
+            for (label, next) in current.to_transitions_iterator()? {
+                // if not already visited
+                let next_node = association.entry(next.clone()).or_insert_with(|| {
+                    stack.push(next.clone());
+                    graph.add_node(next)
+                });
+                graph.add_edge(current_node, *next_node, label);
+            }
+        }
+        Ok(graph)
     }
 
     /// Returns the state in one of the terminal states and the number of steps
     /// to arrive at the last state.
     /// see oneTarget, smartOneTarget, target, smartTarget
-    fn target(
-	&self
-    ) -> Result<(i64, Self::Set), String> {
-	let current = self.one_transition()?;
-	if current.is_none() {
-	    return Ok((0, self.available_entities().clone()));
-	}
-	let mut n = 1;
-	let mut current = current.unwrap().1;
-	while let Some((_, next)) = current.one_transition()? {
-	    current = next;
-	    n += 1;
-	}
-	Ok((n, current.available_entities().clone()))
+    fn target(&self) -> Result<(i64, Self::Set), String> {
+        let current = self.one_transition()?;
+        if current.is_none() {
+            return Ok((0, self.available_entities().clone()));
+        }
+        let mut n = 1;
+        let mut current = current.unwrap().1;
+        while let Some((_, next)) = current.one_transition()? {
+            current = next;
+            n += 1;
+        }
+        Ok((n, current.available_entities().clone()))
     }
 
     /// see smartOneRunECT, smartRunECT
-    fn run_separated(
-	&self
-    ) -> Result<Vec<(Self::Set, Self::Set, Self::Set)>, String> {
-	let mut res = vec![];
-	let current = self.one_transition()?;
-	if current.is_none() {
-	    return Ok(res);
-	}
-	let current = current.unwrap();
-	let (available_entities, context, t) = current.0.get_context();
-	res.push((available_entities.clone(), context.clone(), t.clone()));
-	let mut current = current.1;
-	while let Some((label, next)) = current.one_transition()? {
-	    current = next;
-	    let (available_entities, context, t) = label.get_context();
-	    res.push((available_entities.clone(), context.clone(), t.clone()));
-	}
-	Ok(res)
+    fn run_separated(&self) -> Result<Vec<(Self::Set, Self::Set, Self::Set)>, String> {
+        let mut res = vec![];
+        let current = self.one_transition()?;
+        if current.is_none() {
+            return Ok(res);
+        }
+        let current = current.unwrap();
+        let (available_entities, context, t) = current.0.get_context();
+        res.push((available_entities.clone(), context.clone(), t.clone()));
+        let mut current = current.1;
+        while let Some((label, next)) = current.one_transition()? {
+            current = next;
+            let (available_entities, context, t) = label.get_context();
+            res.push((available_entities.clone(), context.clone(), t.clone()));
+        }
+        Ok(res)
     }
 
     /// Return the first n traces. Equivalent to visiting the execution tree
     /// depth first and returning the first n leaf nodes and their path to the
     /// root.
-    fn traces(
-	self,
-	n: usize,
-    ) -> Result<Vec<Trace<Self::Label, Self>>, String> {
-	if n == 0 {
-	    return Ok(vec![])
-	}
-	let mut n = n;
-	let mut res : Vec<Trace<Self::Label, Self>>
-	    = vec![];
-	let mut current_trace: Trace<Self::Label, Self>
-	    = vec![(None, Rc::new(self))];
-	let mut branch = vec![0];
-	let mut depth = 0;
-	let mut new_branch = true;
+    fn traces(self, n: usize) -> Result<Vec<Trace<Self::Label, Self>>, String> {
+        if n == 0 {
+            return Ok(vec![]);
+        }
+        let mut n = n;
+        let mut res: Vec<Trace<Self::Label, Self>> = vec![];
+        let mut current_trace: Trace<Self::Label, Self> = vec![(None, Rc::new(self))];
+        let mut branch = vec![0];
+        let mut depth = 0;
+        let mut new_branch = true;
 
-	loop {
-	    let next_sys =
-		current_trace[depth].1.nth_transition(branch[depth])?;
+        loop {
+            let next_sys = current_trace[depth].1.nth_transition(branch[depth])?;
 
-	    if let Some((current_label, next_sys)) = next_sys {
-		depth += 1;
-		if depth >= branch.len() {
-		    branch.push(0);
-		    current_trace.push((Some(Rc::new(current_label)),
-					Rc::new(next_sys)));
-		} else {
-		    branch[depth] = 0;
-		    current_trace[depth] = (Some(Rc::new(current_label)),
-					    Rc::new(next_sys));
-		}
-		new_branch = true;
-	    } else {
-		// at the bottom of a trace, we save to res, then backtrack
-		// until we find another possible path.
-		if new_branch {
-		    res.push(current_trace[0..depth].to_vec());
-		    new_branch = false;
-		    n -= 1;
-		}
-		if n == 0 {
-		    break;
-		}
+            if let Some((current_label, next_sys)) = next_sys {
+                depth += 1;
+                if depth >= branch.len() {
+                    branch.push(0);
+                    current_trace.push((Some(Rc::new(current_label)), Rc::new(next_sys)));
+                } else {
+                    branch[depth] = 0;
+                    current_trace[depth] = (Some(Rc::new(current_label)), Rc::new(next_sys));
+                }
+                new_branch = true;
+            } else {
+                // at the bottom of a trace, we save to res, then backtrack
+                // until we find another possible path.
+                if new_branch {
+                    res.push(current_trace[0..depth].to_vec());
+                    new_branch = false;
+                    n -= 1;
+                }
+                if n == 0 {
+                    break;
+                }
 
-		if depth == 0 {
-		    break;
-		}
+                if depth == 0 {
+                    break;
+                }
 
-		depth -= 1;
-		branch[depth] += 1;
-	    }
-	}
+                depth -= 1;
+                branch[depth] += 1;
+            }
+        }
 
-	Ok(res)
+        Ok(res)
     }
 }
 
@@ -248,22 +213,22 @@ pub trait LoopSystem: BasicSystem {
 
     #[allow(clippy::type_complexity)]
     fn lollipops_named(
-	&self,
-	symb: <Self::Env as BasicEnvironment>::Id
+        &self,
+        symb: <Self::Env as BasicEnvironment>::Id,
     ) -> Option<(Vec<Self::Set>, Vec<Self::Set>)>;
 
     fn lollipops_only_loop_named(
-	&self,
-	symb: <Self::Env as BasicEnvironment>::Id
+        &self,
+        symb: <Self::Env as BasicEnvironment>::Id,
     ) -> Option<Vec<Self::Set>>;
 }
 
-impl<S, E, R: ExtensionReaction<Set = S>,
-     T: BasicSystem<Reaction = R, Environment = E, Set = S>>
+impl<S, E, R: ExtensionReaction<Set = S>, T: BasicSystem<Reaction = R, Environment = E, Set = S>>
     LoopSystem for T
-where E: BasicEnvironment<Reaction = R, Set = S> + ExtensionsEnvironment,
-for<'a> &'a E: IntoIterator<Item = (&'a E::Id, &'a E::Process)>,
-      E::Id: Eq,
+where
+    E: BasicEnvironment<Reaction = R, Set = S> + ExtensionsEnvironment,
+    for<'a> &'a E: IntoIterator<Item = (&'a E::Id, &'a E::Process)>,
+    E::Id: Eq,
 {
     type Env = E;
 
@@ -276,34 +241,23 @@ for<'a> &'a E: IntoIterator<Item = (&'a E::Id, &'a E::Process)>,
     /// Under these assumptions, the predicate lollipop finds the Prefixes and
     /// the Loops sequences of entities.
     /// see lollipop
-    fn lollipops(
-	&self
-    ) -> Vec<(Vec<Self::Set>, Vec<Self::Set>)> {
-	self.environment().lollipops_decomposed(
-	    self.reactions(),
-	    self.available_entities(),
-	)
+    fn lollipops(&self) -> Vec<(Vec<Self::Set>, Vec<Self::Set>)> {
+        self.environment()
+            .lollipops_decomposed(self.reactions(), self.available_entities())
     }
 
     /// Only returns the loop part of the lollipop, returns for all X, where
     /// X = Q.X
     /// see loop
-    fn lollipops_only_loop(
-	self
-    ) -> Vec<Vec<Self::Set>> {
-	let filtered =
-	    self.environment().iter().filter_map(
-		|l|
-		l.1.filter_delta(l.0)
-	    );
+    fn lollipops_only_loop(self) -> Vec<Vec<Self::Set>> {
+        let filtered = self
+            .environment()
+            .iter()
+            .filter_map(|l| l.1.filter_delta(l.0));
 
-	let find_loop_fn = |q| {
-	    R::find_only_loop(self.reactions(),
-			      self.available_entities(),
-			      q)
-	};
+        let find_loop_fn = |q| R::find_only_loop(self.reactions(), self.available_entities(), q);
 
-	filtered.map(find_loop_fn).collect::<Vec<_>>()
+        filtered.map(find_loop_fn).collect::<Vec<_>>()
     }
 
     /// A special case of systems is when the context recursively provides
@@ -315,47 +269,35 @@ for<'a> &'a E: IntoIterator<Item = (&'a E::Id, &'a E::Process)>,
     /// Under these assumptions, the predicate lollipop finds the Prefixes and
     /// the Loops sequences of entities.
     /// see lollipop
-    fn lollipops_named(
-	&self,
-	symb: E::Id
-    ) -> Option<(Vec<Self::Set>, Vec<Self::Set>)> {
-	self.environment().lollipops_decomposed_named(
-	    self.reactions(),
-	    self.available_entities(),
-	    symb,
-	)
+    fn lollipops_named(&self, symb: E::Id) -> Option<(Vec<Self::Set>, Vec<Self::Set>)> {
+        self.environment().lollipops_decomposed_named(
+            self.reactions(),
+            self.available_entities(),
+            symb,
+        )
     }
 
     /// Only returns the loop part of the lollipop, returns for all X, where
     /// X = Q.X
     /// see loop
-    fn lollipops_only_loop_named(
-	&self,
-	symb: E::Id
-    ) -> Option<Vec<Self::Set>> {
-	let filtered = self
-	    .environment()
-	    .iter()
-	    .filter_map(
-		|l|
-		if *l.0 == symb {
-		    l.1.filter_delta(&symb)
-		} else {
-		    None
-		}
-	    )
-	    .next();
+    fn lollipops_only_loop_named(&self, symb: E::Id) -> Option<Vec<Self::Set>> {
+        let filtered = self
+            .environment()
+            .iter()
+            .filter_map(|l| {
+                if *l.0 == symb {
+                    l.1.filter_delta(&symb)
+                } else {
+                    None
+                }
+            })
+            .next();
 
-	let find_loop_fn = |q| {
-	    R::find_only_loop(self.reactions(),
-			      self.available_entities(),
-			      q)
-	};
+        let find_loop_fn = |q| R::find_only_loop(self.reactions(), self.available_entities(), q);
 
-	filtered.map(find_loop_fn)
+        filtered.map(find_loop_fn)
     }
 }
-
 
 // -----------------------------------------------------------------------------
 
@@ -374,26 +316,24 @@ impl BasicSystem for System {
     type Process = Process;
     type Environment = Environment;
 
-    fn to_transitions_iterator(
-	&self
-    ) -> Result<impl Iterator<Item = (Self::Label, Self)>, String> {
-	TransitionsIterator::<Self::Set, Self, Self::Process>::from(self)
+    fn to_transitions_iterator(&self) -> Result<impl Iterator<Item = (Self::Label, Self)>, String> {
+        TransitionsIterator::<Self::Set, Self, Self::Process>::from(self)
     }
 
     fn environment(&self) -> &Self::Environment {
-	&self.delta
+        &self.delta
     }
 
     fn available_entities(&self) -> &Self::Set {
-	&self.available_entities
+        &self.available_entities
     }
 
     fn context(&self) -> &Self::Process {
-	&self.context_process
+        &self.context_process
     }
 
     fn reactions(&self) -> &Vec<Self::Reaction> {
-	&self.reaction_rules
+        &self.reaction_rules
     }
 }
 
@@ -402,8 +342,8 @@ impl BasicSystem for System {
 impl PartialEq for System {
     // we ignore delta and reaction rules
     fn eq(&self, other: &System) -> bool {
-	self.available_entities == other.available_entities &&
-	    self.context_process == other.context_process
+        self.available_entities == other.available_entities
+            && self.context_process == other.context_process
     }
 }
 
@@ -411,66 +351,64 @@ impl PartialEq for System {
 /// context is compared
 impl Eq for System {}
 
-
 /// Hash does not care about delta or reaction rules. Only entities and
 /// context is hashed
 impl Hash for System {
     // ignores delta and reaction rules
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-	self.available_entities.hash(state);
-	self.context_process.hash(state);
+        self.available_entities.hash(state);
+        self.context_process.hash(state);
     }
 }
 
 impl Default for System {
     fn default() -> Self {
-	Self { delta: Rc::new(Environment::default()),
-	       available_entities: Set::default(),
-	       context_process: Process::Nill,
-	       reaction_rules: Rc::new(Vec::default()) }
+        Self {
+            delta: Rc::new(Environment::default()),
+            available_entities: Set::default(),
+            context_process: Process::Nill,
+            reaction_rules: Rc::new(Vec::default()),
+        }
     }
 }
 
 impl PrintableWithTranslator for System {
-    fn print(&self, f: &mut std::fmt::Formatter, translator: &Translator)
-	     -> std::fmt::Result {
-	write!(
-	    f,
-	    "[delta: {}, available_entities: {}, context_process: {}, \
+    fn print(&self, f: &mut std::fmt::Formatter, translator: &Translator) -> std::fmt::Result {
+        write!(
+            f,
+            "[delta: {}, available_entities: {}, context_process: {}, \
 	     reaction_rules: [",
-	    Formatter::from(translator, &*self.delta),
-	    Formatter::from(translator, &self.available_entities),
-	    Formatter::from(translator, &self.context_process)
-	)?;
-	let mut it = self.reaction_rules.iter().peekable();
-	while let Some(el) = it.next() {
-	    if it.peek().is_none() {
-		write!(f, "{}", Formatter::from(translator, el))?;
-	    } else {
-		write!(f, "{}, ", Formatter::from(translator, el))?;
-	    }
-	}
-	write!(f, "] ]")
+            Formatter::from(translator, &*self.delta),
+            Formatter::from(translator, &self.available_entities),
+            Formatter::from(translator, &self.context_process)
+        )?;
+        let mut it = self.reaction_rules.iter().peekable();
+        while let Some(el) = it.next() {
+            if it.peek().is_none() {
+                write!(f, "{}", Formatter::from(translator, el))?;
+            } else {
+                write!(f, "{}, ", Formatter::from(translator, el))?;
+            }
+        }
+        write!(f, "] ]")
     }
 }
-
 
 impl System {
     pub fn from(
-	delta: Rc<Environment>,
-	available_entities: Set,
-	context_process: Process,
-	reaction_rules: Rc<Vec<Reaction>>,
+        delta: Rc<Environment>,
+        available_entities: Set,
+        context_process: Process,
+        reaction_rules: Rc<Vec<Reaction>>,
     ) -> System {
-	System {
-	    delta: Rc::clone(&delta),
-	    available_entities,
-	    context_process,
-	    reaction_rules: Rc::clone(&reaction_rules),
-	}
+        System {
+            delta: Rc::clone(&delta),
+            available_entities,
+            context_process,
+            reaction_rules: Rc::clone(&reaction_rules),
+        }
     }
 }
-
 
 // -----------------------------------------------------------------------------
 //                                 Statistics
@@ -480,138 +418,130 @@ impl System {
     /// Non simulated statistics of a system.
     /// Returns statistics about the system as a string.
     /// see main_do(stat,MissingE)
-    pub fn statistics(
-	&self,
-	translator: &Translator,
-    ) -> String {
-	use super::translator::Formatter;
+    pub fn statistics(&self, translator: &Translator) -> String {
+        use super::translator::Formatter;
 
-	let mut result: String = "Statistics:\n".into();
-	result.push_str(
-	    "=============================================================\n"
-	);
-	result.push_str(&format!(
-	    "the initial state has {} entities:\n",
-	    self.available_entities.len()
-	));
-	result.push_str(&format!(
-	    "{}\n",
-	    Formatter::from(translator, &self.available_entities)
-	));
+        let mut result: String = "Statistics:\n".into();
+        result.push_str("=============================================================\n");
+        result.push_str(&format!(
+            "the initial state has {} entities:\n",
+            self.available_entities.len()
+        ));
+        result.push_str(&format!(
+            "{}\n",
+            Formatter::from(translator, &self.available_entities)
+        ));
 
-	let reactants = self
-	    .reaction_rules
-	    .iter()
-	    .fold(Set::default(), |acc, new| acc.union(&new.reactants));
-	result.push_str(&format!(
-	    "The reactants are {}:\n{}\n",
-	    reactants.len(),
-	    Formatter::from(translator, &reactants)
-	));
+        let reactants = self
+            .reaction_rules
+            .iter()
+            .fold(Set::default(), |acc, new| acc.union(&new.reactants));
+        result.push_str(&format!(
+            "The reactants are {}:\n{}\n",
+            reactants.len(),
+            Formatter::from(translator, &reactants)
+        ));
 
-	let inhibitors = self
-	    .reaction_rules
-	    .iter()
-	    .fold(Set::default(), |acc, new| acc.union(&new.inhibitors));
-	result.push_str(&format!(
-	    "The inhibitors are {}:\n{}\n",
-	    inhibitors.len(),
-	    Formatter::from(translator, &inhibitors)
-	));
+        let inhibitors = self
+            .reaction_rules
+            .iter()
+            .fold(Set::default(), |acc, new| acc.union(&new.inhibitors));
+        result.push_str(&format!(
+            "The inhibitors are {}:\n{}\n",
+            inhibitors.len(),
+            Formatter::from(translator, &inhibitors)
+        ));
 
-	let products = self
-	    .reaction_rules
-	    .iter()
-	    .fold(Set::default(), |acc, new| acc.union(&new.products));
-	result.push_str(&format!(
-	    "The products are {}:\n{}\n",
-	    products.len(),
-	    Formatter::from(translator, &products)
-	));
+        let products = self
+            .reaction_rules
+            .iter()
+            .fold(Set::default(), |acc, new| acc.union(&new.products));
+        result.push_str(&format!(
+            "The products are {}:\n{}\n",
+            products.len(),
+            Formatter::from(translator, &products)
+        ));
 
-	let total = reactants.union(&inhibitors.union(&products));
-	result.push_str(&format!(
-	    "The reactions involve {} entities:\n{}\n",
-	    total.len(),
-	    Formatter::from(translator, &total)
-	));
+        let total = reactants.union(&inhibitors.union(&products));
+        result.push_str(&format!(
+            "The reactions involve {} entities:\n{}\n",
+            total.len(),
+            Formatter::from(translator, &total)
+        ));
 
-	let entities_env = self.delta.all_elements();
-	result.push_str(&format!(
-	    "The environment involves {} entities:\n{}\n",
-	    entities_env.len(),
-	    Formatter::from(translator, &entities_env)
-	));
+        let entities_env = self.delta.all_elements();
+        result.push_str(&format!(
+            "The environment involves {} entities:\n{}\n",
+            entities_env.len(),
+            Formatter::from(translator, &entities_env)
+        ));
 
-	let entities_context = self.context_process.all_elements();
-	result.push_str(&format!(
-	    "The context involves {} entities:\n{}\n",
-	    entities_context.len(),
-	    Formatter::from(translator, &entities_context)
-	));
+        let entities_context = self.context_process.all_elements();
+        result.push_str(&format!(
+            "The context involves {} entities:\n{}\n",
+            entities_context.len(),
+            Formatter::from(translator, &entities_context)
+        ));
 
-	let entities_all = total
-	    .union(&entities_env)
-	    .union(&entities_context)
-	    .union(&self.available_entities);
+        let entities_all = total
+            .union(&entities_env)
+            .union(&entities_context)
+            .union(&self.available_entities);
 
-	result.push_str(&format!(
-	    "The whole RS involves {} entities:\n{}\n",
-	    entities_all.len(),
-	    Formatter::from(translator, &entities_all)
-	));
+        result.push_str(&format!(
+            "The whole RS involves {} entities:\n{}\n",
+            entities_all.len(),
+            Formatter::from(translator, &entities_all)
+        ));
 
-	let possible_e = products
-	    .union(&self.available_entities)
-	    .union(&entities_context);
-	let missing_e = reactants.subtraction(&possible_e);
-	result.push_str(&format!(
-	    "There are {} reactants that will never be available:\n{}\n",
-	    missing_e.len(),
-	    Formatter::from(translator, &missing_e)
-	));
+        let possible_e = products
+            .union(&self.available_entities)
+            .union(&entities_context);
+        let missing_e = reactants.subtraction(&possible_e);
+        result.push_str(&format!(
+            "There are {} reactants that will never be available:\n{}\n",
+            missing_e.len(),
+            Formatter::from(translator, &missing_e)
+        ));
 
-	let entities_not_needed = entities_context.subtraction(&total);
-	result.push_str(&format!(
-	    "The context can provide {} entities that will never be used:\
+        let entities_not_needed = entities_context.subtraction(&total);
+        result.push_str(&format!(
+            "The context can provide {} entities that will never be used:\
 	     \n{}\n",
-	    entities_not_needed.len(),
-	    Formatter::from(translator, &entities_not_needed)
-	));
+            entities_not_needed.len(),
+            Formatter::from(translator, &entities_not_needed)
+        ));
 
-	result.push_str(&format!(
-	    "There are {} reactions in total.\n",
-	    self.reaction_rules.len()
-	));
+        result.push_str(&format!(
+            "There are {} reactions in total.\n",
+            self.reaction_rules.len()
+        ));
 
-	let mut admissible_reactions = vec![];
-	let mut nonadmissible_reactions = vec![];
+        let mut admissible_reactions = vec![];
+        let mut nonadmissible_reactions = vec![];
 
-	for reaction in self.reaction_rules.iter() {
-	    if reaction.reactants.is_disjoint(&missing_e) {
-		admissible_reactions.push(reaction);
-	    } else {
-		nonadmissible_reactions.push(reaction);
-	    }
-	}
+        for reaction in self.reaction_rules.iter() {
+            if reaction.reactants.is_disjoint(&missing_e) {
+                admissible_reactions.push(reaction);
+            } else {
+                nonadmissible_reactions.push(reaction);
+            }
+        }
 
-	result.push_str(&format!(
-	    "- the applicable reactions are {}.\n",
-	    admissible_reactions.len()
-	));
+        result.push_str(&format!(
+            "- the applicable reactions are {}.\n",
+            admissible_reactions.len()
+        ));
 
-	result.push_str(&format!(
-	    "- there are {} reactions that will never be enabled.\n",
-	    nonadmissible_reactions.len()
-	));
-	result.push_str(
-	    "============================================================="
-	);
+        result.push_str(&format!(
+            "- there are {} reactions that will never be enabled.\n",
+            nonadmissible_reactions.len()
+        ));
+        result.push_str("=============================================================");
 
-	result
+        result
     }
 }
-
 
 // -----------------------------------------------------------------------------
 //                              Positive System
@@ -632,26 +562,24 @@ impl BasicSystem for PositiveSystem {
     type Process = PositiveProcess;
     type Environment = PositiveEnvironment;
 
-    fn to_transitions_iterator(
-	&self
-    ) -> Result<impl Iterator<Item = (Self::Label, Self)>, String> {
-	TransitionsIterator::<Self::Set, Self, Self::Process>::from(self)
+    fn to_transitions_iterator(&self) -> Result<impl Iterator<Item = (Self::Label, Self)>, String> {
+        TransitionsIterator::<Self::Set, Self, Self::Process>::from(self)
     }
 
     fn environment(&self) -> &Self::Environment {
-	&self.delta
+        &self.delta
     }
 
     fn available_entities(&self) -> &Self::Set {
-	&self.available_entities
+        &self.available_entities
     }
 
     fn context(&self) -> &Self::Process {
-	&self.context_process
+        &self.context_process
     }
 
     fn reactions(&self) -> &Vec<Self::Reaction> {
-	&self.reaction_rules
+        &self.reaction_rules
     }
 }
 
@@ -660,8 +588,8 @@ impl BasicSystem for PositiveSystem {
 impl PartialEq for PositiveSystem {
     // we ignore delta and reaction rules
     fn eq(&self, other: &PositiveSystem) -> bool {
-	self.available_entities == other.available_entities &&
-	    self.context_process == other.context_process
+        self.available_entities == other.available_entities
+            && self.context_process == other.context_process
     }
 }
 
@@ -674,40 +602,41 @@ impl Eq for PositiveSystem {}
 impl Hash for PositiveSystem {
     // ignores delta and reaction rules
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-	self.available_entities.hash(state);
-	self.context_process.hash(state);
+        self.available_entities.hash(state);
+        self.context_process.hash(state);
     }
 }
 
 impl Default for PositiveSystem {
     fn default() -> Self {
-	Self { delta: Rc::new(PositiveEnvironment::default()),
-	       available_entities: PositiveSet::default(),
-	       context_process: PositiveProcess::default(),
-	       reaction_rules: Rc::new(Vec::default()) }
+        Self {
+            delta: Rc::new(PositiveEnvironment::default()),
+            available_entities: PositiveSet::default(),
+            context_process: PositiveProcess::default(),
+            reaction_rules: Rc::new(Vec::default()),
+        }
     }
 }
 
 impl PrintableWithTranslator for PositiveSystem {
-    fn print(&self, f: &mut std::fmt::Formatter, translator: &Translator)
-	     -> std::fmt::Result {
-	write!(
-	    f,
-	    "[delta: {}, available_entities: {}, context_process: {}, \
+    fn print(&self, f: &mut std::fmt::Formatter, translator: &Translator) -> std::fmt::Result {
+        write!(
+            f,
+            "[delta: {}, available_entities: {}, context_process: {}, \
 	     reaction_rules: [",
-	    Formatter::from(translator, &*self.delta),
-	    Formatter::from(translator, &self.available_entities),
-	    Formatter::from(translator, &self.context_process)
-	)?;
-	let mut it = self.reaction_rules.iter().peekable();
-	while let Some(el) = it.next() {
-	    if it.peek().is_none() {
-		write!(f, "{}", Formatter::from(translator, el))?;
-	    } else {
-		write!(f, "{}, ", Formatter::from(translator, el))?;
-	    }
-	}
-	write!(f, "] ]")
+            Formatter::from(translator, &*self.delta),
+            Formatter::from(translator, &self.available_entities),
+            Formatter::from(translator, &self.context_process)
+        )?;
+        let mut it = self.reaction_rules.iter().peekable();
+        while let Some(el) = it.next() {
+            if it.peek().is_none() {
+                write!(f, "{}", Formatter::from(translator, el))?;
+            } else {
+                write!(f, "{}, ", Formatter::from(translator, el))?;
+            }
+        }
+        write!(f, "] ]")
     }
 }
 
@@ -718,58 +647,77 @@ impl From<System> for PositiveSystem {
     /// all reactions that contains el in the products.
     /// Should never fail.
     fn from(value: System) -> Self {
-	let new_env = Rc::new((&*value.delta).into());
-	let new_available_entities =
-	    value.available_entities.to_positive_set(IdState::Positive);
-	let new_context = value.context_process.into();
-	let new_reactions = {
-	    let mut res = vec![];
-	    let old_reactions = &value.reaction_rules;
-	    old_reactions.iter()
-		.for_each(
-		    |r| res.push(PositiveReaction::create(r.reactants.clone(),
-							  r.inhibitors.clone(),
-							  r.products.clone())));
-	    let all_products = Reaction::all_products(old_reactions);
-	    for el in all_products {
-		let p =
-		    Reaction::all_reactions_with_product(old_reactions, &el);
-		let prohib_set =
-		    Set::prohibiting_set(
-			&p.iter().map(|p| p.reactants.clone())
-			    .collect::<Vec<_>>(),
-			&p.iter().map(|p| p.inhibitors.clone())
-			    .collect::<Vec<_>>())
-		    .unwrap();
-		for s in prohib_set {
-		    res.push(PositiveReaction {
-			reactants: s,
-			products: PositiveSet::from([(el, IdState::Negative)])
-		    })
-		}
-	    }
-	    Rc::new(res)
-	};
+        let new_env = Rc::new((&*value.delta).into());
+        let positive_entities = value.available_entities.to_positive_set(IdState::Positive);
 
-	Self { delta: new_env,
-	       available_entities: new_available_entities,
-	       context_process: new_context,
-	       reaction_rules: new_reactions }
+        let negative_entities = value
+            .context_process
+            .all_elements()
+            .union(&value.environment().all_elements())
+            .union(
+                &value
+                    .reactions()
+                    .iter()
+                    .fold(Set::default(), |acc: Set, el| {
+                        acc.union(&el.inhibitors)
+                            .union(&el.products)
+                            .union(&el.reactants)
+                    }),
+            )
+            .subtraction(&value.available_entities)
+            .to_positive_set(IdState::Negative);
+        let new_available_entities = positive_entities.union(&negative_entities);
+
+        let new_context = value.context_process.into();
+        let new_reactions = {
+            let mut res = vec![];
+            let old_reactions = &value.reaction_rules;
+            old_reactions.iter().for_each(|r| {
+                res.push(PositiveReaction::create(
+                    r.reactants.clone(),
+                    r.inhibitors.clone(),
+                    r.products.clone(),
+                ))
+            });
+            let all_products = Reaction::all_products(old_reactions);
+            for el in all_products {
+                let p = Reaction::all_reactions_with_product(old_reactions, &el);
+                let prohib_set = Set::prohibiting_set(
+                    &p.iter().map(|p| p.reactants.clone()).collect::<Vec<_>>(),
+                    &p.iter().map(|p| p.inhibitors.clone()).collect::<Vec<_>>(),
+                )
+                .unwrap();
+                for s in prohib_set {
+                    res.push(PositiveReaction {
+                        reactants: s,
+                        products: PositiveSet::from([(el, IdState::Negative)]),
+                    })
+                }
+            }
+            Rc::new(res)
+        };
+
+        Self {
+            delta: new_env,
+            available_entities: new_available_entities,
+            context_process: new_context,
+            reaction_rules: new_reactions,
+        }
     }
 }
 
 impl PositiveSystem {
     pub fn from(
-	delta: Rc<PositiveEnvironment>,
-	available_entities: PositiveSet,
-	context_process: PositiveProcess,
-	reaction_rules: Rc<Vec<PositiveReaction>>,
+        delta: Rc<PositiveEnvironment>,
+        available_entities: PositiveSet,
+        context_process: PositiveProcess,
+        reaction_rules: Rc<Vec<PositiveReaction>>,
     ) -> Self {
-	Self {
-	    delta: Rc::clone(&delta),
-	    available_entities,
-	    context_process,
-	    reaction_rules: Rc::clone(&reaction_rules),
-	}
+        Self {
+            delta: Rc::clone(&delta),
+            available_entities,
+            context_process,
+            reaction_rules: Rc::clone(&reaction_rules),
+        }
     }
 }

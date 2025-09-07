@@ -4,17 +4,10 @@
 static PRINTNAMES: bool = false;
 
 use core::fmt::{self, Display, Write};
-use petgraph::
-{
+use petgraph::{
     data::DataMap,
-    visit::{
-	EdgeRef,
-	GraphProp,
-	IntoEdgeReferences,
-	IntoNodeReferences,
-	NodeIndexable,
-	NodeRef,
-}};
+    visit::{EdgeRef, GraphProp, IntoEdgeReferences, IntoNodeReferences, NodeIndexable, NodeRef},
+};
 
 pub struct Dot<'a, G>
 where
@@ -37,40 +30,40 @@ where
     /// Create a `Dot` formatting wrapper with default configuration.
     #[inline]
     pub fn new(graph: G) -> Self {
-	Dot {
-	    graph,
-	    get_edge_attributes: &|_, _| String::new(),
-	    get_node_attributes: &|_, _| String::new(),
-	    config: Configs::default(),
-	}
+        Dot {
+            graph,
+            get_edge_attributes: &|_, _| String::new(),
+            get_node_attributes: &|_, _| String::new(),
+            config: Configs::default(),
+        }
     }
 
     /// Create a `Dot` formatting wrapper with custom configuration.
     #[inline]
     pub fn with_config(graph: G, config: &'a [Config]) -> Self {
-	let config = Configs::extract(config);
-	Dot {
-	    graph,
-	    get_edge_attributes: &|_, _| String::new(),
-	    get_node_attributes: &|_, _| String::new(),
-	    config,
-	}
+        let config = Configs::extract(config);
+        Dot {
+            graph,
+            get_edge_attributes: &|_, _| String::new(),
+            get_node_attributes: &|_, _| String::new(),
+            config,
+        }
     }
 
     #[inline]
     pub fn with_attr_getters(
-	graph: G,
-	config: &'a [Config],
-	get_edge_attributes: &'a dyn Fn(G, G::EdgeRef) -> String,
-	get_node_attributes: &'a dyn Fn(G, G::NodeRef) -> String,
+        graph: G,
+        config: &'a [Config],
+        get_edge_attributes: &'a dyn Fn(G, G::EdgeRef) -> String,
+        get_node_attributes: &'a dyn Fn(G, G::NodeRef) -> String,
     ) -> Self {
-	let config = Configs::extract(config);
-	Dot {
-	    graph,
-	    get_edge_attributes,
-	    get_node_attributes,
-	    config,
-	}
+        let config = Configs::extract(config);
+        Dot {
+            graph,
+            get_edge_attributes,
+            get_node_attributes,
+            config,
+        }
     }
 }
 
@@ -93,24 +86,28 @@ pub enum RankDir {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NodeStyle {
     shape: String,
-    style: String
+    style: String,
 }
 
 impl Default for NodeStyle {
     fn default() -> Self {
-	NodeStyle { shape: "box".to_string(),
-		    style: "filled, rounded".to_string() }
+        NodeStyle {
+            shape: "box".to_string(),
+            style: "filled, rounded".to_string(),
+        }
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EdgeStyle {
-    arrowhead: String
+    arrowhead: String,
 }
 
 impl Default for EdgeStyle {
     fn default() -> Self {
-	EdgeStyle { arrowhead: "vee".to_string() }
+        EdgeStyle {
+            arrowhead: "vee".to_string(),
+        }
     }
 }
 
@@ -171,86 +168,82 @@ impl<G> Dot<'_, G>
 where
     G: IntoNodeReferences + IntoEdgeReferences + NodeIndexable + GraphProp + DataMap,
 {
-    fn graph_fmt<NF, EF>(
-	&self,
-	f: &mut fmt::Formatter,
-	node_fmt: NF,
-	edge_fmt: EF
-    ) -> fmt::Result
+    fn graph_fmt<NF, EF>(&self, f: &mut fmt::Formatter, node_fmt: NF, edge_fmt: EF) -> fmt::Result
     where
-	NF: Fn(&G::NodeWeight, &mut fmt::Formatter) -> fmt::Result,
-	EF: Fn(&G::EdgeWeight, &mut fmt::Formatter) -> fmt::Result,
+        NF: Fn(&G::NodeWeight, &mut fmt::Formatter) -> fmt::Result,
+        EF: Fn(&G::EdgeWeight, &mut fmt::Formatter) -> fmt::Result,
     {
-	let g = self.graph;
-	writeln!(f, "{} {{", TYPE[g.is_directed() as usize])?;
+        let g = self.graph;
+        writeln!(f, "{} {{", TYPE[g.is_directed() as usize])?;
 
-	if let Some(rank_dir) = &self.config.RankDir {
-	    let value = match rank_dir {
-		RankDir::TB => "TB",
-		RankDir::BT => "BT",
-		RankDir::LR => "LR",
-		RankDir::RL => "RL",
-	    };
-	    writeln!(f, "{INDENT}rankdir=\"{value}\"\n")?;
-	}
+        if let Some(rank_dir) = &self.config.RankDir {
+            let value = match rank_dir {
+                RankDir::TB => "TB",
+                RankDir::BT => "BT",
+                RankDir::LR => "LR",
+                RankDir::RL => "RL",
+            };
+            writeln!(f, "{INDENT}rankdir=\"{value}\"\n")?;
+        }
 
-	if let Some(style) = &self.config.NodeStyle {
-	    writeln!(f,
-		     "{INDENT}node [shape=\"{}\", style=\"{}\"]",
-		     style.shape,
-		     style.style)?;
-	}
+        if let Some(style) = &self.config.NodeStyle {
+            writeln!(
+                f,
+                "{INDENT}node [shape=\"{}\", style=\"{}\"]",
+                style.shape, style.style
+            )?;
+        }
 
-	if let Some(style) = &self.config.EdgeStyle {
-	    writeln!(f, "{INDENT}edge [arrowhead=\"{}\"]\n", style.arrowhead)?;
-	}
+        if let Some(style) = &self.config.EdgeStyle {
+            writeln!(f, "{INDENT}edge [arrowhead=\"{}\"]\n", style.arrowhead)?;
+        }
 
-	// output all labels
-	for node in g.node_references() {
-	    if PRINTNAMES {
-		write!(f, "{INDENT}\"")?;
-		Escaped(FnFmt(node.weight(), &node_fmt)).fmt(f)?;
-		write!(f, "\" [ ")?;
-	    } else {
-		write!(f, "{INDENT}")?;
-		write!(f, "{}", g.to_index(node.id()))?;
-		write!(f, " [ ")?;
-	    }
+        // output all labels
+        for node in g.node_references() {
+            if PRINTNAMES {
+                write!(f, "{INDENT}\"")?;
+                Escaped(FnFmt(node.weight(), &node_fmt)).fmt(f)?;
+                write!(f, "\" [ ")?;
+            } else {
+                write!(f, "{INDENT}")?;
+                write!(f, "{}", g.to_index(node.id()))?;
+                write!(f, " [ ")?;
+            }
 
-	    write!(f, "label = \"")?;
-	    Escaped(FnFmt(node.weight(), &node_fmt)).fmt(f)?;
-	    write!(f, "\" ")?;
+            write!(f, "label = \"")?;
+            Escaped(FnFmt(node.weight(), &node_fmt)).fmt(f)?;
+            write!(f, "\" ")?;
 
-	    writeln!(f, "{}]", (self.get_node_attributes)(g, node))?;
-	}
-	// output all edges
-	for edge in g.edge_references() {
-	    if PRINTNAMES {
-		write!(f, "{INDENT}\"")?;
-		let node_source_weight = g.node_weight(edge.source()).unwrap();
-		Escaped(FnFmt(node_source_weight, &node_fmt)).fmt(f)?;
-		write!(f, "\" {} \"", EDGE[g.is_directed() as usize])?;
-		let node_target_weight = g.node_weight(edge.target()).unwrap();
-		Escaped(FnFmt(node_target_weight, &node_fmt)).fmt(f)?;
-		write!(f, "\" [ ")?;
-	    } else {
-		write!(f, "{INDENT}")?;
-		write!(f, "{} ", g.to_index(edge.source()))?;
-		write!(f, "{} ", EDGE[g.is_directed() as usize])?;
-		write!(f, "{} ", g.to_index(edge.target()))?;
-		write!(f, "[ ")?;
-	    }
+            writeln!(f, "{}]", (self.get_node_attributes)(g, node))?;
+        }
+        // output all edges
+        for edge in g.edge_references() {
+            if PRINTNAMES {
+                write!(f, "{INDENT}\"")?;
+                let node_source_weight = g.node_weight(edge.source()).unwrap();
+                Escaped(FnFmt(node_source_weight, &node_fmt)).fmt(f)?;
+                write!(f, "\" {} \"", EDGE[g.is_directed() as usize])?;
+                let node_target_weight = g.node_weight(edge.target()).unwrap();
+                Escaped(FnFmt(node_target_weight, &node_fmt)).fmt(f)?;
+                write!(f, "\" [ ")?;
+            } else {
+                write!(f, "{INDENT}")?;
+                write!(f, "{} ", g.to_index(edge.source()))?;
+                write!(f, "{} ", EDGE[g.is_directed() as usize])?;
+                write!(f, "{} ", g.to_index(edge.target()))?;
+                write!(f, "[ ")?;
+            }
 
-	    write!(f, "label = \"")?;
-	    Escaped(FnFmt(edge.weight(), &edge_fmt)).fmt(f)?;
-	    write!(f, "\" ")?;
+            write!(f, "label = \"")?;
+            Escaped(FnFmt(edge.weight(), &edge_fmt)).fmt(f)?;
+            write!(f, "\" ")?;
 
-	    writeln!(f, "{}]", (self.get_edge_attributes)(g, edge))?;
-	}
+            writeln!(f, "{}]", (self.get_edge_attributes)(g, edge))?;
+        }
 
-	writeln!(f, "}}")?;
+        writeln!(f, "}}")?;
 
-	Ok(())
+        Ok(())
     }
 }
 
@@ -261,7 +254,7 @@ where
     G::NodeWeight: fmt::Display,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-	self.graph_fmt(f, fmt::Display::fmt, fmt::Display::fmt)
+        self.graph_fmt(f, fmt::Display::fmt, fmt::Display::fmt)
     }
 }
 
@@ -272,7 +265,7 @@ where
     G::NodeWeight: fmt::LowerHex,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-	self.graph_fmt(f, fmt::LowerHex::fmt, fmt::LowerHex::fmt)
+        self.graph_fmt(f, fmt::LowerHex::fmt, fmt::LowerHex::fmt)
     }
 }
 
@@ -283,7 +276,7 @@ where
     G::NodeWeight: fmt::UpperHex,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-	self.graph_fmt(f, fmt::UpperHex::fmt, fmt::UpperHex::fmt)
+        self.graph_fmt(f, fmt::UpperHex::fmt, fmt::UpperHex::fmt)
     }
 }
 
@@ -294,7 +287,7 @@ where
     G::NodeWeight: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-	self.graph_fmt(f, fmt::Debug::fmt, fmt::Debug::fmt)
+        self.graph_fmt(f, fmt::Debug::fmt, fmt::Debug::fmt)
     }
 }
 
@@ -306,20 +299,20 @@ where
     W: fmt::Write,
 {
     fn write_str(&mut self, s: &str) -> fmt::Result {
-	for c in s.chars() {
-	    self.write_char(c)?;
-	}
-	Ok(())
+        for c in s.chars() {
+            self.write_char(c)?;
+        }
+        Ok(())
     }
 
     fn write_char(&mut self, c: char) -> fmt::Result {
-	match c {
-	    '"' | '\\' => self.0.write_char('\\')?,
-	    // \l is for left justified linebreak
-	    '\n' => return self.0.write_str("\\l"),
-	    _ => {}
-	}
-	self.0.write_char(c)
+        match c {
+            '"' | '\\' => self.0.write_char('\\')?,
+            // \l is for left justified linebreak
+            '\n' => return self.0.write_str("\\l"),
+            _ => {}
+        }
+        self.0.write_char(c)
     }
 }
 
@@ -331,11 +324,11 @@ where
     T: fmt::Display,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-	if f.alternate() {
-	    writeln!(&mut Escaper(f), "{:#}", &self.0)
-	} else {
-	    write!(&mut Escaper(f), "{}", &self.0)
-	}
+        if f.alternate() {
+            writeln!(&mut Escaper(f), "{:#}", &self.0)
+        } else {
+            write!(&mut Escaper(f), "{}", &self.0)
+        }
     }
 }
 
@@ -347,6 +340,6 @@ where
     F: Fn(&'a T, &mut fmt::Formatter<'_>) -> fmt::Result,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-	self.1(self.0, f)
+        self.1(self.0, f)
     }
 }

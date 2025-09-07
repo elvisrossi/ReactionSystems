@@ -5,11 +5,13 @@ fn main() {
     std::io::stdin().read_line(&mut input).unwrap();
     input = input.trim().into();
 
+    // let input = "testing/medical.system";
+
     let now = std::time::Instant::now();
 
     match presets::run(input) {
-	Ok(()) => {},
-	Err(e) => println!("{e}")
+        Ok(()) => {}
+        Err(e) => println!("{e}"),
     }
 
     println!("{} milliseconds elapsed", now.elapsed().as_millis());

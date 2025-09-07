@@ -4,15 +4,16 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::rc::Rc;
 
+use super::element::{IdState, IdType};
 use super::reaction::{PositiveReaction, Reaction};
 use super::set::{BasicSet, PositiveSet, Set};
-use super::element::{IdState, IdType};
-use super::translator::{Translator, PrintableWithTranslator, Formatter};
+use super::translator::{Formatter, PrintableWithTranslator, Translator};
 
 pub trait BasicProcess
-where Self: Clone + Debug + Default + PartialEq + Eq + Hash + Serialize +
-    PrintableWithTranslator,
-for<'a> Self: Deserialize<'a> {
+where
+    Self: Clone + Debug + Default + PartialEq + Eq + Hash + Serialize + PrintableWithTranslator,
+    for<'a> Self: Deserialize<'a>,
+{
     type Id;
     type Set: BasicSet;
 
@@ -27,26 +28,26 @@ for<'a> Self: Deserialize<'a> {
 pub enum Process {
     Nill,
     RecursiveIdentifier {
-	identifier: IdType,
+        identifier: IdType,
     },
     EntitySet {
-	entities: Set,
-	next_process: Rc<Process>,
+        entities: Set,
+        next_process: Rc<Process>,
     },
     Guarded {
-	reaction: Reaction,
-	next_process: Rc<Process>,
+        reaction: Reaction,
+        next_process: Rc<Process>,
     },
     WaitEntity {
-	repeat: i64,
-	repeated_process: Rc<Process>,
-	next_process: Rc<Process>,
+        repeat: i64,
+        repeated_process: Rc<Process>,
+        next_process: Rc<Process>,
     },
     Summation {
-	children: Vec<Rc<Process>>,
+        children: Vec<Rc<Process>>,
     },
     NondeterministicChoice {
-	children: Vec<Rc<Process>>,
+        children: Vec<Rc<Process>>,
     },
 }
 
@@ -55,172 +56,170 @@ impl BasicProcess for Process {
     type Set = Set;
 
     fn concat(&self, new: &Self) -> Self {
-	match (self, new) {
-	    (
-		Self::NondeterministicChoice { children: c1 },
-		Self::NondeterministicChoice { children: c2 },
-	    ) => Self::NondeterministicChoice {
-		children: [c1.clone(), c2.clone()].concat(),
-	    },
-	    (Self::NondeterministicChoice { children }, new)
-	    | (new, Self::NondeterministicChoice { children }) => {
-		let mut new_children = children.clone();
-		new_children.push(Rc::new(new.clone()));
-		Self::NondeterministicChoice {
-		    children: new_children,
-		}
-	    }
-	    (_, _) => Self::NondeterministicChoice {
-		children: vec![Rc::new(self.clone()), Rc::new(new.clone())],
-	    },
-	}
+        match (self, new) {
+            (
+                Self::NondeterministicChoice { children: c1 },
+                Self::NondeterministicChoice { children: c2 },
+            ) => Self::NondeterministicChoice {
+                children: [c1.clone(), c2.clone()].concat(),
+            },
+            (Self::NondeterministicChoice { children }, new)
+            | (new, Self::NondeterministicChoice { children }) => {
+                let mut new_children = children.clone();
+                new_children.push(Rc::new(new.clone()));
+                Self::NondeterministicChoice {
+                    children: new_children,
+                }
+            }
+            (_, _) => Self::NondeterministicChoice {
+                children: vec![Rc::new(self.clone()), Rc::new(new.clone())],
+            },
+        }
     }
 
     /// returns all elements used
     fn all_elements(&self) -> Self::Set {
-	let mut queue = VecDeque::from([self]);
-	let mut elements = Self::Set::default();
+        let mut queue = VecDeque::from([self]);
+        let mut elements = Self::Set::default();
 
-	while let Some(el) = queue.pop_front() {
-	    match el {
-		Self::Nill => {}
-		Self::RecursiveIdentifier { identifier: _ } => {}
-		Self::EntitySet {
-		    entities,
-		    next_process,
-		} => {
-		    elements.push(entities);
-		    queue.push_back(next_process);
-		}
-		Self::Guarded { reaction, next_process } => {
-		    elements.push(&reaction.reactants);
-		    elements.push(&reaction.inhibitors);
-		    elements.push(&reaction.products);
-		    queue.push_back(next_process);
-		}
-		Self::WaitEntity {
-		    repeat: _,
-		    repeated_process,
-		    next_process,
-		} => {
-		    queue.push_back(repeated_process);
-		    queue.push_back(next_process);
-		}
-		Self::Summation { children } => {
-		    for c in children {
-			queue.push_back(c);
-		    }
-		}
-		Self::NondeterministicChoice { children } => {
-		    for c in children {
-			queue.push_back(c);
-		    }
-		}
-	    }
-	}
-	elements
+        while let Some(el) = queue.pop_front() {
+            match el {
+                Self::Nill => {}
+                Self::RecursiveIdentifier { identifier: _ } => {}
+                Self::EntitySet {
+                    entities,
+                    next_process,
+                } => {
+                    elements.push(entities);
+                    queue.push_back(next_process);
+                }
+                Self::Guarded {
+                    reaction,
+                    next_process,
+                } => {
+                    elements.push(&reaction.reactants);
+                    elements.push(&reaction.inhibitors);
+                    elements.push(&reaction.products);
+                    queue.push_back(next_process);
+                }
+                Self::WaitEntity {
+                    repeat: _,
+                    repeated_process,
+                    next_process,
+                } => {
+                    queue.push_back(repeated_process);
+                    queue.push_back(next_process);
+                }
+                Self::Summation { children } => {
+                    for c in children {
+                        queue.push_back(c);
+                    }
+                }
+                Self::NondeterministicChoice { children } => {
+                    for c in children {
+                        queue.push_back(c);
+                    }
+                }
+            }
+        }
+        elements
     }
 
     /// Finds only the rules X = pre(Q, rec(X)), but not only x = pre(Q, rec(x))
     /// to use in filter_map.
-    fn filter_delta<'a>(
-	&'a self,
-	id: &Self::Id
-    ) -> Option<&'a Self::Set> {
-	if let Self::EntitySet { entities, next_process } = self
-	    && let Self::RecursiveIdentifier { identifier } = &**next_process
-	    && identifier == id
-	{
-	    return Some(entities);
-	}
+    fn filter_delta<'a>(&'a self, id: &Self::Id) -> Option<&'a Self::Set> {
+        if let Self::EntitySet {
+            entities,
+            next_process,
+        } = self
+            && let Self::RecursiveIdentifier { identifier } = &**next_process
+            && identifier == id
+        {
+            return Some(entities);
+        }
 
-	None
+        None
     }
 }
 
 impl Default for Process {
     fn default() -> Self {
-	Self::Nill
+        Self::Nill
     }
 }
 
 impl PrintableWithTranslator for Process {
-    fn print(&self, f: &mut std::fmt::Formatter, translator: &Translator)
-	     -> std::fmt::Result {
-	match self {
-	    Self::Nill => {
-		write!(f, "Nill")
-	    },
-	    Self::RecursiveIdentifier { identifier } => {
-		write!(f,
-		       "[{}]",
-		       translator
-		       .decode(*identifier)
-		       .unwrap_or("Missing".into()))
-	    },
-	    Self::EntitySet { entities, next_process, } => {
-		write!(
-		    f,
-		    "{}.{}",
-		    Formatter::from(translator, entities),
-		    Formatter::from(translator, &**next_process)
-		)
-	    },
-	    Self::Guarded { reaction, next_process } => {
-		write!(f,
-		       "?{}?.{}",
-		       Formatter::from(translator, reaction),
-		       Formatter::from(translator, &**next_process))
-	    },
-	    Self::WaitEntity { repeat, repeated_process, next_process, } => {
-		write!(
-		    f,
-		    "({})^{repeat}.{}",
-		    Formatter::from(translator, &**repeated_process),
-		    Formatter::from(translator, &**next_process)
-		)
-	    }
-	    Self::Summation { children } => {
-		write!(f, "[")?;
-		let mut it = children.iter().peekable();
-		while let Some(child) = it.next() {
-		    if it.peek().is_none() {
-			write!(
-			    f,
-			    "{}",
-			    Formatter::from(translator, &**child)
-			)?;
-		    } else {
-			write!(
-			    f,
-			    "{} + ",
-			    Formatter::from(translator, &**child)
-			)?;
-		    }
-		}
-		write!(f, "]")
-	    }
-	    Self::NondeterministicChoice { children } => {
-		write!(f, "[")?;
-		let mut it = children.iter().peekable();
-		while let Some(child) = it.next() {
-		    if it.peek().is_none() {
-			write!(
-			    f,
-			    "{}",
-			    Formatter::from(translator, &**child)
-			)?;
-		    } else {
-			write!(
-			    f,
-			    "{}, ",
-			    Formatter::from(translator, &**child)
-			)?;
-		    }
-		}
-		write!(f, "]")
-	    }
-	}
+    fn print(&self, f: &mut std::fmt::Formatter, translator: &Translator) -> std::fmt::Result {
+        match self {
+            Self::Nill => {
+                write!(f, "Nill")
+            }
+            Self::RecursiveIdentifier { identifier } => {
+                write!(
+                    f,
+                    "[{}]",
+                    translator.decode(*identifier).unwrap_or("Missing".into())
+                )
+            }
+            Self::EntitySet {
+                entities,
+                next_process,
+            } => {
+                write!(
+                    f,
+                    "{}.{}",
+                    Formatter::from(translator, entities),
+                    Formatter::from(translator, &**next_process)
+                )
+            }
+            Self::Guarded {
+                reaction,
+                next_process,
+            } => {
+                write!(
+                    f,
+                    "?{}?.{}",
+                    Formatter::from(translator, reaction),
+                    Formatter::from(translator, &**next_process)
+                )
+            }
+            Self::WaitEntity {
+                repeat,
+                repeated_process,
+                next_process,
+            } => {
+                write!(
+                    f,
+                    "({})^{repeat}.{}",
+                    Formatter::from(translator, &**repeated_process),
+                    Formatter::from(translator, &**next_process)
+                )
+            }
+            Self::Summation { children } => {
+                write!(f, "[")?;
+                let mut it = children.iter().peekable();
+                while let Some(child) = it.next() {
+                    if it.peek().is_none() {
+                        write!(f, "{}", Formatter::from(translator, &**child))?;
+                    } else {
+                        write!(f, "{} + ", Formatter::from(translator, &**child))?;
+                    }
+                }
+                write!(f, "]")
+            }
+            Self::NondeterministicChoice { children } => {
+                write!(f, "[")?;
+                let mut it = children.iter().peekable();
+                while let Some(child) = it.next() {
+                    if it.peek().is_none() {
+                        write!(f, "{}", Formatter::from(translator, &**child))?;
+                    } else {
+                        write!(f, "{}, ", Formatter::from(translator, &**child))?;
+                    }
+                }
+                write!(f, "]")
+            }
+        }
     }
 }
 
@@ -230,26 +229,26 @@ impl PrintableWithTranslator for Process {
 pub enum PositiveProcess {
     Nill,
     RecursiveIdentifier {
-	identifier: IdType,
+        identifier: IdType,
     },
     EntitySet {
-	entities: PositiveSet,
-	next_process: Rc<PositiveProcess>,
+        entities: PositiveSet,
+        next_process: Rc<PositiveProcess>,
     },
     Guarded {
-	reaction: PositiveReaction,
-	next_process: Rc<PositiveProcess>,
+        reaction: PositiveReaction,
+        next_process: Rc<PositiveProcess>,
     },
     WaitEntity {
-	repeat: i64,
-	repeated_process: Rc<PositiveProcess>,
-	next_process: Rc<PositiveProcess>,
+        repeat: i64,
+        repeated_process: Rc<PositiveProcess>,
+        next_process: Rc<PositiveProcess>,
     },
     Summation {
-	children: Vec<Rc<PositiveProcess>>,
+        children: Vec<Rc<PositiveProcess>>,
     },
     NondeterministicChoice {
-	children: Vec<Rc<PositiveProcess>>,
+        children: Vec<Rc<PositiveProcess>>,
     },
 }
 
@@ -258,211 +257,224 @@ impl BasicProcess for PositiveProcess {
     type Set = PositiveSet;
 
     fn concat(&self, new: &Self) -> Self {
-	match (self, new) {
-	    (
-		Self::NondeterministicChoice { children: c1 },
-		Self::NondeterministicChoice { children: c2 },
-	    ) => Self::NondeterministicChoice {
-		children: [c1.clone(), c2.clone()].concat(),
-	    },
-	    (Self::NondeterministicChoice { children }, new)
-	    | (new, Self::NondeterministicChoice { children }) => {
-		let mut new_children = children.clone();
-		new_children.push(Rc::new(new.clone()));
-		Self::NondeterministicChoice {
-		    children: new_children,
-		}
-	    }
-	    (_, _) => Self::NondeterministicChoice {
-		children: vec![Rc::new(self.clone()), Rc::new(new.clone())],
-	    },
-	}
+        match (self, new) {
+            (
+                Self::NondeterministicChoice { children: c1 },
+                Self::NondeterministicChoice { children: c2 },
+            ) => Self::NondeterministicChoice {
+                children: [c1.clone(), c2.clone()].concat(),
+            },
+            (Self::NondeterministicChoice { children }, new)
+            | (new, Self::NondeterministicChoice { children }) => {
+                let mut new_children = children.clone();
+                new_children.push(Rc::new(new.clone()));
+                Self::NondeterministicChoice {
+                    children: new_children,
+                }
+            }
+            (_, _) => Self::NondeterministicChoice {
+                children: vec![Rc::new(self.clone()), Rc::new(new.clone())],
+            },
+        }
     }
 
     /// returns all elements used
     fn all_elements(&self) -> Self::Set {
-	let mut queue = VecDeque::from([self]);
-	let mut elements = Self::Set::default();
+        let mut queue = VecDeque::from([self]);
+        let mut elements = Self::Set::default();
 
-	while let Some(el) = queue.pop_front() {
-	    match el {
-		Self::Nill => {}
-		Self::RecursiveIdentifier { identifier: _ } => {}
-		Self::EntitySet {
-		    entities,
-		    next_process,
-		} => {
-		    elements.push(entities);
-		    queue.push_back(next_process);
-		}
-		Self::Guarded { reaction, next_process } => {
-		    elements.push(&reaction.reactants);
-		    elements.push(&reaction.products);
-		    queue.push_back(next_process);
-		}
-		Self::WaitEntity {
-		    repeat: _,
-		    repeated_process,
-		    next_process,
-		} => {
-		    queue.push_back(repeated_process);
-		    queue.push_back(next_process);
-		}
-		Self::Summation { children } => {
-		    for c in children {
-			queue.push_back(c);
-		    }
-		}
-		Self::NondeterministicChoice { children } => {
-		    for c in children {
-			queue.push_back(c);
-		    }
-		}
-	    }
-	}
-	elements
+        while let Some(el) = queue.pop_front() {
+            match el {
+                Self::Nill => {}
+                Self::RecursiveIdentifier { identifier: _ } => {}
+                Self::EntitySet {
+                    entities,
+                    next_process,
+                } => {
+                    elements.push(entities);
+                    queue.push_back(next_process);
+                }
+                Self::Guarded {
+                    reaction,
+                    next_process,
+                } => {
+                    elements.push(&reaction.reactants);
+                    elements.push(&reaction.products);
+                    queue.push_back(next_process);
+                }
+                Self::WaitEntity {
+                    repeat: _,
+                    repeated_process,
+                    next_process,
+                } => {
+                    queue.push_back(repeated_process);
+                    queue.push_back(next_process);
+                }
+                Self::Summation { children } => {
+                    for c in children {
+                        queue.push_back(c);
+                    }
+                }
+                Self::NondeterministicChoice { children } => {
+                    for c in children {
+                        queue.push_back(c);
+                    }
+                }
+            }
+        }
+        elements
     }
 
     /// Finds only the rules X = pre(Q, rec(X)), but not only x = pre(Q, rec(x))
     /// to use in filter_map.
     fn filter_delta(&self, id: &Self::Id) -> Option<&Self::Set> {
-	if let Self::EntitySet { entities, next_process } = self
-	    && let Self::RecursiveIdentifier { identifier } = &**next_process
-	    && identifier == id
-	{
-	    return Some(entities);
-	}
+        if let Self::EntitySet {
+            entities,
+            next_process,
+        } = self
+            && let Self::RecursiveIdentifier { identifier } = &**next_process
+            && identifier == id
+        {
+            return Some(entities);
+        }
 
-	None
+        None
     }
 }
 
 impl Default for PositiveProcess {
     fn default() -> Self {
-	Self::Nill
+        Self::Nill
     }
 }
 
 impl PrintableWithTranslator for PositiveProcess {
-    fn print(&self, f: &mut std::fmt::Formatter, translator: &Translator)
-	     -> std::fmt::Result {
-	match self {
-	    Self::Nill => {
-		write!(f, "Nill")
-	    },
-	    Self::RecursiveIdentifier { identifier } => {
-		write!(f,
-		       "[{}]",
-		       translator
-		       .decode(*identifier)
-		       .unwrap_or("Missing".into()))
-	    },
-	    Self::EntitySet { entities, next_process, } => {
-		write!(
-		    f,
-		    "{}.{}",
-		    Formatter::from(translator, entities),
-		    Formatter::from(translator, &**next_process)
-		)
-	    },
-	    Self::Guarded { reaction, next_process } => {
-		write!(f,
-		       "?{}?.{}",
-		       Formatter::from(translator, reaction),
-		       Formatter::from(translator, &**next_process))
-	    },
-	    Self::WaitEntity { repeat, repeated_process, next_process, } => {
-		write!(
-		    f,
-		    "({})^{repeat}.{}",
-		    Formatter::from(translator, &**repeated_process),
-		    Formatter::from(translator, &**next_process)
-		)
-	    }
-	    Self::Summation { children } => {
-		write!(f, "[")?;
-		let mut it = children.iter().peekable();
-		while let Some(child) = it.next() {
-		    if it.peek().is_none() {
-			write!(
-			    f,
-			    "{}",
-			    Formatter::from(translator, &**child)
-			)?;
-		    } else {
-			write!(
-			    f,
-			    "{} + ",
-			    Formatter::from(translator, &**child)
-			)?;
-		    }
-		}
-		write!(f, "]")
-	    }
-	    Self::NondeterministicChoice { children } => {
-		write!(f, "[")?;
-		let mut it = children.iter().peekable();
-		while let Some(child) = it.next() {
-		    if it.peek().is_none() {
-			write!(
-			    f,
-			    "{}",
-			    Formatter::from(translator, &**child)
-			)?;
-		    } else {
-			write!(
-			    f,
-			    "{}, ",
-			    Formatter::from(translator, &**child)
-			)?;
-		    }
-		}
-		write!(f, "]")
-	    }
-	}
+    fn print(&self, f: &mut std::fmt::Formatter, translator: &Translator) -> std::fmt::Result {
+        match self {
+            Self::Nill => {
+                write!(f, "Nill")
+            }
+            Self::RecursiveIdentifier { identifier } => {
+                write!(
+                    f,
+                    "[{}]",
+                    translator.decode(*identifier).unwrap_or("Missing".into())
+                )
+            }
+            Self::EntitySet {
+                entities,
+                next_process,
+            } => {
+                write!(
+                    f,
+                    "{}.{}",
+                    Formatter::from(translator, entities),
+                    Formatter::from(translator, &**next_process)
+                )
+            }
+            Self::Guarded {
+                reaction,
+                next_process,
+            } => {
+                write!(
+                    f,
+                    "?{}?.{}",
+                    Formatter::from(translator, reaction),
+                    Formatter::from(translator, &**next_process)
+                )
+            }
+            Self::WaitEntity {
+                repeat,
+                repeated_process,
+                next_process,
+            } => {
+                write!(
+                    f,
+                    "({})^{repeat}.{}",
+                    Formatter::from(translator, &**repeated_process),
+                    Formatter::from(translator, &**next_process)
+                )
+            }
+            Self::Summation { children } => {
+                write!(f, "[")?;
+                let mut it = children.iter().peekable();
+                while let Some(child) = it.next() {
+                    if it.peek().is_none() {
+                        write!(f, "{}", Formatter::from(translator, &**child))?;
+                    } else {
+                        write!(f, "{} + ", Formatter::from(translator, &**child))?;
+                    }
+                }
+                write!(f, "]")
+            }
+            Self::NondeterministicChoice { children } => {
+                write!(f, "[")?;
+                let mut it = children.iter().peekable();
+                while let Some(child) = it.next() {
+                    if it.peek().is_none() {
+                        write!(f, "{}", Formatter::from(translator, &**child))?;
+                    } else {
+                        write!(f, "{}, ", Formatter::from(translator, &**child))?;
+                    }
+                }
+                write!(f, "]")
+            }
+        }
     }
 }
 
 impl From<&Process> for PositiveProcess {
     fn from(value: &Process) -> Self {
-	match value {
-	    Process::Nill => Self::Nill,
-	    Process::EntitySet { entities, next_process } =>
-		Self::EntitySet {
-		    entities: entities.to_positive_set(IdState::Positive),
-		    next_process: Rc::new((&**next_process).into()) },
-	    Process::RecursiveIdentifier { identifier } =>
-		Self::RecursiveIdentifier { identifier: *identifier },
-	    Process::Guarded { reaction, next_process } => // TODO: is this right?
-		Self::Guarded {
-		    reaction: PositiveReaction {
-			reactants: reaction.reactants
-			    .to_positive_set(IdState::Positive)
-			    .union(&reaction.inhibitors
-				   .to_positive_set(IdState::Negative)),
-			products: reaction.products
-			    .to_positive_set(IdState::Positive)
-		    },
-		    next_process: Rc::new((&**next_process).into())},
-	    Process::WaitEntity { repeat, repeated_process, next_process } =>
-		Self::WaitEntity {
-		    repeat: *repeat,
-		    repeated_process: Rc::new((&**repeated_process).into()),
-		    next_process: Rc::new((&**next_process).into()) },
-	    Process::Summation { children } =>
-		Self::Summation {
-		    children: children.iter().map(|c| Rc::new((&**c).into()))
-			.collect() },
-	    Process::NondeterministicChoice { children } =>
-		Self::NondeterministicChoice {
-		    children: children.iter().map(|c| Rc::new((&**c).into()))
-			.collect() }
-	}
+        match value {
+            Process::Nill => Self::Nill,
+            Process::EntitySet {
+                entities,
+                next_process,
+            } => Self::EntitySet {
+                entities: entities.to_positive_set(IdState::Positive),
+                next_process: Rc::new((&**next_process).into()),
+            },
+            Process::RecursiveIdentifier { identifier } => Self::RecursiveIdentifier {
+                identifier: *identifier,
+            },
+            Process::Guarded {
+                reaction,
+                next_process,
+            } =>
+            // TODO: is this right?
+            {
+                Self::Guarded {
+                    reaction: PositiveReaction {
+                        reactants: reaction
+                            .reactants
+                            .to_positive_set(IdState::Positive)
+                            .union(&reaction.inhibitors.to_positive_set(IdState::Negative)),
+                        products: reaction.products.to_positive_set(IdState::Positive),
+                    },
+                    next_process: Rc::new((&**next_process).into()),
+                }
+            }
+            Process::WaitEntity {
+                repeat,
+                repeated_process,
+                next_process,
+            } => Self::WaitEntity {
+                repeat: *repeat,
+                repeated_process: Rc::new((&**repeated_process).into()),
+                next_process: Rc::new((&**next_process).into()),
+            },
+            Process::Summation { children } => Self::Summation {
+                children: children.iter().map(|c| Rc::new((&**c).into())).collect(),
+            },
+            Process::NondeterministicChoice { children } => Self::NondeterministicChoice {
+                children: children.iter().map(|c| Rc::new((&**c).into())).collect(),
+            },
+        }
     }
 }
 
-impl From<Process>for PositiveProcess {
+impl From<Process> for PositiveProcess {
     fn from(value: Process) -> Self {
-	(&value).into()
+        (&value).into()
     }
 }

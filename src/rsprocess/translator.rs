@@ -1,6 +1,6 @@
 //! Module for translation and keeping track of strings.
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
 
@@ -20,63 +20,59 @@ pub struct Translator {
 
 impl Translator {
     pub fn new() -> Self {
-	Translator {
-	    strings: HashMap::from([("*".into(), 0)]),
-	    reverse: HashMap::from([(0, "*".into())]),
-	    last_id: 1,
-	}
+        Translator {
+            strings: HashMap::from([("*".into(), 0)]),
+            reverse: HashMap::from([(0, "*".into())]),
+            last_id: 1,
+        }
     }
 
     /// converts a string into an id
     pub fn encode(&mut self, s: impl Into<String>) -> IdType {
-	let s = s.into();
-	let id = *(self.strings.entry(s.clone()).or_insert({
-	    self.last_id += 1;
-	    self.last_id
-	}));
-	self.reverse.insert(id, s.clone());
-	id
+        let s = s.into();
+        let id = *(self.strings.entry(s.clone()).or_insert({
+            self.last_id += 1;
+            self.last_id
+        }));
+        self.reverse.insert(id, s.clone());
+        id
     }
 
     pub fn encode_not_mut(&self, s: impl Into<String>) -> Option<IdType> {
-	self.strings.get(&s.into()).copied()
+        self.strings.get(&s.into()).copied()
     }
 
     /// converts an id into the corresponding string
     pub fn decode(&self, el: IdType) -> Option<String> {
-	self.reverse
-	    .get(&el)
-	    .map(|x| x.to_string())
+        self.reverse.get(&el).map(|x| x.to_string())
     }
 }
 
 impl Default for Translator {
     fn default() -> Self {
-	Translator::new()
+        Translator::new()
     }
 }
 
 impl PartialEq for Translator {
     fn eq(&self, other: &Self) -> bool {
-	for (s, id) in self.strings.iter() {
-	    match other.strings.get(s) {
-		None => return false,
-		Some(id2) if id != id2 => return false,
-		_ => {}
-	    }
-	}
-	true
+        for (s, id) in self.strings.iter() {
+            match other.strings.get(s) {
+                None => return false,
+                Some(id2) if id != id2 => return false,
+                _ => {}
+            }
+        }
+        true
     }
 }
-
 
 // -----------------------------------------------------------------------------
 //                              print structures
 // -----------------------------------------------------------------------------
 
 pub trait PrintableWithTranslator {
-    fn print(&self, f: &mut fmt::Formatter, translator: &Translator)
-	     -> fmt::Result;
+    fn print(&self, f: &mut fmt::Formatter, translator: &Translator) -> fmt::Result;
 }
 
 pub struct Formatter<'a, T> {
@@ -86,18 +82,15 @@ pub struct Formatter<'a, T> {
 
 impl<'a, T> fmt::Display for Formatter<'a, T>
 where
-    T: PrintableWithTranslator
+    T: PrintableWithTranslator,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-	self.data.print(f, self.translator)
+        self.data.print(f, self.translator)
     }
 }
 
 impl<'a, T> Formatter<'a, T> {
-    pub fn from(
-	translator: &'a Translator,
-	data: &'a T
-    ) -> Self {
-	Self { data, translator }
+    pub fn from(translator: &'a Translator, data: &'a T) -> Self {
+        Self { data, translator }
     }
 }

@@ -1,18 +1,18 @@
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeSet, BTreeMap};
-use std::hash::Hash;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
+use std::hash::Hash;
 
-use super::translator::{Formatter, Translator, PrintableWithTranslator};
-use super::element::{IdType, PositiveType, IdState};
+use super::element::{IdState, IdType, PositiveType};
+use super::translator::{Formatter, PrintableWithTranslator, Translator};
 
 /// Basic trait for all Set implementations.
 /// Implement IntoIterator for &Self to have .iter() (not required directly by
 /// the trait).
 pub trait BasicSet
-where Self: Clone + Eq + Ord + Default + Serialize + IntoIterator
-    + PrintableWithTranslator,
-for<'de> Self: Deserialize<'de>
+where
+    Self: Clone + Eq + Ord + Default + Serialize + IntoIterator + PrintableWithTranslator,
+    for<'de> Self: Deserialize<'de>,
 {
     type Element;
 
@@ -29,35 +29,30 @@ for<'de> Self: Deserialize<'de>
 }
 
 pub trait ExtensionsSet {
-    fn iter(
-	&self
-    ) -> <&Self as IntoIterator>::IntoIter
-    where for<'b> &'b Self: IntoIterator;
+    fn iter(&self) -> <&Self as IntoIterator>::IntoIter
+    where
+        for<'b> &'b Self: IntoIterator;
 
-    fn split<'a>(
-	&'a self,
-	trace: &'a [Self]
-    ) -> Option<(&'a [Self], &'a [Self])>
-    where Self: Sized;
+    fn split<'a>(&'a self, trace: &'a [Self]) -> Option<(&'a [Self], &'a [Self])>
+    where
+        Self: Sized;
 }
 
 /// Implementations for all sets.
 impl<T: BasicSet> ExtensionsSet for T {
     fn iter(&self) -> <&T as IntoIterator>::IntoIter
-    where for<'b> &'b T: IntoIterator {
-	self.into_iter()
+    where
+        for<'b> &'b T: IntoIterator,
+    {
+        self.into_iter()
     }
 
     /// Returns the prefix and the loop from a trace.
-    fn split<'a>(
-	&'a self,
-	trace: &'a [Self]
-    ) -> Option<(&'a [Self], &'a [Self])> {
-	let position = trace.iter().rposition(|x| x == self);
-	position.map(|pos| trace.split_at(pos))
+    fn split<'a>(&'a self, trace: &'a [Self]) -> Option<(&'a [Self], &'a [Self])> {
+        let position = trace.iter().rposition(|x| x == self);
+        position.map(|pos| trace.split_at(pos))
     }
 }
-
 
 // -----------------------------------------------------------------------------
 
@@ -71,72 +66,76 @@ impl BasicSet for Set {
     type Element = IdType;
 
     fn is_subset(&self, other: &Self) -> bool {
-	self.identifiers.is_subset(&other.identifiers)
+        self.identifiers.is_subset(&other.identifiers)
     }
 
     fn is_disjoint(&self, other: &Self) -> bool {
-	self.identifiers.is_disjoint(&other.identifiers)
+        self.identifiers.is_disjoint(&other.identifiers)
     }
 
     // returns the new set a \cup b
     fn union(&self, other: &Self) -> Self {
-	self.iter().chain(other.iter()).cloned().collect::<Vec<_>>().into()
+        self.iter()
+            .chain(other.iter())
+            .cloned()
+            .collect::<Vec<_>>()
+            .into()
     }
 
     fn push(&mut self, other: &Self) {
-	self.identifiers.extend(other.iter())
+        self.identifiers.extend(other.iter())
     }
 
     fn extend(&mut self, other: Option<&Self>) {
-	if let Some(other) = other {
-	    self.identifiers.extend(other);
-	}
+        if let Some(other) = other {
+            self.identifiers.extend(other);
+        }
     }
 
     /// returns the new set a \cap b
     fn intersection(&self, other: &Self) -> Self {
-	// TODO maybe find more efficient way without copy/clone
-	let res: BTreeSet<_> = other
-	    .identifiers
-	    .intersection(&self.identifiers)
-	    .copied()
-	    .collect();
-	Set { identifiers: res }
+        // TODO maybe find more efficient way without copy/clone
+        let res: BTreeSet<_> = other
+            .identifiers
+            .intersection(&self.identifiers)
+            .copied()
+            .collect();
+        Set { identifiers: res }
     }
 
     /// returns the new set a ∖ b
     fn subtraction(&self, other: &Self) -> Self {
-	// TODO maybe find more efficient way without copy/clone
-	let res: BTreeSet<_> = self
-	    .identifiers
-	    .difference(&other.identifiers)
-	    .copied()
-	    .collect();
-	Set { identifiers: res }
+        // TODO maybe find more efficient way without copy/clone
+        let res: BTreeSet<_> = self
+            .identifiers
+            .difference(&other.identifiers)
+            .copied()
+            .collect();
+        Set { identifiers: res }
     }
 
     fn len(&self) -> usize {
-	self.identifiers.len()
+        self.identifiers.len()
     }
 
     fn is_empty(&self) -> bool {
-	self.identifiers.is_empty()
+        self.identifiers.is_empty()
     }
 
     fn contains(&self, el: &Self::Element) -> bool {
-	self.identifiers.contains(el)
+        self.identifiers.contains(el)
     }
 }
 
 impl PartialEq for Set {
     fn eq(&self, other: &Self) -> bool {
-	self.identifiers.eq(&other.identifiers)
+        self.identifiers.eq(&other.identifiers)
     }
 }
 
 impl Hash for Set {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-	self.identifiers.hash(state)
+        self.identifiers.hash(state)
     }
 }
 
@@ -145,7 +144,7 @@ impl IntoIterator for Set {
     type IntoIter = std::collections::btree_set::IntoIter<Self::Item>;
 
     fn into_iter(self) -> Self::IntoIter {
-	self.identifiers.into_iter()
+        self.identifiers.into_iter()
     }
 }
 
@@ -154,58 +153,55 @@ impl<'a> IntoIterator for &'a Set {
     type IntoIter = std::collections::btree_set::Iter<'a, IdType>;
 
     fn into_iter(self) -> Self::IntoIter {
-	self.identifiers.iter()
+        self.identifiers.iter()
     }
 }
 
 impl PrintableWithTranslator for Set {
-    fn print(
-	&self,
-	f: &mut fmt::Formatter,
-	translator: &Translator,
-    ) -> fmt::Result {
-	write!(f, "{{")?;
-	let mut it = self.iter().peekable();
-	while let Some(el) = it.next() {
-	    if it.peek().is_none() {
-		write!(f, "{}", Formatter::from(translator, el))?;
-	    } else {
-		write!(f, "{}, ", Formatter::from(translator, el))?;
-	    }
-	}
-	write!(f, "}}")
+    fn print(&self, f: &mut fmt::Formatter, translator: &Translator) -> fmt::Result {
+        write!(f, "{{")?;
+        let mut it = self.iter().peekable();
+        while let Some(el) = it.next() {
+            if it.peek().is_none() {
+                write!(f, "{}", Formatter::from(translator, el))?;
+            } else {
+                write!(f, "{}, ", Formatter::from(translator, el))?;
+            }
+        }
+        write!(f, "}}")
     }
 }
 
-
 impl<const N: usize> From<[IdType; N]> for Set {
     fn from(arr: [IdType; N]) -> Self {
-	Set {
-	    identifiers: BTreeSet::from(arr),
-	}
+        Set {
+            identifiers: BTreeSet::from(arr),
+        }
     }
 }
 
 impl From<&[IdType]> for Set {
     fn from(arr: &[IdType]) -> Self {
-	Set {
-	    identifiers: BTreeSet::from_iter(arr.to_vec()),
-	}
+        Set {
+            identifiers: BTreeSet::from_iter(arr.to_vec()),
+        }
     }
 }
 
 impl From<Vec<IdType>> for Set {
     fn from(arr: Vec<IdType>) -> Self {
-	Set {
-	    identifiers: BTreeSet::from_iter(arr),
-	}
+        Set {
+            identifiers: BTreeSet::from_iter(arr),
+        }
     }
 }
 
 impl Set {
     /// Converts set to positive set. All elements with the same state.
     pub fn to_positive_set(&self, state: IdState) -> PositiveSet {
-	PositiveSet { identifiers: self.iter().map(|x| (*x, state)).collect() }
+        PositiveSet {
+            identifiers: self.iter().map(|x| (*x, state)).collect(),
+        }
     }
 
     /// Computes minimized prohibiting set from reactants and inhibitors.
@@ -213,108 +209,155 @@ impl Set {
     /// and checks for each element of that set if they are also in all other
     /// unions. Then minimizes the result.
     pub fn prohibiting_set(
-	reactants: &[Set],
-	inhibitors: &[Set],
+        reactants: &[Set],
+        inhibitors: &[Set],
     ) -> Result<Vec<PositiveSet>, String> {
-	if reactants.len() != inhibitors.len() {
-	    return Err(format!("Different length inputs supplied to create \
+        if reactants.len() != inhibitors.len() {
+            return Err(format!(
+                "Different length inputs supplied to create \
 				prohibiting set. reactants: {:?}, \
 				inhibitors: {:?}",
-			       reactants, inhibitors))
-	}
-	if let Some((r, i)) =
-	    reactants.iter()
-	    .zip(inhibitors.iter())
-	    .find(|(sr, si)| !sr.intersection(si).is_empty())
-	{
-	    return Err(format!("Element in both reactants and inhibitors when \
+                reactants, inhibitors
+            ));
+        }
+        if let Some((r, i)) = reactants
+            .iter()
+            .zip(inhibitors.iter())
+            .find(|(sr, si)| !sr.intersection(si).is_empty())
+        {
+            return Err(format!(
+                "Element in both reactants and inhibitors when \
 				creating prohibiting set. reactants: {:?}, \
 				inhibitors: {:?}",
-			       r, i))
-	}
+                r, i
+            ));
+        }
 
-	let mut t = {
-	    let union = reactants.iter()
-		.zip(inhibitors.iter())
-		.map(|(sr, si)| {
-		    sr.to_positive_set(IdState::Negative)
-			.union(&si.to_positive_set(IdState::Positive))
-		})
-		.collect::<Vec<_>>();
-	    let union_union = union.iter()
-		.fold(PositiveSet::default(), |acc, s| acc.union(s));
-	    let mut t = union_union.powerset();
-	    for set in union.iter() {
-		t.retain(|el| !el.intersection(set).is_empty());
-	    }
-	    t
-	};
+        // generate all valid combinations, keeping track of invalid ones (where
+        // one simbol is both positive and negative)
+        let mut t = {
+            let unions = reactants
+                .iter()
+                .zip(inhibitors.iter())
+                .map(|(sr, si)| {
+                    sr.iter()
+                        .map(|&id| PositiveType {
+                            id,
+                            state: IdState::Negative,
+                        })
+                        .chain(si.iter().map(|&id| PositiveType {
+                            id,
+                            state: IdState::Positive,
+                        }))
+                        .collect::<Vec<_>>()
+                })
+                .collect::<Vec<_>>();
 
-	// minimization
-	// remove sets that contain other sets
-	{
-	    let mut tmp_t = t.clone().into_iter();
-	    let mut e = tmp_t.next().unwrap_or_default();
-	    loop {
-		let mut modified = false;
-		t.retain(|set| {
-		    if *set == e {
-			true
-		    } else if e.is_subset(set) {
-			modified = true;
-			false
-		    } else {
-			true
-		    }
-		});
-		if !modified {
-		    e = {
-			match tmp_t.next() {
-			    Some(a) => a,
-			    None => break,
-			}
-		    };
-		}
-	    }
-	}
 
-	// replace pair of sets that have a common negative-positive element
-	// with set without
-	// cannot happen, caught by error "Element in both ..." above
+            let mut state = vec![0_usize; unions.len()];
+            let mut t = vec![];
 
-	// for e in t.clone() {
-	//     let mut removed_e = false;
-	//     let mut position = 0;
-	//     let mut removed_elements = vec![];
-	//     t.retain(|set| {
-	//	if set == &e {
-	//	    position += 1;
-	//	    true
-	//	} else if removed_e {
-	//	    true
-	//	} else if let elements = set.opposite_intersection(&e)
-	//	    && !elements.is_empty()
-	//	{
-	//	    removed_e = true;
-	//	    removed_elements.extend(elements);
-	//	    false
-	//	} else {
-	//	    position += 1;
-	//	    true
-	//	}
-	//     });
-	//     if removed_e {
-	//	let mut set = t.get(position).unwrap().clone();
-	//	set = set.subtraction(&Set::from(removed_elements.clone())
-	//			      .to_positive_set(IdState::Positive));
-	//	set = set.subtraction(&Set::from(removed_elements)
-	//			      .to_positive_set(IdState::Negative));
-	//	t.remove(position);
-	//	t.push(set);
-	//     }
-	// }
+            loop {
+                let mut new_combination =
+                    unions.iter().zip(state.iter())
+                    .map(|(els, pos)| els[*pos])
+                    .collect::<Vec<_>>();
+                new_combination.sort_by(
+                    |a, b|
+                    a.id.cmp(&b.id).then(a.state.cmp(&b.state))
+                );
 
-	Ok(t)
+                let mut error = false;
+
+                'external: for i in 0..new_combination.len()-1 {
+                    let mut j = i + 1;
+                    loop {
+                        if new_combination[i].id != new_combination[j].id {
+                            break;
+                        } else if new_combination[i].id == new_combination[j].id
+                            && new_combination[i].state != new_combination[j].state
+                        {
+                            error = true;
+                            break 'external;
+                        } else {
+                            j += 1;
+                            if j >= new_combination.len() {
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if !error {
+                    t.push(PositiveSet::from(new_combination));
+                }
+
+                let next =
+                    unions.iter().zip(state.iter()).enumerate()
+                    .rfind(
+                        |(_, (els, pos))|
+                        **pos < els.len() -1
+                    );
+                match next {
+                    None => break,
+                    Some((pos, _)) => {
+                        state[pos] += 1;
+                        state.iter_mut().skip(pos+1).for_each(|el| *el = 0);
+                    }
+                }
+            }
+            t
+        };
+
+        // minimization
+        // remove sets that contain other sets
+        {
+            let mut tmp_t = t.clone().into_iter();
+            let mut e = tmp_t.next().unwrap_or_default();
+            loop {
+                let mut modified = false;
+                t.retain(|set| {
+                    if *set == e {
+                        true
+                    } else if e.is_subset(set) {
+                        modified = true;
+                        false
+                    } else {
+                        true
+                    }
+                });
+                if !modified {
+                    e = {
+                        match tmp_t.next() {
+                            Some(a) => a,
+                            None => break,
+                        }
+                    };
+                }
+            }
+        }
+
+        // replace pair of sets that have a common negative-positive element
+        // with set without
+        let mut removed = 0;
+        
+        for (pos_set1, set1) in t.clone().iter_mut().enumerate() {
+            // we find another set that has at least one opposite element in
+            // common
+            if let Some((pos_set2, set2)) = t.iter().enumerate().find(
+                |(_, set2)|
+                set1.equal_except_negated_elements(set2)
+            ) {
+                let intersection = set1.opposite_intersection(set2);
+                set1.remove_elements(intersection);
+
+                t[pos_set1 - removed] = set1.clone();
+                t.remove(pos_set2);
+                removed += 1;
+            }
+        }
+
+        Ok(t)
     }
 }
 
@@ -329,133 +372,138 @@ impl BasicSet for PositiveSet {
     type Element = PositiveType;
 
     fn is_subset(&self, other: &Self) -> bool {
-	for (id, s) in self.iter() {
-	    if let Some(s1) = other.identifiers.get(id) {
-		if s1 != s {
-		    return false
-		}
-	    } else {
-		return false
-	    }
-	}
-	true
+        for (id, s) in self.iter() {
+            if let Some(s1) = other.identifiers.get(id) {
+                if s1 != s {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+        }
+        true
     }
 
     fn is_disjoint(&self, other: &Self) -> bool {
-	for (id, _s) in self.iter() {
-	    if other.identifiers.contains_key(id) {
-		return false
-	    }
-	}
-	true
+        for (id, _s) in self.iter() {
+            if other.identifiers.contains_key(id) {
+                return false;
+            }
+        }
+        true
     }
 
     /// ☞ The operation cannot fail, so we prefer self elements to other,
     /// but if the reaction system is consistent there wont be any problem.
     fn union(&self, other: &Self) -> Self {
-	self.iter().chain(other.iter()).map(|(a, b)| (*a, *b))
-	    .collect::<Vec<_>>().into()
+        self.iter()
+            .chain(other.iter())
+            .map(|(a, b)| (*a, *b))
+            .collect::<Vec<_>>()
+            .into()
     }
 
     fn push(&mut self, other: &Self) {
-	self.identifiers.extend(other.iter())
+        self.identifiers.extend(other.iter())
     }
 
     fn extend(&mut self, other: Option<&Self>) {
-	if let Some(other) = other {
-	    self.identifiers.extend(other);
-	}
+        if let Some(other) = other {
+            self.identifiers.extend(other);
+        }
     }
 
     /// ☞ only returns values that are shared among both, meaning if they have
     /// different state (positive, negative) they are considered different.
     fn intersection(&self, other: &Self) -> Self {
-	let res: BTreeMap<_, _> = other
-	    .identifiers
-	    .iter()
-	    .filter(|(id, s)| {
-		if let Some(s1) = self.identifiers.get(id) && s1 == *s {
-		    true
-		} else {
-		    false
-		}
-	    })
-	    .map(|(id, s)| (*id, *s))
-	    .collect();
-	PositiveSet { identifiers: res }
+        let res: BTreeMap<_, _> = other
+            .identifiers
+            .iter()
+            .filter(|(id, s)| {
+                if let Some(s1) = self.identifiers.get(id)
+                    && s1 == *s
+                {
+                    true
+                } else {
+                    false
+                }
+            })
+            .map(|(id, s)| (*id, *s))
+            .collect();
+        PositiveSet { identifiers: res }
     }
 
     /// ☞ returns a ∖ b, values that are shared but with different state are
     /// preserved in the subtraction.
     fn subtraction(&self, other: &Self) -> Self {
-	let res: BTreeMap<_, _> = self
-	    .identifiers
-	    .iter()
-	    .filter(|(id, s)| {
-		if let Some(s1) = other.identifiers.get(id) && s1 == *s {
-		    false
-		} else {
-		    true
-		}
-	    })
-	    .map(|(id, s)| (*id, *s))
-	    .collect();
-	PositiveSet { identifiers: res }
+        let res: BTreeMap<_, _> = self
+            .identifiers
+            .iter()
+            .filter(|(id, s)| {
+                if let Some(s1) = other.identifiers.get(id)
+                    && s1 == *s
+                {
+                    false
+                } else {
+                    true
+                }
+            })
+            .map(|(id, s)| (*id, *s))
+            .collect();
+        PositiveSet { identifiers: res }
     }
 
     fn len(&self) -> usize {
-	self.identifiers.len()
+        self.identifiers.len()
     }
 
     fn is_empty(&self) -> bool {
-	self.identifiers.is_empty()
+        self.identifiers.is_empty()
     }
 
     fn contains(&self, el: &Self::Element) -> bool {
-	if let Some(e) = self.identifiers.get(&el.id) && *e == el.state {
-	    true
-	} else {
-	    false
-	}
+        if let Some(e) = self.identifiers.get(&el.id)
+            && *e == el.state
+        {
+            true
+        } else {
+            false
+        }
     }
 }
 
 impl PrintableWithTranslator for PositiveSet {
-    fn print(
-	&self,
-	f: &mut fmt::Formatter,
-	translator: &Translator,
-    ) -> fmt::Result {
-	write!(f, "{{")?;
-	let mut it = self.iter().peekable();
-	while let Some((id, s)) = it.next() {
-	    if it.peek().is_none() {
-		write!(f,
-		       "{}",
-		       Formatter::from(translator,
-				       &PositiveType { id: *id, state: *s })
-		)?;
-	    } else {
-		write!(f,
-		       "{}, ",
-		       Formatter::from(translator,
-				       &PositiveType { id: *id, state: *s })
-		)?;
-	    }
-	}
-	write!(f, "}}")
+    fn print(&self, f: &mut fmt::Formatter, translator: &Translator) -> fmt::Result {
+        write!(f, "{{")?;
+        let mut it = self.iter().peekable();
+        while let Some((id, s)) = it.next() {
+            if it.peek().is_none() {
+                write!(
+                    f,
+                    "{}",
+                    Formatter::from(translator, &PositiveType { id: *id, state: *s })
+                )?;
+            } else {
+                write!(
+                    f,
+                    "{}, ",
+                    Formatter::from(translator, &PositiveType { id: *id, state: *s })
+                )?;
+            }
+        }
+        write!(f, "}}")
     }
 }
 
 impl PartialEq for PositiveSet {
     fn eq(&self, other: &Self) -> bool {
-	self.identifiers.eq(&other.identifiers)
+        self.identifiers.eq(&other.identifiers)
     }
 }
 
 impl Hash for PositiveSet {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-	self.identifiers.hash(state)
+        self.identifiers.hash(state)
     }
 }
 
@@ -464,7 +512,7 @@ impl IntoIterator for PositiveSet {
     type IntoIter = std::collections::btree_map::IntoIter<IdType, IdState>;
 
     fn into_iter(self) -> Self::IntoIter {
-	self.identifiers.into_iter()
+        self.identifiers.into_iter()
     }
 }
 
@@ -473,63 +521,94 @@ impl<'a> IntoIterator for &'a PositiveSet {
     type IntoIter = std::collections::btree_map::Iter<'a, IdType, IdState>;
 
     fn into_iter(self) -> Self::IntoIter {
-	self.identifiers.iter()
+        self.identifiers.iter()
     }
 }
 
-
 impl<const N: usize> From<[(IdType, IdState); N]> for PositiveSet {
     fn from(arr: [(IdType, IdState); N]) -> Self {
-	PositiveSet {
-	    identifiers: BTreeMap::from(arr),
-	}
+        PositiveSet {
+            identifiers: BTreeMap::from(arr),
+        }
     }
 }
 
 impl From<&[(IdType, IdState)]> for PositiveSet {
     fn from(arr: &[(IdType, IdState)]) -> Self {
-	PositiveSet {
-	    identifiers: BTreeMap::from_iter(arr.to_vec()),
-	}
+        PositiveSet {
+            identifiers: BTreeMap::from_iter(arr.to_vec()),
+        }
     }
 }
 
 impl From<Vec<(IdType, IdState)>> for PositiveSet {
     fn from(arr: Vec<(IdType, IdState)>) -> Self {
-	PositiveSet {
-	    identifiers: BTreeMap::from_iter(arr),
-	}
+        PositiveSet {
+            identifiers: BTreeMap::from_iter(arr),
+        }
+    }
+}
+
+impl<const N: usize> From<[PositiveType; N]> for PositiveSet {
+    fn from(arr: [PositiveType; N]) -> Self {
+        arr.into_iter()
+            .map(|el| (el.id, el.state))
+            .collect::<Vec<_>>()
+            .into()
+    }
+}
+
+impl From<&[PositiveType]> for PositiveSet {
+    fn from(arr: &[PositiveType]) -> Self {
+        arr.iter()
+            .map(|el| (el.id, el.state))
+            .collect::<Vec<_>>()
+            .into()
+    }
+}
+
+impl From<Vec<PositiveType>> for PositiveSet {
+    fn from(arr: Vec<PositiveType>) -> Self {
+        arr.into_iter()
+            .map(|el| (el.id, el.state))
+            .collect::<Vec<_>>()
+            .into()
     }
 }
 
 impl PositiveSet {
-    pub fn powerset(&self) -> Vec<Self> {
-	self.into_iter().fold({
-	    let mut asd = Vec::with_capacity(2_usize.pow(self.len() as u32));
-	    asd.push(vec![]);
-	    asd
-	}, |mut p, x| {
-	    let i = p.clone().into_iter()
-		.map(|mut s| {
-		    s.push(x);
-		    s
-		});
-	    p.extend(i);
-	    p
-	}).into_iter()
-	    .map(|x| Self::from(x.into_iter()
-				.map(|(el, s)| (*el, *s))
-				.collect::<Vec<_>>()))
-	    .collect::<Vec<_>>()
+    /// Returns the list of elements that are in both set with opposite state.
+    /// Example: [+1, +2, -3] ⩀ [-1, +2, +3] = [1, 3]
+    pub fn opposite_intersection(&self, other: &Self) -> Vec<IdType> {
+        let mut ret = vec![];
+        for (el, state) in self {
+            if let Some(state2) = other.identifiers.get(el)
+                && *state == !*state2
+            {
+                ret.push(*el);
+            }
+        }
+        ret
     }
 
-    pub fn opposite_intersection(&self, other: &Self) -> Vec<IdType> {
-	let mut ret = vec![];
-	for (el, state) in self {
-	    if let Some(state2) = other.identifiers.get(el) && *state == !*state2 {
-		ret.push(*el);
-	    }
-	}
-	ret
+    fn remove_elements(&mut self, other: Vec<IdType>) {
+        for element in other {
+            self.identifiers.remove(&element);
+        }
+    }
+
+    fn equal_except_negated_elements(&self, other: &Self) -> bool {
+        let mut intersection = self.opposite_intersection(other);
+        intersection.sort();
+        let mut self_copy = self.identifiers.clone();
+        for el in other {
+            if intersection.binary_search(el.0).is_err()
+                || self_copy.get(el.0) != Some(el.1)
+            {
+                return false;
+            }
+            self_copy.remove(el.0);
+        }
+        self_copy.is_empty()
     }
 }

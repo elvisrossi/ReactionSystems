@@ -1,10 +1,10 @@
 //! Crate root
 
-pub mod translator;
 mod format_helpers;
+pub mod translator;
 
-pub mod element;
 pub mod choices;
+pub mod element;
 pub mod environment;
 pub mod label;
 pub mod process;
@@ -14,10 +14,10 @@ pub mod system;
 
 pub mod assert;
 pub mod bisimilarity;
+pub mod dot;
 pub mod frequency;
 pub mod graph;
 pub mod presets;
-pub mod dot;
 pub mod serialize;
 pub mod transitions;
 
