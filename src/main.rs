@@ -5,8 +5,6 @@ fn main() {
     std::io::stdin().read_line(&mut input).unwrap();
     input = input.trim().into();
 
-    // let input = "testing/medical.system";
-
     let now = std::time::Instant::now();
 
     match presets::run(input) {

@@ -2,12 +2,11 @@
 
 use std::rc::Rc;
 
-use super::environment::BasicEnvironment;
 use super::label::{Label, PositiveLabel};
 use super::process::{BasicProcess, PositiveProcess, Process};
 use super::reaction::BasicReaction;
 use super::set::{BasicSet, PositiveSet, Set};
-use super::system::{BasicSystem, PositiveSystem, System};
+use super::system::{BasicSystem, PositiveSystem, System, ExtensionsSystem};
 
 #[derive(Clone, Debug)]
 pub struct TransitionsIterator<
@@ -22,10 +21,7 @@ pub struct TransitionsIterator<
 
 impl<'a> TransitionsIterator<'a, Set, System, Process> {
     pub fn from(system: &'a System) -> Result<Self, String> {
-        match system
-            .environment()
-            .unfold(system.context(), system.available_entities())
-        {
+        match system.unfold() {
             Ok(o) => Ok(TransitionsIterator {
                 choices_iterator: o.into_iter(),
                 system,
@@ -96,10 +92,7 @@ impl<'a> Iterator for TransitionsIterator<'a, Set, System, Process> {
 
 impl<'a> TransitionsIterator<'a, PositiveSet, PositiveSystem, PositiveProcess> {
     pub fn from(system: &'a PositiveSystem) -> Result<Self, String> {
-        match system
-            .environment()
-            .unfold(system.context(), system.available_entities())
-        {
+        match system.unfold() {
             Ok(o) => Ok(TransitionsIterator {
                 choices_iterator: o.into_iter(),
                 system,
@@ -116,29 +109,36 @@ impl<'a> Iterator for TransitionsIterator<'a, PositiveSet, PositiveSystem, Posit
     fn next(&mut self) -> Option<Self::Item> {
         let (c, k) = self.choices_iterator.next()?;
         let t = self.system.available_entities.union(c.as_ref());
-        let (reactants, reactants_absent, products) = self.system.reaction_rules.iter().fold(
-            (
-                PositiveSet::default(), // reactants
-                PositiveSet::default(), // reactants_absent
-                PositiveSet::default(), // products
-            ),
-            |acc, reaction| {
-                if reaction.enabled(&t) {
-                    (
-                        acc.0.union(&reaction.reactants),
-                        acc.1,
-                        acc.2.union(&reaction.products),
-                    )
-                } else {
-                    (
-                        acc.0,
-                        // TODO is this right?
-                        acc.1.union(&reaction.reactants.intersection(&t)),
-                        acc.2,
-                    )
-                }
-            },
-        );
+        let (reactants, reactants_absent, inhibitors, inhibitors_present, products)
+            = self.system.reaction_rules.iter()
+            .fold(
+                (
+                    PositiveSet::default(), // reactants
+                    PositiveSet::default(), // reactants_absent
+                    PositiveSet::default(), // inhibitors
+                    PositiveSet::default(), // inhibitors_present
+                    PositiveSet::default(), // products
+                ),
+                |acc, reaction| {
+                    if reaction.enabled(&t) {
+                        (
+                            acc.0.union(&reaction.reactants.positives()),
+                            acc.1,
+                            acc.2.union(&reaction.reactants.negatives()),
+                            acc.3,
+                            acc.4.union(&reaction.products),
+                        )
+                    } else {
+                        (
+                            acc.0,
+                            acc.1.union(&reaction.reactants.negatives().intersection(&t)),
+                            acc.2,
+                            acc.3.union(&reaction.reactants.positives().subtraction(&t)),
+                            acc.4,
+                        )
+                    }
+                },
+            );
 
         let label = PositiveLabel::from(
             self.system.available_entities.clone(),
@@ -146,6 +146,8 @@ impl<'a> Iterator for TransitionsIterator<'a, PositiveSet, PositiveSystem, Posit
             t,
             reactants,
             reactants_absent,
+            inhibitors,
+            inhibitors_present,
             products.clone(),
         );
         let new_system = PositiveSystem::from(

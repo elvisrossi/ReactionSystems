@@ -5,6 +5,7 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::rc::Rc;
 
+use super::choices::{BasicChoices, PositiveChoices};
 use super::element::IdState;
 use super::environment::{
     BasicEnvironment, Environment, ExtensionsEnvironment, LoopEnvironment, PositiveEnvironment,
@@ -15,6 +16,7 @@ use super::reaction::{BasicReaction, ExtensionReaction, PositiveReaction, Reacti
 use super::set::{BasicSet, PositiveSet, Set};
 use super::transitions::TransitionsIterator;
 use super::translator::{Formatter, PrintableWithTranslator, Translator};
+use super::choices::Choices;
 
 pub trait BasicSystem
 where
@@ -25,7 +27,10 @@ where
     type Reaction: BasicReaction<Set = Self::Set>;
     type Label: BasicLabel<Set = Self::Set>;
     type Process: BasicProcess<Set = Self::Set>;
-    type Environment: BasicEnvironment<Set = Self::Set, Process = Self::Process>;
+    type Environment: BasicEnvironment<Set = Self::Set,
+                                       Process = Self::Process,
+                                       Choices = Self::Choices>;
+    type Choices: BasicChoices;
 
     fn to_transitions_iterator(&self) -> Result<impl Iterator<Item = (Self::Label, Self)>, String>;
 
@@ -38,6 +43,8 @@ where
 type Trace<L, S> = Vec<(Option<Rc<L>>, Rc<S>)>;
 
 pub trait ExtensionsSystem: BasicSystem {
+    fn unfold(&self) -> Result<Self::Choices, String>;
+    
     fn one_transition(&self) -> Result<Option<(Self::Label, Self)>, String>;
 
     fn nth_transition(&self, n: usize) -> Result<Option<(Self::Label, Self)>, String>;
@@ -57,6 +64,10 @@ pub trait ExtensionsSystem: BasicSystem {
 }
 
 impl<T: BasicSystem> ExtensionsSystem for T {
+    fn unfold(&self) -> Result<Self::Choices, String> {
+        self.environment().unfold(self.context(), self.available_entities())
+    }
+    
     /// see oneTransition, transition, smartTransition, smartOneTransition
     fn one_transition(&self) -> Result<Option<(Self::Label, Self)>, String> {
         let mut tr = self.to_transitions_iterator()?;
@@ -315,6 +326,7 @@ impl BasicSystem for System {
     type Label = Label;
     type Process = Process;
     type Environment = Environment;
+    type Choices = Choices;
 
     fn to_transitions_iterator(&self) -> Result<impl Iterator<Item = (Self::Label, Self)>, String> {
         TransitionsIterator::<Self::Set, Self, Self::Process>::from(self)
@@ -561,6 +573,7 @@ impl BasicSystem for PositiveSystem {
     type Label = PositiveLabel;
     type Process = PositiveProcess;
     type Environment = PositiveEnvironment;
+    type Choices = PositiveChoices;
 
     fn to_transitions_iterator(&self) -> Result<impl Iterator<Item = (Self::Label, Self)>, String> {
         TransitionsIterator::<Self::Set, Self, Self::Process>::from(self)

@@ -579,6 +579,18 @@ impl From<Vec<PositiveType>> for PositiveSet {
     }
 }
 
+impl FromIterator<PositiveType> for PositiveSet {
+    fn from_iter<T: IntoIterator<Item = PositiveType>>(iter: T) -> Self {
+        Self { identifiers: iter.into_iter().map(|el| (el.id, el.state)).collect() }
+    }
+}
+
+impl FromIterator<(IdType, IdState)> for PositiveSet {
+    fn from_iter<T: IntoIterator<Item = (IdType, IdState)>>(iter: T) -> Self {
+        Self { identifiers: iter.into_iter().collect() }
+    }
+}
+
 impl PositiveSet {
     /// Returns the list of elements that are in both set with opposite state.
     /// Example: [+1, +2, -3] ⩀ [-1, +2, +3] = [1, 3]
@@ -613,5 +625,17 @@ impl PositiveSet {
             self_copy.remove(el.0);
         }
         self_copy.is_empty()
+    }
+
+    pub fn positives(&self) -> Self {
+        self.iter().filter(|el| *el.1 == IdState::Positive)
+            .map(|el| (*el.0, *el.1))
+            .collect::<PositiveSet>()
+    }
+
+    pub fn negatives(&self) -> Self {
+        self.iter().filter(|el| *el.1 == IdState::Negative)
+            .map(|el| (*el.0, *el.1))
+            .collect::<PositiveSet>()
     }
 }

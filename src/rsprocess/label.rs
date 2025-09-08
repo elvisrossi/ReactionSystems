@@ -144,6 +144,8 @@ pub struct PositiveLabel {
     pub t: PositiveSet,
     pub reactants: PositiveSet,
     pub reactants_absent: PositiveSet,
+    pub inhibitors: PositiveSet,
+    pub inhibitors_present: PositiveSet,
     pub products: PositiveSet,
 }
 
@@ -157,13 +159,15 @@ impl BasicLabel for PositiveLabel {
 
 impl PartialEq for PositiveLabel {
     fn eq(&self, other: &Self) -> bool {
-        self.available_entities == other.available_entities &&
-	    self.context == other.context &&
-	//  self.t == other.t && // no need since its the union of the above
+        self.available_entities == other.available_entities
+	    && self.context == other.context
+	//  && self.t == other.t // no need since its the union of the above
 	//  // elements
-	    self.reactants == other.reactants &&
-	    self.reactants_absent == other.reactants_absent &&
-	    self.products == other.products
+	    && self.reactants == other.reactants
+	    && self.reactants_absent == other.reactants_absent
+            && self.inhibitors == other.inhibitors
+            && self.inhibitors_present == other.inhibitors_present
+	    && self.products == other.products
     }
 }
 
@@ -174,6 +178,8 @@ impl Hash for PositiveLabel {
         // self.t.hash(state);
         self.reactants.hash(state);
         self.reactants_absent.hash(state);
+        self.inhibitors.hash(state);
+        self.inhibitors_present.hash(state);
         self.products.hash(state);
     }
 }
@@ -187,12 +193,16 @@ impl PrintableWithTranslator for PositiveLabel {
 	     t: {}, \
 	     reactants: {}, \
 	     reactantsi: {}, \
+             inhibitors: {}, \
+             ireactants: {}, \
 	     products: {}}}",
             Formatter::from(translator, &self.available_entities),
             Formatter::from(translator, &self.context),
             Formatter::from(translator, &self.t),
             Formatter::from(translator, &self.reactants),
             Formatter::from(translator, &self.reactants_absent),
+            Formatter::from(translator, &self.inhibitors),
+            Formatter::from(translator, &self.inhibitors_present),
             Formatter::from(translator, &self.products),
         )
     }
@@ -206,15 +216,18 @@ impl PositiveLabel {
         t: PositiveSet,
         reactants: PositiveSet,
         reactants_absent: PositiveSet,
+        inhibitors: PositiveSet,
+        inhibitors_present: PositiveSet,
         products: PositiveSet,
     ) -> Self {
-        Self {
-            available_entities,
-            context,
-            t,
-            reactants,
-            reactants_absent,
-            products,
+        Self { available_entities,
+               context,
+               t,
+               reactants,
+               reactants_absent,
+               inhibitors,
+               inhibitors_present,
+               products
         }
     }
 
@@ -224,14 +237,18 @@ impl PositiveLabel {
         context: PositiveSet,
         reactants: PositiveSet,
         reactants_absent: PositiveSet,
+        inhibitors: PositiveSet,
+        inhibitors_present: PositiveSet,
         products: PositiveSet,
     ) -> Self {
         Self {
-            available_entities: available_entities.clone(),
-            context: context.clone(),
             t: available_entities.union(&context),
+            available_entities,
+            context,
             reactants,
             reactants_absent,
+            inhibitors,
+            inhibitors_present,
             products,
         }
     }
