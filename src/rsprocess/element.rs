@@ -67,3 +67,15 @@ impl PrintableWithTranslator for PositiveType {
         )
     }
 }
+
+impl From<(IdType, IdState)> for PositiveType {
+    fn from(value: (IdType, IdState)) -> Self {
+        Self { id: value.0, state: value.1 }
+    }
+}
+
+impl From<(&IdType, &IdState)> for PositiveType {
+    fn from(value: (&IdType, &IdState)) -> Self {
+        Self { id: *value.0, state: *value.1 }
+    }
+}

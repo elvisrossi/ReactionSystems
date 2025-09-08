@@ -349,6 +349,9 @@ impl Set {
                 set1.equal_except_negated_elements(set2)
             ) {
                 let intersection = set1.opposite_intersection(set2);
+                if intersection.len() != 1 {
+                    continue
+                }
                 set1.remove_elements(intersection);
 
                 t[pos_set1 - removed] = set1.clone();

@@ -648,7 +648,8 @@ impl From<System> for PositiveSystem {
     /// Should never fail.
     fn from(value: System) -> Self {
         let new_env = Rc::new((&*value.delta).into());
-        let positive_entities = value.available_entities.to_positive_set(IdState::Positive);
+        let positive_entities =
+            value.available_entities.to_positive_set(IdState::Positive);
 
         let negative_entities = value
             .context_process
@@ -666,27 +667,46 @@ impl From<System> for PositiveSystem {
             )
             .subtraction(&value.available_entities)
             .to_positive_set(IdState::Negative);
-        let new_available_entities = positive_entities.union(&negative_entities);
+        let new_available_entities =
+            positive_entities.union(&negative_entities);
 
         let new_context = value.context_process.into();
         let new_reactions = {
             let mut res = vec![];
             let old_reactions = &value.reaction_rules;
-            old_reactions.iter().for_each(|r| {
-                res.push(PositiveReaction::create(
-                    r.reactants.clone(),
-                    r.inhibitors.clone(),
-                    r.products.clone(),
-                ))
-            });
+
             let all_products = Reaction::all_products(old_reactions);
             for el in all_products {
-                let p = Reaction::all_reactions_with_product(old_reactions, &el);
+                let p =
+                    Reaction::all_reactions_with_product(old_reactions, &el);
+                let mut tmp = vec![];
+                for r in p.iter() {
+                    tmp.push(PositiveReaction::create(
+                        r.reactants.clone(),
+                        r.inhibitors.clone(),
+                        Set::from([el])
+                    ))
+                }
+                tmp.sort_by(|r1, r2| r1.reactants.cmp(&r2.reactants));
+
+                // remove reactions with only one element of opposite state
+                // as intersection (same product ```el```)
+                let mut pos = tmp.len()-1;
+                while pos > 0 {
+                    if let Some(intersection)
+                        = tmp[pos].differ_only_one_element(&tmp[pos-1])
+                    {
+                        tmp[pos-1].reactants = intersection;
+                        tmp.remove(pos);
+                    }
+                    pos -= 1;
+                }
+
+                res.extend(tmp);
                 let prohib_set = Set::prohibiting_set(
                     &p.iter().map(|p| p.reactants.clone()).collect::<Vec<_>>(),
                     &p.iter().map(|p| p.inhibitors.clone()).collect::<Vec<_>>(),
-                )
-                .unwrap();
+                ).unwrap(); // since we have in input a valid system
                 for s in prohib_set {
                     res.push(PositiveReaction {
                         reactants: s,
@@ -694,6 +714,8 @@ impl From<System> for PositiveSystem {
                     })
                 }
             }
+            
+            
             Rc::new(res)
         };
 

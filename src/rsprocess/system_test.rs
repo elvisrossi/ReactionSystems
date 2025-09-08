@@ -1,3 +1,5 @@
+use crate::rsprocess::{set::PositiveSet, system::BasicSystem};
+
 #[test]
 fn one_transition() {
     use super::environment::Environment;
@@ -14,11 +16,13 @@ fn one_transition() {
             entities: Set::from([]),
             next_process: Rc::new(Process::Nill),
         },
-        Rc::new(vec![Reaction {
-            reactants: Set::from([1]),
-            inhibitors: Set::from([3]),
-            products: Set::from([3]),
-        }]),
+        Rc::new(vec![
+            Reaction::from(
+                Set::from([1]),
+                Set::from([3]),
+                Set::from([3]),
+            ),
+        ]),
     );
 
     match system.one_transition() {
@@ -59,7 +63,8 @@ fn one_transition_2() {
         },
         Rc::new(vec![
             PositiveReaction {
-                reactants: PositiveSet::from([(1, IdState::Positive), (3, IdState::Negative)]),
+                reactants: PositiveSet::from([(1, IdState::Positive),
+                                              (3, IdState::Negative)]),
                 products: PositiveSet::from([(3, IdState::Positive)]),
             },
             PositiveReaction {
@@ -122,11 +127,13 @@ fn convertion() {
             entities: Set::from([]),
             next_process: Rc::new(Process::Nill),
         },
-        Rc::new(vec![Reaction {
-            reactants: Set::from([1]),
-            inhibitors: Set::from([3]),
-            products: Set::from([3]),
-        }]),
+        Rc::new(vec![
+            Reaction::from(
+                Set::from([1]),
+                Set::from([3]),
+                Set::from([3]),
+            ),
+        ]),
     );
 
     let system: PositiveSystem = system.into();
@@ -202,21 +209,21 @@ fn traces_1() {
         available_entities: Set::from([1, 2]),
         context_process: Process::RecursiveIdentifier { identifier: 101 },
         reaction_rules: Rc::new(vec![
-            Reaction {
-                reactants: Set::from([1]),
-                inhibitors: Set::from([3]),
-                products: Set::from([3]),
-            },
-            Reaction {
-                reactants: Set::from([3]),
-                inhibitors: Set::from([1]),
-                products: Set::from([1]),
-            },
-            Reaction {
-                reactants: Set::from([2]),
-                inhibitors: Set::default(),
-                products: Set::from([4]),
-            },
+            Reaction::from(
+                Set::from([1]),
+                Set::from([3]),
+                Set::from([3]),
+            ),
+            Reaction::from(
+                Set::from([3]),
+                Set::from([1]),
+                Set::from([1]),
+            ),
+            Reaction::from(
+                Set::from([2]),
+                Set::default(),
+                Set::from([4]),
+            ),
         ]),
     };
 
@@ -261,25 +268,114 @@ fn traces_empty_env() {
             next_process: Rc::new(Process::Nill),
         },
         reaction_rules: Rc::new(vec![
-            Reaction {
-                reactants: Set::from([1]),
-                inhibitors: Set::from([3]),
-                products: Set::from([3]),
-            },
-            Reaction {
-                reactants: Set::from([3]),
-                inhibitors: Set::from([1]),
-                products: Set::from([1]),
-            },
-            Reaction {
-                reactants: Set::from([2]),
-                inhibitors: Set::default(),
-                products: Set::from([4]),
-            },
+            Reaction::from(
+                Set::from([1]),
+                Set::from([3]),
+                Set::from([3]),
+            ),
+            Reaction::from(
+                Set::from([3]),
+                Set::from([1]),
+                Set::from([1]),
+            ),
+            Reaction::from(
+                Set::from([2]),
+                Set::default(),
+                Set::from([4]),
+            ),
         ]),
     };
 
     let res = system.clone().traces(10).unwrap();
     assert_eq!(res.len(), 1);
     assert_eq!(res[0].len(), 10);
+}
+
+#[test]
+fn conversion_reactions() {
+    use std::rc::Rc;
+
+    use super::system::{System, PositiveSystem};
+    use super::environment::Environment;
+    use super::set::Set;
+    use super::process::Process;
+    use super::reaction::{Reaction, PositiveReaction};
+    use super::element::IdState::*;
+
+    let system = System {
+        delta: Rc::new(Environment::from([])),
+        available_entities: Set::from([1, 2]),
+        context_process: Process::Nill,
+        reaction_rules: Rc::new(vec![
+            Reaction::from(
+                Set::from([2]),
+                Set::from([1, 3]),
+                Set::from([5]),
+            ),
+            Reaction::from(
+                Set::from([1, 2]),
+                Set::from([3]),
+                Set::from([5]),
+            ),
+        ]),
+    };
+    let converted_system: PositiveSystem = system.into();
+    let mut reactions = converted_system.reactions().clone();
+    reactions.sort_by(|a, b| a.products.cmp(&b.products)
+                      .then(a.reactants.cmp(&b.reactants)));
+
+    assert_eq!(reactions,
+               vec![
+                   PositiveReaction::from(
+                       PositiveSet::from([(2, Positive), (3, Negative)]),
+                       PositiveSet::from([(5, Positive)]),
+                   ),
+                   PositiveReaction::from(
+                       PositiveSet::from([(2, Negative)]),
+                       PositiveSet::from([(5, Negative)]),
+                   ),
+                   PositiveReaction::from(
+                       PositiveSet::from([(3, Positive)]),
+                       PositiveSet::from([(5, Negative)]),
+                   ),
+               ]);
+}
+
+#[test]
+fn conversion_entities() {
+    use std::rc::Rc;
+
+    use super::system::{System, PositiveSystem};
+    use super::environment::Environment;
+    use super::set::Set;
+    use super::process::Process;
+    use super::reaction::Reaction;
+    use super::element::IdState::*;
+
+    let system = System {
+        delta: Rc::new(Environment::from([])),
+        available_entities: Set::from([1, 2]),
+        context_process: Process::Nill,
+        reaction_rules: Rc::new(vec![
+            Reaction::from(
+                Set::from([2]),
+                Set::from([1, 3]),
+                Set::from([5]),
+            ),
+            Reaction::from(
+                Set::from([1, 2]),
+                Set::from([3]),
+                Set::from([5]),
+            ),
+        ]),
+    };
+    let converted_system: PositiveSystem = system.into();
+    let entities = converted_system.available_entities().clone();
+
+    assert_eq!(entities,
+               PositiveSet::from([(1, Positive),
+                                  (2, Positive),
+                                  (3, Negative),
+                                  (5, Negative)
+               ]));
 }

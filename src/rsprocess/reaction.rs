@@ -236,4 +236,27 @@ impl PositiveReaction {
             products: products.to_positive_set(IdState::Positive),
         }
     }
+
+    /// returns the reactants that are equal
+    pub fn differ_only_one_element(&self, other: &Self) -> Option<PositiveSet> {
+        if self.products != other.products {
+            return None
+        }
+        let mut found = false;
+        for el in self.reactants.iter() {
+            match other.reactants.identifiers.get(el.0) {
+                None => return None,
+                Some(s) => {
+                    if s != el.1 {
+                        if found {
+                            return None
+                        } else {
+                            found = true
+                        }
+                    }
+                }
+            }
+        }
+        Some(self.reactants.intersection(&other.reactants))
+    }
 }

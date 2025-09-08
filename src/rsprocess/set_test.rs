@@ -107,3 +107,26 @@ fn prohibiting_set_4() {
         ]
     )
 }
+
+#[test]
+fn prohibiting_set_5() {
+    use super::element::IdState::*;
+    use super::set::{PositiveSet, Set};
+
+    let r1r = Set::from(vec![1]);
+    let r1i = Set::from(vec![2]);
+
+    let r2r = Set::from(vec![1, 2]);
+    let r2i = Set::from(vec![]);
+
+    let mut prohibiting_set =
+        Set::prohibiting_set(&[r1r, r2r], &[r1i, r2i]).unwrap();
+    prohibiting_set.sort();
+
+    assert_eq!(
+        prohibiting_set,
+        vec![
+            PositiveSet::from([(1, Negative)]),
+        ]
+    )
+}
