@@ -6,7 +6,10 @@ static PRINTNAMES: bool = false;
 use core::fmt::{self, Display, Write};
 use petgraph::{
     data::DataMap,
-    visit::{EdgeRef, GraphProp, IntoEdgeReferences, IntoNodeReferences, NodeIndexable, NodeRef},
+    visit::{
+        EdgeRef, GraphProp, IntoEdgeReferences, IntoNodeReferences,
+        NodeIndexable, NodeRef,
+    },
 };
 
 pub struct Dot<'a, G>
@@ -166,9 +169,18 @@ make_config_struct!();
 
 impl<G> Dot<'_, G>
 where
-    G: IntoNodeReferences + IntoEdgeReferences + NodeIndexable + GraphProp + DataMap,
+    G: IntoNodeReferences
+        + IntoEdgeReferences
+        + NodeIndexable
+        + GraphProp
+        + DataMap,
 {
-    fn graph_fmt<NF, EF>(&self, f: &mut fmt::Formatter, node_fmt: NF, edge_fmt: EF) -> fmt::Result
+    fn graph_fmt<NF, EF>(
+        &self,
+        f: &mut fmt::Formatter,
+        node_fmt: NF,
+        edge_fmt: EF,
+    ) -> fmt::Result
     where
         NF: Fn(&G::NodeWeight, &mut fmt::Formatter) -> fmt::Result,
         EF: Fn(&G::EdgeWeight, &mut fmt::Formatter) -> fmt::Result,
@@ -249,7 +261,11 @@ where
 
 impl<G> fmt::Display for Dot<'_, G>
 where
-    G: IntoEdgeReferences + IntoNodeReferences + NodeIndexable + GraphProp + DataMap,
+    G: IntoEdgeReferences
+        + IntoNodeReferences
+        + NodeIndexable
+        + GraphProp
+        + DataMap,
     G::EdgeWeight: fmt::Display,
     G::NodeWeight: fmt::Display,
 {
@@ -260,7 +276,11 @@ where
 
 impl<G> fmt::LowerHex for Dot<'_, G>
 where
-    G: IntoEdgeReferences + IntoNodeReferences + NodeIndexable + GraphProp + DataMap,
+    G: IntoEdgeReferences
+        + IntoNodeReferences
+        + NodeIndexable
+        + GraphProp
+        + DataMap,
     G::EdgeWeight: fmt::LowerHex,
     G::NodeWeight: fmt::LowerHex,
 {
@@ -271,7 +291,11 @@ where
 
 impl<G> fmt::UpperHex for Dot<'_, G>
 where
-    G: IntoEdgeReferences + IntoNodeReferences + NodeIndexable + GraphProp + DataMap,
+    G: IntoEdgeReferences
+        + IntoNodeReferences
+        + NodeIndexable
+        + GraphProp
+        + DataMap,
     G::EdgeWeight: fmt::UpperHex,
     G::NodeWeight: fmt::UpperHex,
 {
@@ -282,7 +306,11 @@ where
 
 impl<G> fmt::Debug for Dot<'_, G>
 where
-    G: IntoEdgeReferences + IntoNodeReferences + NodeIndexable + GraphProp + DataMap,
+    G: IntoEdgeReferences
+        + IntoNodeReferences
+        + NodeIndexable
+        + GraphProp
+        + DataMap,
     G::EdgeWeight: fmt::Debug,
     G::NodeWeight: fmt::Debug,
 {

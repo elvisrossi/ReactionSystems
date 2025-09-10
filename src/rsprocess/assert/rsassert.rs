@@ -8,7 +8,7 @@ use std::collections::HashMap;
 //                       Specific Assert Implementation
 // ----------------------------------------------------------------------------
 
-/// Module that has all types and structures.
+/// Module that has all types and structures for bisimilarity relabeler.
 pub mod useful_types_edge_relabeler {
     macro_rules! export_types {
 	( $( $x:ident ),* ) => {
@@ -67,10 +67,13 @@ impl SpecialVariables<EdgeRelablerInputValues> for EdgeRelablerInput {
 
     fn type_qualified(&self, q: &Qualifier) -> Result<AssertionTypes, String> {
         match (self, q) {
-            (Self::Label, Qualifier::Label(_)) | (Self::Label, Qualifier::Restricted(_)) => {
+            (Self::Label, Qualifier::Label(_))
+            | (Self::Label, Qualifier::Restricted(_)) => {
                 Ok(AssertionTypes::Set)
             }
-            (s, q) => Err(format!("Wrong use of qualifier {q:?} on variable {s:?}.")),
+            (s, q) => {
+                Err(format!("Wrong use of qualifier {q:?} on variable {s:?}."))
+            }
         }
     }
 
@@ -80,8 +83,12 @@ impl SpecialVariables<EdgeRelablerInputValues> for EdgeRelablerInput {
         input
             .iter()
             .map(|(key, value)| match value {
-                EdgeRelablerInputValues::Edge(e) => (*key, AssertReturnValue::Edge(*e)),
-                EdgeRelablerInputValues::Label(l) => (*key, AssertReturnValue::Label(l.clone())),
+                EdgeRelablerInputValues::Edge(e) => {
+                    (*key, AssertReturnValue::Edge(*e))
+                }
+                EdgeRelablerInputValues::Label(l) => {
+                    (*key, AssertReturnValue::Label(l.clone()))
+                }
             })
             .collect::<HashMap<Self, AssertReturnValue>>()
     }
@@ -129,15 +136,15 @@ impl Assert<EdgeRelablerInput> {
             | AssertionTypes::Node
             | AssertionTypes::System
             | AssertionTypes::Context => Ok(()),
-            AssertionTypes::NoType => Err("No return type, at least one return statement \
-		     required."
-                .into()),
+            AssertionTypes::NoType => {
+                Err("No return type, at least one return statement required."
+                    .into())
+            }
             AssertionTypes::RangeInteger
             | AssertionTypes::RangeSet
-            | AssertionTypes::RangeNeighbours => Err(format!(
-                "Returned type {ty:?} is not a valid return \
-			     type."
-            )),
+            | AssertionTypes::RangeNeighbours => {
+                Err(format!("Returned type {ty:?} is not a valid return type."))
+            }
         }
     }
 
@@ -174,6 +181,41 @@ impl Assert<EdgeRelablerInput> {
 // Implementation for node grouping.
 // -----------------------------------------------------------------------------
 
+/// Module that has all types and structures for bisimilarity relabeler.
+pub mod useful_types_node_relabeler {
+    macro_rules! export_types {
+	( $( $x:ident ),* ) => {
+	    $(
+		pub type $x = super::super::dsl::$x<super::NodeRelablerInput>;
+	    )*
+	};
+    }
+
+    macro_rules! export_types_no_parameter {
+	( $( $x:ident ),* ) => {
+	    $(
+		pub type $x = super::super::dsl::$x;
+	    )*
+	};
+    }
+
+    export_types!(Assert, Tree, Variable, Expression, Range);
+
+    export_types_no_parameter!(
+        Unary,
+        QualifierRestricted,
+        QualifierLabel,
+        QualifierSystem,
+        QualifierEdge,
+        QualifierNode,
+        Qualifier,
+        Binary,
+        AssertReturnValue
+    );
+
+    pub type Special = super::NodeRelablerInput;
+}
+
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub enum NodeRelablerInput {
     Entities,
@@ -196,11 +238,15 @@ impl SpecialVariables<NodeRelablerInputValues> for NodeRelablerInput {
 
     fn type_qualified(&self, q: &Qualifier) -> Result<AssertionTypes, String> {
         match (self, q) {
-            (Self::Node, Qualifier::Node(QualifierNode::System)) => Ok(AssertionTypes::System),
+            (Self::Node, Qualifier::Node(QualifierNode::System)) => {
+                Ok(AssertionTypes::System)
+            }
             (Self::Node, Qualifier::Node(QualifierNode::Neighbours)) => {
                 Ok(AssertionTypes::RangeNeighbours)
             }
-            (s, q) => Err(format!("Wrong use of qualifier {q:?} on variable {s:?}.")),
+            (s, q) => {
+                Err(format!("Wrong use of qualifier {q:?} on variable {s:?}."))
+            }
         }
     }
 
@@ -210,8 +256,12 @@ impl SpecialVariables<NodeRelablerInputValues> for NodeRelablerInput {
         input
             .iter()
             .map(|(key, value)| match value {
-                NodeRelablerInputValues::Entities(e) => (*key, AssertReturnValue::Set(e.clone())),
-                NodeRelablerInputValues::Node(n) => (*key, AssertReturnValue::Node(*n)),
+                NodeRelablerInputValues::Entities(e) => {
+                    (*key, AssertReturnValue::Set(e.clone()))
+                }
+                NodeRelablerInputValues::Node(n) => {
+                    (*key, AssertReturnValue::Node(*n))
+                }
             })
             .collect::<HashMap<Self, AssertReturnValue>>()
     }
@@ -259,15 +309,15 @@ impl Assert<NodeRelablerInput> {
             | AssertionTypes::Node
             | AssertionTypes::System
             | AssertionTypes::Context => Ok(()),
-            AssertionTypes::NoType => Err("No return type, at least one return statement \
-			     required."
-                .into()),
+            AssertionTypes::NoType => {
+                Err("No return type, at least one return statement required."
+                    .into())
+            }
             AssertionTypes::RangeInteger
             | AssertionTypes::RangeSet
-            | AssertionTypes::RangeNeighbours => Err(format!(
-                "Returned type {ty:?} is not a valid return \
-			     type."
-            )),
+            | AssertionTypes::RangeNeighbours => {
+                Err(format!("Returned type {ty:?} is not a valid return type."))
+            }
         }
     }
 

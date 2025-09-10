@@ -1,7 +1,9 @@
 // -----------------------------------------------------------------------------
 //                    Display Implementation for all types
 // -----------------------------------------------------------------------------
-use super::super::translator::{Formatter, PrintableWithTranslator, Translator};
+use super::super::translator::{
+    Formatter, PrintableWithTranslator, Translator,
+};
 use super::dsl::*;
 use std::fmt;
 
@@ -243,7 +245,9 @@ impl fmt::Debug for AssertReturnValue {
             Self::Element(el) => write!(f, "{{debug: {el:?}}}"),
             Self::Edge(edge) => write!(f, "{{debug: {edge:?}}}"),
             Self::Node(node) => write!(f, "{{debug: {node:?}}}"),
-            Self::Neighbours(node) => write!(f, "{{debug: {node:?}}}.neighbours"),
+            Self::Neighbours(node) => {
+                write!(f, "{{debug: {node:?}}}.neighbours")
+            }
             Self::System(sys) => write!(f, "{{debug: {sys:?}}}"),
             Self::Context(ctx) => write!(f, "{{debug: {ctx:?}}}"),
         }
@@ -277,7 +281,11 @@ impl<S> PrintableWithTranslator for Assert<S>
 where
     S: PrintableWithTranslator,
 {
-    fn print(&self, f: &mut fmt::Formatter, translator: &Translator) -> fmt::Result {
+    fn print(
+        &self,
+        f: &mut fmt::Formatter,
+        translator: &Translator,
+    ) -> fmt::Result {
         write!(
             f,
             "label {{\n{}\n}}",
@@ -290,7 +298,11 @@ impl<S> PrintableWithTranslator for Tree<S>
 where
     S: PrintableWithTranslator,
 {
-    fn print(&self, f: &mut fmt::Formatter, translator: &Translator) -> fmt::Result {
+    fn print(
+        &self,
+        f: &mut fmt::Formatter,
+        translator: &Translator,
+    ) -> fmt::Result {
         match self {
             Self::Concat(t1, t2) => write!(
                 f,
@@ -331,7 +343,9 @@ where
                     )
                 }
             }
-            Self::Return(exp) => write!(f, "return {}", Formatter::from(translator, &**exp)),
+            Self::Return(exp) => {
+                write!(f, "return {}", Formatter::from(translator, &**exp))
+            }
             Self::For(v, r, t) => {
                 write!(
                     f,
@@ -349,7 +363,11 @@ impl<S> PrintableWithTranslator for Variable<S>
 where
     S: PrintableWithTranslator,
 {
-    fn print(&self, f: &mut fmt::Formatter, translator: &Translator) -> fmt::Result {
+    fn print(
+        &self,
+        f: &mut fmt::Formatter,
+        translator: &Translator,
+    ) -> fmt::Result {
         match self {
             Self::Special(s) => write!(f, "{}", Formatter::from(translator, s)),
             Self::Id(s) => write!(f, "{s}"),
@@ -361,14 +379,22 @@ impl<S> PrintableWithTranslator for Expression<S>
 where
     S: PrintableWithTranslator,
 {
-    fn print(&self, f: &mut fmt::Formatter, translator: &Translator) -> fmt::Result {
+    fn print(
+        &self,
+        f: &mut fmt::Formatter,
+        translator: &Translator,
+    ) -> fmt::Result {
         match self {
             Self::True => write!(f, "True"),
             Self::False => write!(f, "False"),
             Self::Integer(i) => write!(f, "{i}"),
-            Self::Label(l) => write!(f, "{}", Formatter::from(translator, &**l)),
+            Self::Label(l) => {
+                write!(f, "{}", Formatter::from(translator, &**l))
+            }
             Self::Set(set) => write!(f, "{}", Formatter::from(translator, set)),
-            Self::Element(el) => write!(f, "'{}'", Formatter::from(translator, el)),
+            Self::Element(el) => {
+                write!(f, "'{}'", Formatter::from(translator, el))
+            }
             Self::String(s) => write!(f, r#""{s}""#),
             Self::Var(v) => write!(f, "{}", Formatter::from(translator, v)),
             Self::Unary(u, exp) => {
@@ -427,9 +453,15 @@ impl<S> PrintableWithTranslator for Range<S>
 where
     S: PrintableWithTranslator,
 {
-    fn print(&self, f: &mut fmt::Formatter, translator: &Translator) -> fmt::Result {
+    fn print(
+        &self,
+        f: &mut fmt::Formatter,
+        translator: &Translator,
+    ) -> fmt::Result {
         match self {
-            Self::IterateOverSet(exp) => write!(f, "{}", Formatter::from(translator, &**exp)),
+            Self::IterateOverSet(exp) => {
+                write!(f, "{}", Formatter::from(translator, &**exp))
+            }
             Self::IterateInRange(exp1, exp2) => write!(
                 f,
                 "{}..{}",
@@ -441,7 +473,11 @@ where
 }
 
 impl PrintableWithTranslator for Unary {
-    fn print(&self, f: &mut fmt::Formatter, translator: &Translator) -> fmt::Result {
+    fn print(
+        &self,
+        f: &mut fmt::Formatter,
+        translator: &Translator,
+    ) -> fmt::Result {
         match self {
             Self::Not => write!(f, "not"),
             Self::Rand => write!(f, "rand"),
@@ -449,46 +485,74 @@ impl PrintableWithTranslator for Unary {
             Self::Length => write!(f, ".length"),
             Self::ToStr => write!(f, ".tostr"),
             Self::ToEl => write!(f, ".toel"),
-            Self::Qualifier(q) => write!(f, ".{}", Formatter::from(translator, q)),
+            Self::Qualifier(q) => {
+                write!(f, ".{}", Formatter::from(translator, q))
+            }
         }
     }
 }
 
 impl PrintableWithTranslator for QualifierRestricted {
-    fn print(&self, f: &mut fmt::Formatter, _translator: &Translator) -> fmt::Result {
+    fn print(
+        &self,
+        f: &mut fmt::Formatter,
+        _translator: &Translator,
+    ) -> fmt::Result {
         write!(f, "{self:?}")
     }
 }
 
 impl PrintableWithTranslator for QualifierLabel {
-    fn print(&self, f: &mut fmt::Formatter, _translator: &Translator) -> fmt::Result {
+    fn print(
+        &self,
+        f: &mut fmt::Formatter,
+        _translator: &Translator,
+    ) -> fmt::Result {
         write!(f, "{self:?}")
     }
 }
 
 impl PrintableWithTranslator for QualifierSystem {
-    fn print(&self, f: &mut fmt::Formatter, _translator: &Translator) -> fmt::Result {
+    fn print(
+        &self,
+        f: &mut fmt::Formatter,
+        _translator: &Translator,
+    ) -> fmt::Result {
         write!(f, "{self:?}")
     }
 }
 
 impl PrintableWithTranslator for QualifierEdge {
-    fn print(&self, f: &mut fmt::Formatter, _translator: &Translator) -> fmt::Result {
+    fn print(
+        &self,
+        f: &mut fmt::Formatter,
+        _translator: &Translator,
+    ) -> fmt::Result {
         write!(f, "{self:?}")
     }
 }
 
 impl PrintableWithTranslator for QualifierNode {
-    fn print(&self, f: &mut fmt::Formatter, _translator: &Translator) -> fmt::Result {
+    fn print(
+        &self,
+        f: &mut fmt::Formatter,
+        _translator: &Translator,
+    ) -> fmt::Result {
         write!(f, "{self:?}")
     }
 }
 
 impl PrintableWithTranslator for Qualifier {
-    fn print(&self, f: &mut fmt::Formatter, translator: &Translator) -> fmt::Result {
+    fn print(
+        &self,
+        f: &mut fmt::Formatter,
+        translator: &Translator,
+    ) -> fmt::Result {
         match self {
             Self::Label(q) => write!(f, "{}", Formatter::from(translator, q)),
-            Self::Restricted(q) => write!(f, "{}", Formatter::from(translator, q)),
+            Self::Restricted(q) => {
+                write!(f, "{}", Formatter::from(translator, q))
+            }
             Self::System(q) => write!(f, "{}", Formatter::from(translator, q)),
             Self::Edge(q) => write!(f, "{}", Formatter::from(translator, q)),
             Self::Node(q) => write!(f, "{}", Formatter::from(translator, q)),
@@ -497,31 +561,51 @@ impl PrintableWithTranslator for Qualifier {
 }
 
 impl PrintableWithTranslator for Binary {
-    fn print(&self, f: &mut fmt::Formatter, _translator: &Translator) -> fmt::Result {
+    fn print(
+        &self,
+        f: &mut fmt::Formatter,
+        _translator: &Translator,
+    ) -> fmt::Result {
         write!(f, "{self:?}")
     }
 }
 
 impl PrintableWithTranslator for AssertReturnValue {
-    fn print(&self, f: &mut fmt::Formatter, translator: &Translator) -> fmt::Result {
+    fn print(
+        &self,
+        f: &mut fmt::Formatter,
+        translator: &Translator,
+    ) -> fmt::Result {
         match self {
             Self::Boolean(b) => write!(f, "{b}"),
             Self::Integer(i) => write!(f, "{i}"),
             Self::String(s) => write!(f, r#""{s}""#),
             Self::Label(l) => write!(f, "{}", Formatter::from(translator, l)),
             Self::Set(set) => write!(f, "{}", Formatter::from(translator, set)),
-            Self::Element(el) => write!(f, "{}", Formatter::from(translator, el)),
+            Self::Element(el) => {
+                write!(f, "{}", Formatter::from(translator, el))
+            }
             Self::Edge(edge) => write!(f, "{{edge: {edge:?}}}"),
             Self::Node(node) => write!(f, "{{node: {node:?}}}"),
-            Self::Neighbours(node) => write!(f, "{{node: {node:?}}}.neighbours"),
-            Self::System(sys) => write!(f, "{}", Formatter::from(translator, sys)),
-            Self::Context(ctx) => write!(f, "{}", Formatter::from(translator, ctx)),
+            Self::Neighbours(node) => {
+                write!(f, "{{node: {node:?}}}.neighbours")
+            }
+            Self::System(sys) => {
+                write!(f, "{}", Formatter::from(translator, sys))
+            }
+            Self::Context(ctx) => {
+                write!(f, "{}", Formatter::from(translator, ctx))
+            }
         }
     }
 }
 
 impl PrintableWithTranslator for AssertionTypes {
-    fn print(&self, f: &mut fmt::Formatter, _translator: &Translator) -> fmt::Result {
+    fn print(
+        &self,
+        f: &mut fmt::Formatter,
+        _translator: &Translator,
+    ) -> fmt::Result {
         write!(f, "{self:?}")
     }
 }

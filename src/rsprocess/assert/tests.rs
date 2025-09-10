@@ -139,9 +139,9 @@ fn return_incompatible_2() {
                     None,
                     Box::new(Expression::Integer(10)),
                 )),
-                Box::new(Tree::Return(Box::new(Expression::Var(Variable::Id(
-                    "a".into(),
-                ))))),
+                Box::new(Tree::Return(Box::new(Expression::Var(
+                    Variable::Id("a".into()),
+                )))),
             )),
         ),
     };
@@ -163,9 +163,9 @@ fn return_2() {
                     None,
                     Box::new(Expression::False),
                 )),
-                Box::new(Tree::Return(Box::new(Expression::Var(Variable::Id(
-                    "a".into(),
-                ))))),
+                Box::new(Tree::Return(Box::new(Expression::Var(
+                    Variable::Id("a".into()),
+                )))),
             )),
         ),
     };
@@ -198,9 +198,9 @@ fn return_3() {
                     None,
                     Box::new(Expression::False),
                 )),
-                Box::new(Tree::Return(Box::new(Expression::Var(Variable::Id(
-                    "a".into(),
-                ))))),
+                Box::new(Tree::Return(Box::new(Expression::Var(
+                    Variable::Id("a".into()),
+                )))),
             )),
             Box::new(Tree::Return(Box::new(Expression::True))),
         ),
@@ -419,7 +419,11 @@ fn if_else_4() {
 #[test]
 fn assignment_1() {
     let tree = LocalAssert {
-        tree: Tree::Assignment(Variable::Id("a".into()), None, Box::new(Expression::True)),
+        tree: Tree::Assignment(
+            Variable::Id("a".into()),
+            None,
+            Box::new(Expression::True),
+        ),
     };
     assert!(tree.typecheck().is_err());
 }
@@ -519,12 +523,12 @@ fn assignment_5() {
                 Box::new(Expression::Integer(10)),
             )),
             Box::new(Tree::Concat(
-                Box::new(Tree::Return(Box::new(Expression::Var(Variable::Id(
-                    "a".into(),
-                ))))),
-                Box::new(Tree::Return(Box::new(Expression::Var(Variable::Id(
-                    "a".into(),
-                ))))),
+                Box::new(Tree::Return(Box::new(Expression::Var(
+                    Variable::Id("a".into()),
+                )))),
+                Box::new(Tree::Return(Box::new(Expression::Var(
+                    Variable::Id("a".into()),
+                )))),
             )),
         ),
     };
@@ -564,12 +568,12 @@ fn assignment_6() {
                 )),
             )),
             Box::new(Tree::Concat(
-                Box::new(Tree::Return(Box::new(Expression::Var(Variable::Id(
-                    "a".into(),
-                ))))),
-                Box::new(Tree::Return(Box::new(Expression::Var(Variable::Id(
-                    "b".into(),
-                ))))),
+                Box::new(Tree::Return(Box::new(Expression::Var(
+                    Variable::Id("a".into()),
+                )))),
+                Box::new(Tree::Return(Box::new(Expression::Var(
+                    Variable::Id("b".into()),
+                )))),
             )),
         ),
     };
@@ -609,9 +613,9 @@ fn assignment_7() {
                 )),
             )),
             Box::new(Tree::Concat(
-                Box::new(Tree::Return(Box::new(Expression::Var(Variable::Id(
-                    "a".into(),
-                ))))),
+                Box::new(Tree::Return(Box::new(Expression::Var(
+                    Variable::Id("a".into()),
+                )))),
                 Box::new(Tree::Return(Box::new(Expression::False))),
             )),
         ),
@@ -652,12 +656,12 @@ fn assignment_8() {
                 )),
             )),
             Box::new(Tree::Concat(
-                Box::new(Tree::Return(Box::new(Expression::Var(Variable::Id(
-                    "a".into(),
-                ))))),
-                Box::new(Tree::Return(Box::new(Expression::Var(Variable::Id(
-                    "b".into(),
-                ))))),
+                Box::new(Tree::Return(Box::new(Expression::Var(
+                    Variable::Id("a".into()),
+                )))),
+                Box::new(Tree::Return(Box::new(Expression::Var(
+                    Variable::Id("b".into()),
+                )))),
             )),
         ),
     };
@@ -697,9 +701,9 @@ fn assignment_9() {
                 )),
             )),
             Box::new(Tree::Concat(
-                Box::new(Tree::Return(Box::new(Expression::Var(Variable::Id(
-                    "b".into(),
-                ))))),
+                Box::new(Tree::Return(Box::new(Expression::Var(
+                    Variable::Id("b".into()),
+                )))),
                 Box::new(Tree::Return(Box::new(Expression::Integer(200)))),
             )),
         ),
@@ -745,9 +749,9 @@ fn assignment_10() {
                     None,
                     Box::new(Expression::Integer(200)),
                 )),
-                Box::new(Tree::Return(Box::new(Expression::Var(Variable::Id(
-                    "b".into(),
-                ))))),
+                Box::new(Tree::Return(Box::new(Expression::Var(
+                    Variable::Id("b".into()),
+                )))),
             )),
         ),
     };
@@ -789,7 +793,9 @@ fn for_1() {
             )),
             Box::new(Tree::For(
                 Variable::Id("c".into()),
-                Range::IterateOverSet(Box::new(Expression::Var(Variable::Id("a".into())))),
+                Range::IterateOverSet(Box::new(Expression::Var(Variable::Id(
+                    "a".into(),
+                )))),
                 Box::new(Tree::Return(Box::new(Expression::Integer(200)))),
             )),
         ),
@@ -829,10 +835,12 @@ fn for_2() {
             )),
             Box::new(Tree::For(
                 Variable::Id("c".into()),
-                Range::IterateOverSet(Box::new(Expression::Var(Variable::Id("a".into())))),
-                Box::new(Tree::Return(Box::new(Expression::Var(Variable::Id(
-                    "b".into(),
-                ))))),
+                Range::IterateOverSet(Box::new(Expression::Var(Variable::Id(
+                    "a".into(),
+                )))),
+                Box::new(Tree::Return(Box::new(Expression::Var(
+                    Variable::Id("b".into()),
+                )))),
             )),
         ),
     };
@@ -886,12 +894,14 @@ fn for_3() {
             Box::new(Tree::For(
                 Variable::Id("c".into()),
                 Range::IterateOverSet(Box::new(Expression::Unary(
-                    Unary::Qualifier(Qualifier::Restricted(QualifierRestricted::Entities)),
+                    Unary::Qualifier(Qualifier::Restricted(
+                        QualifierRestricted::Entities,
+                    )),
                     Box::new(Expression::Var(Variable::Id("a".into()))),
                 ))),
-                Box::new(Tree::Return(Box::new(Expression::Var(Variable::Id(
-                    "b".into(),
-                ))))),
+                Box::new(Tree::Return(Box::new(Expression::Var(
+                    Variable::Id("b".into()),
+                )))),
             )),
         ),
     };
@@ -945,12 +955,14 @@ fn for_4() {
             Box::new(Tree::For(
                 Variable::Id("c".into()),
                 Range::IterateOverSet(Box::new(Expression::Unary(
-                    Unary::Qualifier(Qualifier::Label(QualifierLabel::AvailableEntities)),
+                    Unary::Qualifier(Qualifier::Label(
+                        QualifierLabel::AvailableEntities,
+                    )),
                     Box::new(Expression::Var(Variable::Id("a".into()))),
                 ))),
-                Box::new(Tree::Return(Box::new(Expression::Var(Variable::Id(
-                    "c".into(),
-                ))))),
+                Box::new(Tree::Return(Box::new(Expression::Var(
+                    Variable::Id("c".into()),
+                )))),
             )),
         ),
     };
@@ -1006,7 +1018,9 @@ fn for_5() {
                 Box::new(Tree::For(
                     Variable::Id("c".into()),
                     Range::IterateOverSet(Box::new(Expression::Unary(
-                        Unary::Qualifier(Qualifier::Label(QualifierLabel::AvailableEntities)),
+                        Unary::Qualifier(Qualifier::Label(
+                            QualifierLabel::AvailableEntities,
+                        )),
                         Box::new(Expression::Var(Variable::Id("a".into()))),
                     ))),
                     Box::new(Tree::Assignment(
@@ -1019,9 +1033,9 @@ fn for_5() {
                         )),
                     )),
                 )),
-                Box::new(Tree::Return(Box::new(Expression::Var(Variable::Id(
-                    "b".into(),
-                ))))),
+                Box::new(Tree::Return(Box::new(Expression::Var(
+                    Variable::Id("b".into()),
+                )))),
             )),
         ),
     };
@@ -1086,7 +1100,9 @@ fn for_6() {
                     Range::IterateOverSet(Box::new(Expression::Binary(
                         Binary::Plus,
                         Box::new(Expression::Unary(
-                            Unary::Qualifier(Qualifier::Restricted(QualifierRestricted::Context)),
+                            Unary::Qualifier(Qualifier::Restricted(
+                                QualifierRestricted::Context,
+                            )),
                             Box::new(Expression::Var(Variable::Id("a".into()))),
                         )),
                         Box::new(Expression::Var(Variable::Id("b".into()))),
@@ -1101,9 +1117,9 @@ fn for_6() {
                         )),
                     )),
                 )),
-                Box::new(Tree::Return(Box::new(Expression::Var(Variable::Id(
-                    "c".into(),
-                ))))),
+                Box::new(Tree::Return(Box::new(Expression::Var(
+                    Variable::Id("c".into()),
+                )))),
             )),
         ),
     };
@@ -1151,9 +1167,9 @@ fn for_7() {
                     Box::new(Expression::Var(Variable::Id("a".into()))),
                     Box::new(Expression::Var(Variable::Id("b".into()))),
                 ),
-                Box::new(Tree::Return(Box::new(Expression::Var(Variable::Id(
-                    "c".into(),
-                ))))),
+                Box::new(Tree::Return(Box::new(Expression::Var(
+                    Variable::Id("c".into()),
+                )))),
             )),
         ),
     };
@@ -1185,10 +1201,16 @@ fn for_8() {
                     Variable::Id("a".into()),
                     None,
                     Box::new(Expression::Unary(
-                        Unary::Qualifier(Qualifier::Node(QualifierNode::Neighbours)),
+                        Unary::Qualifier(Qualifier::Node(
+                            QualifierNode::Neighbours,
+                        )),
                         Box::new(Expression::Unary(
-                            Unary::Qualifier(Qualifier::Edge(QualifierEdge::Source)),
-                            Box::new(Expression::Var(Variable::Special(EdgeRelablerInput::Edge))),
+                            Unary::Qualifier(Qualifier::Edge(
+                                QualifierEdge::Source,
+                            )),
+                            Box::new(Expression::Var(Variable::Special(
+                                EdgeRelablerInput::Edge,
+                            ))),
                         )),
                     )),
                 )),
@@ -1201,7 +1223,9 @@ fn for_8() {
             Box::new(Tree::Concat(
                 Box::new(Tree::For(
                     Variable::Id("c".into()),
-                    Range::IterateOverSet(Box::new(Expression::Var(Variable::Id("a".into())))),
+                    Range::IterateOverSet(Box::new(Expression::Var(
+                        Variable::Id("a".into()),
+                    ))),
                     Box::new(Tree::Assignment(
                         Variable::Id("b".into()),
                         None,
@@ -1212,9 +1236,9 @@ fn for_8() {
                         )),
                     )),
                 )),
-                Box::new(Tree::Return(Box::new(Expression::Var(Variable::Id(
-                    "b".into(),
-                ))))),
+                Box::new(Tree::Return(Box::new(Expression::Var(
+                    Variable::Id("b".into()),
+                )))),
             )),
         ),
     };
@@ -1263,12 +1287,20 @@ fn nodes() {
                 Variable::Id("a".into()),
                 None,
                 Box::new(Expression::Unary(
-                    Unary::Qualifier(Qualifier::System(QualifierSystem::Entities)),
+                    Unary::Qualifier(Qualifier::System(
+                        QualifierSystem::Entities,
+                    )),
                     Box::new(Expression::Unary(
-                        Unary::Qualifier(Qualifier::Node(QualifierNode::System)),
+                        Unary::Qualifier(Qualifier::Node(
+                            QualifierNode::System,
+                        )),
                         Box::new(Expression::Unary(
-                            Unary::Qualifier(Qualifier::Edge(QualifierEdge::Target)),
-                            Box::new(Expression::Var(Variable::Special(EdgeRelablerInput::Edge))),
+                            Unary::Qualifier(Qualifier::Edge(
+                                QualifierEdge::Target,
+                            )),
+                            Box::new(Expression::Var(Variable::Special(
+                                EdgeRelablerInput::Edge,
+                            ))),
                         )),
                     )),
                 )),

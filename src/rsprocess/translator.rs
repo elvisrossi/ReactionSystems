@@ -72,7 +72,11 @@ impl PartialEq for Translator {
 // -----------------------------------------------------------------------------
 
 pub trait PrintableWithTranslator {
-    fn print(&self, f: &mut fmt::Formatter, translator: &Translator) -> fmt::Result;
+    fn print(
+        &self,
+        f: &mut fmt::Formatter,
+        translator: &Translator,
+    ) -> fmt::Result;
 }
 
 pub struct Formatter<'a, T> {

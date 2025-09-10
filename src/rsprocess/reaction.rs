@@ -10,7 +10,8 @@ use super::element::{IdState, IdType};
 use super::set::{BasicSet, ExtensionsSet, PositiveSet, Set};
 use super::translator::{Formatter, PrintableWithTranslator, Translator};
 
-pub trait BasicReaction: Clone + Default + Eq + Hash + Serialize + PrintableWithTranslator
+pub trait BasicReaction:
+    Clone + Default + Eq + Hash + Serialize + PrintableWithTranslator
 where
     for<'de> Self: Deserialize<'de>,
 {
@@ -30,7 +31,11 @@ pub trait ExtensionReaction: Sized {
         q: &Self::Set,
     ) -> (Vec<Self::Set>, Vec<Self::Set>);
 
-    fn find_only_loop(reactions: &[Self], entities: &Self::Set, q: &Self::Set) -> Vec<Self::Set>;
+    fn find_only_loop(
+        reactions: &[Self],
+        entities: &Self::Set,
+        q: &Self::Set,
+    ) -> Vec<Self::Set>;
 
     fn find_prefix_len_loop(
         reactions: &[Self],
@@ -63,7 +68,11 @@ impl<T: BasicReaction<Set = Set>, Set: BasicSet> ExtensionReaction for T {
     }
 
     /// Finds the loops by simulating the system.
-    fn find_loop(reactions: &[Self], entities: Set, q: &Set) -> (Vec<Set>, Vec<Set>) {
+    fn find_loop(
+        reactions: &[Self],
+        entities: Set,
+        q: &Set,
+    ) -> (Vec<Set>, Vec<Set>) {
         let mut entities = entities;
         let mut trace = vec![];
         loop {
@@ -95,7 +104,11 @@ impl<T: BasicReaction<Set = Set>, Set: BasicSet> ExtensionReaction for T {
     }
 
     /// Finds the loops and the length of the prefix by simulating the system.
-    fn find_prefix_len_loop(reactions: &[Self], entities: Set, q: &Set) -> (usize, Vec<Set>) {
+    fn find_prefix_len_loop(
+        reactions: &[Self],
+        entities: Set,
+        q: &Set,
+    ) -> (usize, Vec<Set>) {
         let mut entities = entities;
         let mut trace = vec![];
         loop {
@@ -111,7 +124,11 @@ impl<T: BasicReaction<Set = Set>, Set: BasicSet> ExtensionReaction for T {
     }
 
     /// see loop/5
-    fn lollipops_only_loop_decomposed_q(reactions: &[Self], entities: &Set, q: &Set) -> Vec<Set> {
+    fn lollipops_only_loop_decomposed_q(
+        reactions: &[Self],
+        entities: &Set,
+        q: &Set,
+    ) -> Vec<Set> {
         let find_loop_fn = |q| Self::find_only_loop(reactions, entities, q);
         find_loop_fn(q)
     }
@@ -120,7 +137,9 @@ impl<T: BasicReaction<Set = Set>, Set: BasicSet> ExtensionReaction for T {
 // -----------------------------------------------------------------------------
 
 /// Basic structure for a reaction.
-#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(
+    Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq, Hash,
+)]
 pub struct Reaction {
     pub reactants: Set,
     pub inhibitors: Set,
@@ -133,7 +152,8 @@ impl BasicReaction for Reaction {
     /// returns true if ```current_state``` enables the reaction
     /// see enable
     fn enabled(&self, current_state: &Self::Set) -> bool {
-        self.reactants.is_subset(current_state) && self.inhibitors.is_disjoint(current_state)
+        self.reactants.is_subset(current_state)
+            && self.inhibitors.is_disjoint(current_state)
     }
 
     /// Computes the result of a single reaction (if enabled returns the
@@ -149,7 +169,11 @@ impl BasicReaction for Reaction {
 }
 
 impl PrintableWithTranslator for Reaction {
-    fn print(&self, f: &mut std::fmt::Formatter, translator: &Translator) -> std::fmt::Result {
+    fn print(
+        &self,
+        f: &mut std::fmt::Formatter,
+        translator: &Translator,
+    ) -> std::fmt::Result {
         write!(
             f,
             "(r: {}, i: {}, p: {})",
@@ -175,7 +199,10 @@ impl Reaction {
             .fold(Set::default(), |acc, r| acc.union(&r.products))
     }
 
-    pub fn all_reactions_with_product<'a>(reactions: &'a [Self], el: &IdType) -> Vec<&'a Self> {
+    pub fn all_reactions_with_product<'a>(
+        reactions: &'a [Self],
+        el: &IdType,
+    ) -> Vec<&'a Self> {
         reactions.iter().fold(vec![], |mut acc, r| {
             if r.products.contains(el) {
                 acc.push(r);
@@ -187,7 +214,9 @@ impl Reaction {
 
 // -----------------------------------------------------------------------------
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(
+    Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq, Hash,
+)]
 pub struct PositiveReaction {
     pub reactants: PositiveSet,
     pub products: PositiveSet,
@@ -210,7 +239,11 @@ impl BasicReaction for PositiveReaction {
 }
 
 impl PrintableWithTranslator for PositiveReaction {
-    fn print(&self, f: &mut std::fmt::Formatter, translator: &Translator) -> std::fmt::Result {
+    fn print(
+        &self,
+        f: &mut std::fmt::Formatter,
+        translator: &Translator,
+    ) -> std::fmt::Result {
         write!(
             f,
             "(r: {}, p: {})",
@@ -240,7 +273,7 @@ impl PositiveReaction {
     /// returns the reactants that are equal
     pub fn differ_only_one_element(&self, other: &Self) -> Option<PositiveSet> {
         if self.products != other.products {
-            return None
+            return None;
         }
         let mut found = false;
         for el in self.reactants.iter() {
@@ -248,11 +281,7 @@ impl PositiveReaction {
                 None => return None,
                 Some(s) => {
                     if s != el.1 {
-                        if found {
-                            return None
-                        } else {
-                            found = true
-                        }
+                        if found { return None } else { found = true }
                     }
                 }
             }

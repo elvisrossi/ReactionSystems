@@ -21,7 +21,18 @@ impl PrintableWithTranslator for IdType {
 
 // -----------------------------------------------------------------------------
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Serialize,
+    Deserialize,
+)]
 pub enum IdState {
     Positive,
     Negative,
@@ -47,7 +58,18 @@ impl std::ops::Not for IdState {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Serialize,
+    Deserialize,
+)]
 pub struct PositiveType {
     pub id: IdType,
     pub state: IdState,
@@ -70,12 +92,18 @@ impl PrintableWithTranslator for PositiveType {
 
 impl From<(IdType, IdState)> for PositiveType {
     fn from(value: (IdType, IdState)) -> Self {
-        Self { id: value.0, state: value.1 }
+        Self {
+            id: value.0,
+            state: value.1,
+        }
     }
 }
 
 impl From<(&IdType, &IdState)> for PositiveType {
     fn from(value: (&IdType, &IdState)) -> Self {
-        Self { id: *value.0, state: *value.1 }
+        Self {
+            id: *value.0,
+            state: *value.1,
+        }
     }
 }

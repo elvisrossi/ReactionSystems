@@ -11,7 +11,13 @@ use super::translator::{Formatter, PrintableWithTranslator, Translator};
 /// the trait).
 pub trait BasicSet
 where
-    Self: Clone + Eq + Ord + Default + Serialize + IntoIterator + PrintableWithTranslator,
+    Self: Clone
+        + Eq
+        + Ord
+        + Default
+        + Serialize
+        + IntoIterator
+        + PrintableWithTranslator,
     for<'de> Self: Deserialize<'de>,
 {
     type Element;
@@ -33,7 +39,10 @@ pub trait ExtensionsSet {
     where
         for<'b> &'b Self: IntoIterator;
 
-    fn split<'a>(&'a self, trace: &'a [Self]) -> Option<(&'a [Self], &'a [Self])>
+    fn split<'a>(
+        &'a self,
+        trace: &'a [Self],
+    ) -> Option<(&'a [Self], &'a [Self])>
     where
         Self: Sized;
 }
@@ -48,7 +57,10 @@ impl<T: BasicSet> ExtensionsSet for T {
     }
 
     /// Returns the prefix and the loop from a trace.
-    fn split<'a>(&'a self, trace: &'a [Self]) -> Option<(&'a [Self], &'a [Self])> {
+    fn split<'a>(
+        &'a self,
+        trace: &'a [Self],
+    ) -> Option<(&'a [Self], &'a [Self])> {
         let position = trace.iter().rposition(|x| x == self);
         position.map(|pos| trace.split_at(pos))
     }
@@ -57,7 +69,9 @@ impl<T: BasicSet> ExtensionsSet for T {
 // -----------------------------------------------------------------------------
 
 /// Basic set of entities.
-#[derive(Clone, Debug, Default, PartialOrd, Eq, Ord, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, Default, PartialOrd, Eq, Ord, Serialize, Deserialize,
+)]
 pub struct Set {
     pub identifiers: BTreeSet<IdType>,
 }
@@ -158,7 +172,11 @@ impl<'a> IntoIterator for &'a Set {
 }
 
 impl PrintableWithTranslator for Set {
-    fn print(&self, f: &mut fmt::Formatter, translator: &Translator) -> fmt::Result {
+    fn print(
+        &self,
+        f: &mut fmt::Formatter,
+        translator: &Translator,
+    ) -> fmt::Result {
         write!(f, "{{")?;
         let mut it = self.iter().peekable();
         while let Some(el) = it.next() {
@@ -253,29 +271,29 @@ impl Set {
                 })
                 .collect::<Vec<_>>();
 
-
             let mut state = vec![0_usize; unions.len()];
             let mut t = vec![];
 
             loop {
-                let mut new_combination =
-                    unions.iter().zip(state.iter())
+                let mut new_combination = unions
+                    .iter()
+                    .zip(state.iter())
                     .map(|(els, pos)| els[*pos])
                     .collect::<Vec<_>>();
-                new_combination.sort_by(
-                    |a, b|
+                new_combination.sort_by(|a, b| {
                     a.id.cmp(&b.id).then(a.state.cmp(&b.state))
-                );
+                });
 
                 let mut error = false;
 
-                'external: for i in 0..new_combination.len()-1 {
+                'external: for i in 0..new_combination.len() - 1 {
                     let mut j = i + 1;
                     loop {
                         if new_combination[i].id != new_combination[j].id {
                             break;
                         } else if new_combination[i].id == new_combination[j].id
-                            && new_combination[i].state != new_combination[j].state
+                            && new_combination[i].state
+                                != new_combination[j].state
                         {
                             error = true;
                             break 'external;
@@ -292,17 +310,16 @@ impl Set {
                     t.push(PositiveSet::from(new_combination));
                 }
 
-                let next =
-                    unions.iter().zip(state.iter()).enumerate()
-                    .rfind(
-                        |(_, (els, pos))|
-                        **pos < els.len() -1
-                    );
+                let next = unions
+                    .iter()
+                    .zip(state.iter())
+                    .enumerate()
+                    .rfind(|(_, (els, pos))| **pos < els.len() - 1);
                 match next {
                     None => break,
                     Some((pos, _)) => {
                         state[pos] += 1;
-                        state.iter_mut().skip(pos+1).for_each(|el| *el = 0);
+                        state.iter_mut().skip(pos + 1).for_each(|el| *el = 0);
                     }
                 }
             }
@@ -340,17 +357,18 @@ impl Set {
         // replace pair of sets that have a common negative-positive element
         // with set without
         let mut removed = 0;
-        
+
         for (pos_set1, set1) in t.clone().iter_mut().enumerate() {
             // we find another set that has at least one opposite element in
             // common
-            if let Some((pos_set2, set2)) = t.iter().enumerate().find(
-                |(_, set2)|
-                set1.equal_except_negated_elements(set2)
-            ) {
+            if let Some((pos_set2, set2)) = t
+                .iter()
+                .enumerate()
+                .find(|(_, set2)| set1.equal_except_negated_elements(set2))
+            {
                 let intersection = set1.opposite_intersection(set2);
                 if intersection.len() != 1 {
-                    continue
+                    continue;
                 }
                 set1.remove_elements(intersection);
 
@@ -366,7 +384,9 @@ impl Set {
 
 // -----------------------------------------------------------------------------
 
-#[derive(Clone, Debug, Default, PartialOrd, Eq, Ord, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, Default, PartialOrd, Eq, Ord, Serialize, Deserialize,
+)]
 pub struct PositiveSet {
     pub identifiers: BTreeMap<IdType, IdState>,
 }
@@ -476,7 +496,11 @@ impl BasicSet for PositiveSet {
 }
 
 impl PrintableWithTranslator for PositiveSet {
-    fn print(&self, f: &mut fmt::Formatter, translator: &Translator) -> fmt::Result {
+    fn print(
+        &self,
+        f: &mut fmt::Formatter,
+        translator: &Translator,
+    ) -> fmt::Result {
         write!(f, "{{")?;
         let mut it = self.iter().peekable();
         while let Some((id, s)) = it.next() {
@@ -484,13 +508,19 @@ impl PrintableWithTranslator for PositiveSet {
                 write!(
                     f,
                     "{}",
-                    Formatter::from(translator, &PositiveType { id: *id, state: *s })
+                    Formatter::from(
+                        translator,
+                        &PositiveType { id: *id, state: *s }
+                    )
                 )?;
             } else {
                 write!(
                     f,
                     "{}, ",
-                    Formatter::from(translator, &PositiveType { id: *id, state: *s })
+                    Formatter::from(
+                        translator,
+                        &PositiveType { id: *id, state: *s }
+                    )
                 )?;
             }
         }
@@ -581,13 +611,17 @@ impl From<Vec<PositiveType>> for PositiveSet {
 
 impl FromIterator<PositiveType> for PositiveSet {
     fn from_iter<T: IntoIterator<Item = PositiveType>>(iter: T) -> Self {
-        Self { identifiers: iter.into_iter().map(|el| (el.id, el.state)).collect() }
+        Self {
+            identifiers: iter.into_iter().map(|el| (el.id, el.state)).collect(),
+        }
     }
 }
 
 impl FromIterator<(IdType, IdState)> for PositiveSet {
     fn from_iter<T: IntoIterator<Item = (IdType, IdState)>>(iter: T) -> Self {
-        Self { identifiers: iter.into_iter().collect() }
+        Self {
+            identifiers: iter.into_iter().collect(),
+        }
     }
 }
 
@@ -628,13 +662,15 @@ impl PositiveSet {
     }
 
     pub fn positives(&self) -> Self {
-        self.iter().filter(|el| *el.1 == IdState::Positive)
+        self.iter()
+            .filter(|el| *el.1 == IdState::Positive)
             .map(|el| (*el.0, *el.1))
             .collect::<PositiveSet>()
     }
 
     pub fn negatives(&self) -> Self {
-        self.iter().filter(|el| *el.1 == IdState::Negative)
+        self.iter()
+            .filter(|el| *el.1 == IdState::Negative)
             .map(|el| (*el.0, *el.1))
             .collect::<PositiveSet>()
     }

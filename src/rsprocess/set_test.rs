@@ -123,10 +123,5 @@ fn prohibiting_set_5() {
         Set::prohibiting_set(&[r1r, r2r], &[r1i, r2i]).unwrap();
     prohibiting_set.sort();
 
-    assert_eq!(
-        prohibiting_set,
-        vec![
-            PositiveSet::from([(1, Negative)]),
-        ]
-    )
+    assert_eq!(prohibiting_set, vec![PositiveSet::from([(1, Negative)]),])
 }

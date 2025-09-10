@@ -4,7 +4,7 @@ Context: [({a,b}.{a}.{a,c}.x + {a,b}.{a}.{a}.nill)]
 Reactions: ([{a,b}, {c}, {b}])
 
 Digraph > Dot
-        | Entities " - " Context " - entities masked: " MaskEntities {a}
+        | Entities
 	| Entities
 	| Entities < {a} ? "blue" ! "white"
 	| ! "black"
@@ -13,4 +13,23 @@ Digraph > Dot
 Digraph > GraphML
 	| Entities
 	| Entities
-	> Print
+	> Print,
+
+Digraph > node { if (entities == {a, b})
+                 then { return 0 }
+                 else { return 2 } }
+        > Dot
+        | Entities
+        | Entities
+        | Entities < {a} ? "blue" ! "white"
+        | ! "black"
+        > Print,
+
+Digraph > node { return entities == {b} }
+        > Dot
+        | Entities
+        | Entities
+        | Entities < {a} ? "blue" ! "white"
+        | ! "black"
+        > Print,
+

@@ -7,7 +7,9 @@ use std::rc::Rc;
 use super::choices::{BasicChoices, Choices, PositiveChoices};
 use super::element::IdType;
 use super::process::{BasicProcess, PositiveProcess, Process};
-use super::reaction::{BasicReaction, ExtensionReaction, PositiveReaction, Reaction};
+use super::reaction::{
+    BasicReaction, ExtensionReaction, PositiveReaction, Reaction,
+};
 use super::set::{BasicSet, PositiveSet, Set};
 use super::translator::{Formatter, PrintableWithTranslator, Translator};
 
@@ -116,8 +118,13 @@ where
         // satisfy X = pre(Q, rec(X))
         let filtered = self.iter().filter_map(|l| l.1.filter_delta(l.0));
 
-        let find_loop_fn =
-            |q| T::Reaction::find_loop(reaction_rules, available_entities.clone(), q);
+        let find_loop_fn = |q| {
+            T::Reaction::find_loop(
+                reaction_rules,
+                available_entities.clone(),
+                q,
+            )
+        };
 
         filtered.map(find_loop_fn).collect::<Vec<_>>()
     }
@@ -129,8 +136,13 @@ where
     ) -> Vec<(usize, Vec<Self::Set>)> {
         let filtered = self.iter().filter_map(|l| l.1.filter_delta(l.0));
 
-        let find_loop_fn =
-            |q| T::Reaction::find_prefix_len_loop(reaction_rules, available_entities.clone(), q);
+        let find_loop_fn = |q| {
+            T::Reaction::find_prefix_len_loop(
+                reaction_rules,
+                available_entities.clone(),
+                q,
+            )
+        };
 
         filtered.map(find_loop_fn).collect::<Vec<_>>()
     }
@@ -143,7 +155,9 @@ where
     ) -> Vec<Vec<Self::Set>> {
         let filtered = self.iter().filter_map(|l| l.1.filter_delta(l.0));
 
-        let find_loop_fn = |q| T::Reaction::find_only_loop(reaction_rules, available_entities, q);
+        let find_loop_fn = |q| {
+            T::Reaction::find_only_loop(reaction_rules, available_entities, q)
+        };
 
         filtered.map(find_loop_fn).collect::<Vec<_>>()
     }
@@ -174,8 +188,13 @@ where
             })
             .next();
 
-        let find_loop_fn =
-            |q| T::Reaction::find_loop(reaction_rules, available_entities.clone(), q);
+        let find_loop_fn = |q| {
+            T::Reaction::find_loop(
+                reaction_rules,
+                available_entities.clone(),
+                q,
+            )
+        };
 
         filtered.map(find_loop_fn)
     }
@@ -197,8 +216,13 @@ where
             })
             .next();
 
-        let find_loop_fn =
-            |q| T::Reaction::find_prefix_len_loop(reaction_rules, available_entities.clone(), q);
+        let find_loop_fn = |q| {
+            T::Reaction::find_prefix_len_loop(
+                reaction_rules,
+                available_entities.clone(),
+                q,
+            )
+        };
 
         filtered.map(find_loop_fn)
     }
@@ -221,7 +245,9 @@ where
             })
             .next();
 
-        let find_loop_fn = |q| T::Reaction::find_only_loop(reaction_rules, available_entities, q);
+        let find_loop_fn = |q| {
+            T::Reaction::find_only_loop(reaction_rules, available_entities, q)
+        };
 
         filtered.map(find_loop_fn)
     }
@@ -257,7 +283,11 @@ impl BasicEnvironment for Environment {
     /// definitions environment. choices::Choices is a list of context moves
     /// mapping a set of entities and the continuation.
     /// see unfold
-    fn unfold(&self, context_process: &Process, current_entities: &Set) -> Result<Choices, String> {
+    fn unfold(
+        &self,
+        context_process: &Process,
+        current_entities: &Set,
+    ) -> Result<Choices, String> {
         match context_process {
             Process::Nill => Ok(Choices::default()),
             Process::RecursiveIdentifier { identifier } => {
@@ -298,7 +328,8 @@ impl BasicEnvironment for Environment {
                 repeated_process,
                 next_process,
             } if *repeat == 1 => {
-                let mut choices1 = self.unfold(repeated_process, current_entities)?;
+                let mut choices1 =
+                    self.unfold(repeated_process, current_entities)?;
                 choices1.replace(Rc::clone(next_process));
                 Ok(choices1)
             }
@@ -307,7 +338,8 @@ impl BasicEnvironment for Environment {
                 repeated_process,
                 next_process,
             } => {
-                let mut choices1 = self.unfold(repeated_process, current_entities)?;
+                let mut choices1 =
+                    self.unfold(repeated_process, current_entities)?;
                 choices1.replace(Rc::new(Process::WaitEntity {
                     repeat: (*repeat - 1),
                     repeated_process: Rc::clone(repeated_process),
@@ -335,10 +367,13 @@ impl BasicEnvironment for Environment {
                         Rc::new(Process::Nill),
                     )]))
                 } else {
-                    children.iter().try_fold(Choices::default(), |mut acc, x| {
-                        acc.shuffle(self.unfold(x, current_entities)?);
-                        Ok(acc)
-                    })
+                    children.iter().try_fold(
+                        Choices::default(),
+                        |mut acc, x| {
+                            acc.shuffle(self.unfold(x, current_entities)?);
+                            Ok(acc)
+                        },
+                    )
                 }
             }
         }
@@ -346,7 +381,11 @@ impl BasicEnvironment for Environment {
 }
 
 impl PrintableWithTranslator for Environment {
-    fn print(&self, f: &mut std::fmt::Formatter, translator: &Translator) -> std::fmt::Result {
+    fn print(
+        &self,
+        f: &mut std::fmt::Formatter,
+        translator: &Translator,
+    ) -> std::fmt::Result {
         write!(f, "{{env:")?;
         let mut it = self.iter().peekable();
         while let Some(el) = it.next() {
@@ -428,18 +467,23 @@ impl Environment {
         reaction_rules: &[Reaction],
         entities: &[Set],
     ) -> Option<(usize, usize, Vec<Set>)> {
-        let all_loops =
-            self.lollipops_prefix_len_loop_decomposed(reaction_rules, entities.first()?);
+        let all_loops = self.lollipops_prefix_len_loop_decomposed(
+            reaction_rules,
+            entities.first()?,
+        );
         let (prefix_len, hoop) = all_loops.first()?.clone();
         let dimension = hoop.len();
         let mut max_distance = prefix_len;
 
         for available_entities in entities.iter().skip(1) {
-            let all_loops =
-                self.lollipops_prefix_len_loop_decomposed(reaction_rules, available_entities);
+            let all_loops = self.lollipops_prefix_len_loop_decomposed(
+                reaction_rules,
+                available_entities,
+            );
             let (prefix_len, new_hoop) = all_loops.first()?;
 
-            if new_hoop.len() != dimension || !hoop.contains(new_hoop.first()?) {
+            if new_hoop.len() != dimension || !hoop.contains(new_hoop.first()?)
+            {
                 return None;
             }
             max_distance = cmp::max(max_distance, *prefix_len);
@@ -459,23 +503,26 @@ impl Environment {
         entities: &[Set],
         symb: IdType,
     ) -> Option<(usize, usize, Vec<Set>)> {
-        let (prefix_len, first_hoop) = self.lollipops_prefix_len_loop_decomposed_named(
-            reaction_rules,
-            entities.first()?,
-            symb,
-        )?;
+        let (prefix_len, first_hoop) = self
+            .lollipops_prefix_len_loop_decomposed_named(
+                reaction_rules,
+                entities.first()?,
+                symb,
+            )?;
         let dimension = first_hoop.len();
         let mut max_distance = prefix_len;
         let hoop = first_hoop;
 
         for available_entities in entities.iter().skip(1) {
-            let (prefix_len, new_hoop) = self.lollipops_prefix_len_loop_decomposed_named(
-                reaction_rules,
-                available_entities,
-                symb,
-            )?;
+            let (prefix_len, new_hoop) = self
+                .lollipops_prefix_len_loop_decomposed_named(
+                    reaction_rules,
+                    available_entities,
+                    symb,
+                )?;
 
-            if new_hoop.len() != dimension || !hoop.contains(new_hoop.first()?) {
+            if new_hoop.len() != dimension || !hoop.contains(new_hoop.first()?)
+            {
                 return None;
             }
             max_distance = cmp::max(max_distance, prefix_len);
@@ -493,17 +540,24 @@ impl Environment {
         entities: &[Set],
         symb: IdType,
     ) -> Option<(Vec<Set>, Vec<Set>)> {
-        let (prefix, hoop) =
-            self.lollipops_decomposed_named(reaction_rules, entities.first()?, symb)?;
+        let (prefix, hoop) = self.lollipops_decomposed_named(
+            reaction_rules,
+            entities.first()?,
+            symb,
+        )?;
         let mut invariant = vec![];
         invariant.append(&mut prefix.clone());
         invariant.append(&mut hoop.clone());
         let dimension = hoop.len();
 
         for available_entities in entities {
-            let (new_prefix, new_hoop) =
-                self.lollipops_decomposed_named(reaction_rules, available_entities, symb)?;
-            if new_hoop.len() != dimension || !hoop.contains(new_hoop.first()?) {
+            let (new_prefix, new_hoop) = self.lollipops_decomposed_named(
+                reaction_rules,
+                available_entities,
+                symb,
+            )?;
+            if new_hoop.len() != dimension || !hoop.contains(new_hoop.first()?)
+            {
                 return None;
             }
             invariant.append(&mut new_prefix.clone());
@@ -559,7 +613,8 @@ impl Environment {
         deltas
             .iter()
             .map(|q| {
-                let (invariant, hoop) = q.invariant_named(reaction_rules, entities, symb)?;
+                let (invariant, hoop) =
+                    q.invariant_named(reaction_rules, entities, symb)?;
                 let length = invariant.len();
                 Some((invariant, length, hoop))
             })
@@ -659,17 +714,16 @@ impl BasicEnvironment for PositiveEnvironment {
             }
             PositiveProcess::Summation { children } => {
                 // short-circuits with try_fold.
-                children
-                    .iter()
-                    .try_fold(Self::Choices::default(), |mut acc, x| {
-                        match self.unfold(x, entities) {
-                            Ok(mut choices) => {
-                                acc.append(&mut choices);
-                                Ok(acc)
-                            }
-                            Err(e) => Err(e),
+                children.iter().try_fold(
+                    Self::Choices::default(),
+                    |mut acc, x| match self.unfold(x, entities) {
+                        Ok(mut choices) => {
+                            acc.append(&mut choices);
+                            Ok(acc)
                         }
-                    })
+                        Err(e) => Err(e),
+                    },
+                )
             }
             PositiveProcess::NondeterministicChoice { children } => {
                 // short-circuits with try_fold.
@@ -679,12 +733,13 @@ impl BasicEnvironment for PositiveEnvironment {
                         Rc::new(Self::Process::default()),
                     )]))
                 } else {
-                    children
-                        .iter()
-                        .try_fold(Self::Choices::default(), |mut acc, x| {
+                    children.iter().try_fold(
+                        Self::Choices::default(),
+                        |mut acc, x| {
                             acc.shuffle(self.unfold(x, entities)?);
                             Ok(acc)
-                        })
+                        },
+                    )
                 }
             }
         }
@@ -692,7 +747,11 @@ impl BasicEnvironment for PositiveEnvironment {
 }
 
 impl PrintableWithTranslator for PositiveEnvironment {
-    fn print(&self, f: &mut std::fmt::Formatter, translator: &Translator) -> std::fmt::Result {
+    fn print(
+        &self,
+        f: &mut std::fmt::Formatter,
+        translator: &Translator,
+    ) -> std::fmt::Result {
         write!(f, "{{env:")?;
         let mut it = self.iter().peekable();
         while let Some(el) = it.next() {
@@ -718,7 +777,8 @@ impl PrintableWithTranslator for PositiveEnvironment {
 
 impl IntoIterator for PositiveEnvironment {
     type Item = (IdType, PositiveProcess);
-    type IntoIter = std::collections::hash_map::IntoIter<IdType, PositiveProcess>;
+    type IntoIter =
+        std::collections::hash_map::IntoIter<IdType, PositiveProcess>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.definitions.into_iter()
@@ -727,7 +787,8 @@ impl IntoIterator for PositiveEnvironment {
 
 impl<'a> IntoIterator for &'a PositiveEnvironment {
     type Item = (&'a IdType, &'a PositiveProcess);
-    type IntoIter = std::collections::hash_map::Iter<'a, IdType, PositiveProcess>;
+    type IntoIter =
+        std::collections::hash_map::Iter<'a, IdType, PositiveProcess>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.definitions.iter()

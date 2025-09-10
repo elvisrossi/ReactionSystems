@@ -100,7 +100,11 @@ impl From<Vec<(Rc<Set>, Rc<Process>)>> for Choices {
 }
 
 impl PrintableWithTranslator for Choices {
-    fn print(&self, f: &mut std::fmt::Formatter, translator: &Translator) -> std::fmt::Result {
+    fn print(
+        &self,
+        f: &mut std::fmt::Formatter,
+        translator: &Translator,
+    ) -> std::fmt::Result {
         write!(f, "[")?;
         let mut it = self.iter().peekable();
         while let Some(el) = it.next() {
@@ -180,7 +184,11 @@ impl IntoIterator for PositiveChoices {
 }
 
 impl PrintableWithTranslator for PositiveChoices {
-    fn print(&self, f: &mut std::fmt::Formatter, translator: &Translator) -> std::fmt::Result {
+    fn print(
+        &self,
+        f: &mut std::fmt::Formatter,
+        translator: &Translator,
+    ) -> std::fmt::Result {
         write!(f, "[")?;
         let mut it = self.iter().peekable();
         while let Some(el) = it.next() {
@@ -205,12 +213,16 @@ impl PrintableWithTranslator for PositiveChoices {
 }
 
 impl PositiveChoices {
-    fn iter(&self) -> std::slice::Iter<'_, (Rc<PositiveSet>, Rc<PositiveProcess>)> {
+    fn iter(
+        &self,
+    ) -> std::slice::Iter<'_, (Rc<PositiveSet>, Rc<PositiveProcess>)> {
         self.context_moves.iter()
     }
 }
 
-impl<const N: usize> From<[(Rc<PositiveSet>, Rc<PositiveProcess>); N]> for PositiveChoices {
+impl<const N: usize> From<[(Rc<PositiveSet>, Rc<PositiveProcess>); N]>
+    for PositiveChoices
+{
     fn from(arr: [(Rc<PositiveSet>, Rc<PositiveProcess>); N]) -> Self {
         Self {
             context_moves: arr.to_vec(),

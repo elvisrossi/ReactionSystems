@@ -31,7 +31,12 @@ pub enum Variable<S> {
 
 /// Trait needed for special variables.
 pub(super) trait SpecialVariables<G>:
-    translator::PrintableWithTranslator + std::fmt::Debug + Sized + Eq + Copy + std::hash::Hash
+    translator::PrintableWithTranslator
+    + std::fmt::Debug
+    + Sized
+    + Eq
+    + Copy
+    + std::hash::Hash
 {
     /// Returns the type of the specific special variable.
     fn type_of(&self) -> AssertionTypes;
@@ -40,7 +45,8 @@ pub(super) trait SpecialVariables<G>:
     fn type_qualified(&self, q: &Qualifier) -> Result<AssertionTypes, String>;
 
     /// Creates a new context.
-    fn new_context(input: HashMap<Self, G>) -> HashMap<Self, AssertReturnValue>;
+    fn new_context(input: HashMap<Self, G>)
+    -> HashMap<Self, AssertReturnValue>;
 
     /// Returns true if
     fn correct_type(&self, other: &AssertReturnValue) -> bool;
@@ -188,7 +194,10 @@ pub enum AssertReturnValue {
 // -----------------------------------------------------------------------------
 
 impl QualifierRestricted {
-    pub(super) fn referenced_mut<'a>(&self, label: &'a mut label::Label) -> &'a mut set::Set {
+    pub(super) fn referenced_mut<'a>(
+        &self,
+        label: &'a mut label::Label,
+    ) -> &'a mut set::Set {
         match self {
             Self::Entities => &mut label.available_entities,
             Self::Context => &mut label.context,
@@ -200,7 +209,10 @@ impl QualifierRestricted {
         }
     }
 
-    pub(super) fn referenced<'a>(&self, label: &'a label::Label) -> &'a set::Set {
+    pub(super) fn referenced<'a>(
+        &self,
+        label: &'a label::Label,
+    ) -> &'a set::Set {
         match self {
             Self::Entities => &label.available_entities,
             Self::Context => &label.context,
@@ -220,13 +232,15 @@ impl QualifierRestricted {
 impl QualifierLabel {
     pub(super) fn get(&self, l: &label::Label) -> AssertReturnValue {
         match self {
-            QualifierLabel::AvailableEntities => AssertReturnValue::Set(l.t.clone()),
+            QualifierLabel::AvailableEntities => {
+                AssertReturnValue::Set(l.t.clone())
+            }
             QualifierLabel::AllReactants => {
                 AssertReturnValue::Set(l.reactants.union(&l.reactants_absent))
             }
-            QualifierLabel::AllInhibitors => {
-                AssertReturnValue::Set(l.inhibitors.union(&l.inhibitors_present))
-            }
+            QualifierLabel::AllInhibitors => AssertReturnValue::Set(
+                l.inhibitors.union(&l.inhibitors_present),
+            ),
         }
     }
 }
@@ -234,8 +248,12 @@ impl QualifierLabel {
 impl QualifierSystem {
     pub(super) fn get(&self, l: &system::System) -> AssertReturnValue {
         match self {
-            Self::Context => AssertReturnValue::Context(l.context_process.clone()),
-            Self::Entities => AssertReturnValue::Set(l.available_entities.clone()),
+            Self::Context => {
+                AssertReturnValue::Context(l.context_process.clone())
+            }
+            Self::Entities => {
+                AssertReturnValue::Set(l.available_entities.clone())
+            }
         }
     }
 }
@@ -244,7 +262,11 @@ impl Unary {
     pub(super) fn is_prefix(&self) -> bool {
         match self {
             Self::Not | Self::Rand => true,
-            Self::Empty | Self::Length | Self::ToStr | Self::Qualifier(_) | Self::ToEl => false,
+            Self::Empty
+            | Self::Length
+            | Self::ToStr
+            | Self::Qualifier(_)
+            | Self::ToEl => false,
         }
     }
 
@@ -252,42 +274,72 @@ impl Unary {
         !self.is_prefix()
     }
 
-    pub(super) fn associate(&self, type_exp: &AssertionTypes) -> Result<AssertionTypes, String> {
+    pub(super) fn associate(
+        &self,
+        type_exp: &AssertionTypes,
+    ) -> Result<AssertionTypes, String> {
         match (self, type_exp) {
             (Self::Not, AssertionTypes::Boolean) => Ok(AssertionTypes::Boolean),
-            (Self::Rand, AssertionTypes::Integer) => Ok(AssertionTypes::Integer),
+            (Self::Rand, AssertionTypes::Integer) => {
+                Ok(AssertionTypes::Integer)
+            }
             (Self::Empty, AssertionTypes::Set) => Ok(AssertionTypes::Boolean),
-            (Self::Length, AssertionTypes::Set) | (Self::Length, AssertionTypes::String) => {
+            (Self::Length, AssertionTypes::Set)
+            | (Self::Length, AssertionTypes::String) => {
                 Ok(AssertionTypes::Integer)
             }
             (Self::ToStr, AssertionTypes::Boolean)
             | (Self::ToStr, AssertionTypes::Element)
-            | (Self::ToStr, AssertionTypes::Integer) => Ok(AssertionTypes::String),
+            | (Self::ToStr, AssertionTypes::Integer) => {
+                Ok(AssertionTypes::String)
+            }
             (Self::Qualifier(Qualifier::Label(_)), AssertionTypes::Label) => {
                 Ok(AssertionTypes::Set)
             }
-            (Self::Qualifier(Qualifier::Restricted(_)), AssertionTypes::Label) => {
-                Ok(AssertionTypes::Set)
-            }
+            (
+                Self::Qualifier(Qualifier::Restricted(_)),
+                AssertionTypes::Label,
+            ) => Ok(AssertionTypes::Set),
             (Self::ToEl, AssertionTypes::String) => Ok(AssertionTypes::Element),
-            (Self::Qualifier(Qualifier::Edge(_)), AssertionTypes::Edge) => Ok(AssertionTypes::Node),
-            (Self::Qualifier(Qualifier::Node(QualifierNode::Neighbours)), AssertionTypes::Node) => {
-                Ok(AssertionTypes::RangeNeighbours)
+            (Self::Qualifier(Qualifier::Edge(_)), AssertionTypes::Edge) => {
+                Ok(AssertionTypes::Node)
             }
+            (
+                Self::Qualifier(Qualifier::Node(QualifierNode::Neighbours)),
+                AssertionTypes::Node,
+            ) => Ok(AssertionTypes::RangeNeighbours),
             (
                 Self::Qualifier(Qualifier::System(QualifierSystem::Entities)),
                 AssertionTypes::System,
             ) => Ok(AssertionTypes::Set),
             (
+                Self::Qualifier(Qualifier::Restricted(
+                    QualifierRestricted::Entities,
+                )),
+                AssertionTypes::System,
+            )
+            | (
+                Self::Qualifier(Qualifier::Restricted(
+                    QualifierRestricted::Context,
+                )),
+                AssertionTypes::System,
+            ) => Err(format!(
+                "Expression has incompatible type with operation: type \
+                     system with operation \"{self:?}\" (be sure to use \
+                     \".SystemEntities\" and \".SystemContext\" to refer to \
+                     the system fields)."
+            )),
+            (
                 Self::Qualifier(Qualifier::System(QualifierSystem::Context)),
                 AssertionTypes::System,
             ) => Ok(AssertionTypes::Context),
-            (Self::Qualifier(Qualifier::Node(QualifierNode::System)), AssertionTypes::Node) => {
-                Ok(AssertionTypes::System)
-            }
+            (
+                Self::Qualifier(Qualifier::Node(QualifierNode::System)),
+                AssertionTypes::Node,
+            ) => Ok(AssertionTypes::System),
             (op, type_exp) => Err(format!(
-                "Expression has incompatible type with operation: \
-			     {type_exp:?} with operation {op:?}."
+                "Expression has incompatible type with operation: type \
+                     {type_exp:?} with operation \"{op:?}\"."
             )),
         }
     }
@@ -355,14 +407,24 @@ impl Binary {
             (Self::Xor, AssertionTypes::Boolean, AssertionTypes::Boolean) => {
                 Ok(AssertionTypes::Boolean)
             }
-            (Self::Xor, AssertionTypes::Set, AssertionTypes::Set) => Ok(AssertionTypes::Set),
+            (Self::Xor, AssertionTypes::Set, AssertionTypes::Set) => {
+                Ok(AssertionTypes::Set)
+            }
             (Self::Less, AssertionTypes::Integer, AssertionTypes::Integer)
             | (Self::Less, AssertionTypes::Set, AssertionTypes::Set)
-            | (Self::LessEq, AssertionTypes::Integer, AssertionTypes::Integer)
+            | (
+                Self::LessEq,
+                AssertionTypes::Integer,
+                AssertionTypes::Integer,
+            )
             | (Self::LessEq, AssertionTypes::Set, AssertionTypes::Set)
             | (Self::More, AssertionTypes::Integer, AssertionTypes::Integer)
             | (Self::More, AssertionTypes::Set, AssertionTypes::Set)
-            | (Self::MoreEq, AssertionTypes::Integer, AssertionTypes::Integer)
+            | (
+                Self::MoreEq,
+                AssertionTypes::Integer,
+                AssertionTypes::Integer,
+            )
             | (Self::MoreEq, AssertionTypes::Set, AssertionTypes::Set) => {
                 Ok(AssertionTypes::Boolean)
             }
@@ -387,12 +449,24 @@ impl Binary {
             }
             (Self::Plus, AssertionTypes::Set, AssertionTypes::Set)
             | (Self::Minus, AssertionTypes::Set, AssertionTypes::Set)
-            | (Self::Times, AssertionTypes::Set, AssertionTypes::Set) => Ok(AssertionTypes::Set),
-            (Self::Exponential, AssertionTypes::Integer, AssertionTypes::Integer)
-            | (Self::Quotient, AssertionTypes::Integer, AssertionTypes::Integer)
-            | (Self::Reminder, AssertionTypes::Integer, AssertionTypes::Integer) => {
-                Ok(AssertionTypes::Integer)
+            | (Self::Times, AssertionTypes::Set, AssertionTypes::Set) => {
+                Ok(AssertionTypes::Set)
             }
+            (
+                Self::Exponential,
+                AssertionTypes::Integer,
+                AssertionTypes::Integer,
+            )
+            | (
+                Self::Quotient,
+                AssertionTypes::Integer,
+                AssertionTypes::Integer,
+            )
+            | (
+                Self::Reminder,
+                AssertionTypes::Integer,
+                AssertionTypes::Integer,
+            ) => Ok(AssertionTypes::Integer),
             (Self::Concat, AssertionTypes::String, AssertionTypes::String) => {
                 Ok(AssertionTypes::String)
             }
@@ -403,9 +477,11 @@ impl Binary {
             | (Self::Max, AssertionTypes::Integer, AssertionTypes::Integer) => {
                 Ok(AssertionTypes::Integer)
             }
-            (Self::CommonSubStr, AssertionTypes::String, AssertionTypes::String) => {
-                Ok(AssertionTypes::String)
-            }
+            (
+                Self::CommonSubStr,
+                AssertionTypes::String,
+                AssertionTypes::String,
+            ) => Ok(AssertionTypes::String),
             _ => Err(format!(
                 "Expressions have incompatible types: {t1:?} and \
 			     {t2:?} with operation {self:?}."
@@ -421,7 +497,11 @@ impl AssertReturnValue {
         val: AssertReturnValue,
     ) -> Result<(), String> {
         match (self, q, val) {
-            (Self::Label(l), Qualifier::Restricted(q), AssertReturnValue::Set(set)) => {
+            (
+                Self::Label(l),
+                Qualifier::Restricted(q),
+                AssertReturnValue::Set(set),
+            ) => {
                 *q.referenced_mut(l) = set;
                 Ok(())
             }
@@ -493,16 +573,20 @@ impl TypeContext {
 				     trying to assign to qualification {q:?}, \
 				     assign first a value."
                 )),
-                std::collections::hash_map::Entry::Occupied(oe) => match (oe.get(), q, ty) {
-                    (AssertionTypes::Label, Qualifier::Restricted(_), AssertionTypes::Set) => {
-                        Ok(())
-                    }
-                    (t, q, ty) => Err(format!(
-                        "Variable {v:?} has type {t:?}, \
+                std::collections::hash_map::Entry::Occupied(oe) => {
+                    match (oe.get(), q, ty) {
+                        (
+                            AssertionTypes::Label,
+                            Qualifier::Restricted(_),
+                            AssertionTypes::Set,
+                        ) => Ok(()),
+                        (t, q, ty) => Err(format!(
+                            "Variable {v:?} has type {t:?}, \
 					     but was assigned with qualifier \
 					     {q:?} value with type {ty:?}."
-                    )),
-                },
+                        )),
+                    }
+                }
             },
             (Variable::Special(s), None) => {
                 if s.type_of() == ty {
@@ -530,7 +614,11 @@ impl TypeContext {
         }
     }
 
-    fn assign_range<S, G>(&mut self, v: &Variable<S>, ty: AssertionTypes) -> Result<(), String>
+    fn assign_range<S, G>(
+        &mut self,
+        v: &Variable<S>,
+        ty: AssertionTypes,
+    ) -> Result<(), String>
     where
         S: SpecialVariables<G>,
     {
@@ -661,10 +749,12 @@ impl<S> Context<S> {
                 "Variable {v:?} used, but no value \
 				    assigned."
             )),
-            Variable::Special(s) => self.special.get(s).cloned().ok_or(format!(
-                "Variable {v:?} used but no value \
+            Variable::Special(s) => {
+                self.special.get(s).cloned().ok_or(format!(
+                    "Variable {v:?} used but no value \
 				    assigned."
-            )),
+                ))
+            }
         }
     }
 }
@@ -677,7 +767,9 @@ impl AssertReturnValue {
         graph: &graph::SystemGraph,
     ) -> Result<AssertReturnValue, String> {
         match (self, u) {
-            (AssertReturnValue::Boolean(b), Unary::Not) => Ok(AssertReturnValue::Boolean(!b)),
+            (AssertReturnValue::Boolean(b), Unary::Not) => {
+                Ok(AssertReturnValue::Boolean(!b))
+            }
             (AssertReturnValue::Integer(i), Unary::Rand) => {
                 Ok(AssertReturnValue::Integer(rand::random_range(0..i)))
             }
@@ -699,15 +791,21 @@ impl AssertReturnValue {
             (AssertReturnValue::Integer(i), Unary::ToStr) => {
                 Ok(AssertReturnValue::String(format!("{i}")))
             }
-            (AssertReturnValue::Element(el), Unary::ToStr) => Ok(AssertReturnValue::String(
-                translator
-                    .decode(el)
-                    .ok_or(format!("Could not find element {el:?}."))?,
-            )),
-            (AssertReturnValue::Label(l), Unary::Qualifier(Qualifier::Label(q))) => Ok(q.get(&l)),
-            (AssertReturnValue::Label(l), Unary::Qualifier(Qualifier::Restricted(q))) => {
-                Ok(q.get(&l))
+            (AssertReturnValue::Element(el), Unary::ToStr) => {
+                Ok(AssertReturnValue::String(
+                    translator
+                        .decode(el)
+                        .ok_or(format!("Could not find element {el:?}."))?,
+                ))
             }
+            (
+                AssertReturnValue::Label(l),
+                Unary::Qualifier(Qualifier::Label(q)),
+            ) => Ok(q.get(&l)),
+            (
+                AssertReturnValue::Label(l),
+                Unary::Qualifier(Qualifier::Restricted(q)),
+            ) => Ok(q.get(&l)),
             (AssertReturnValue::String(s), Unary::ToEl) => {
                 Ok(AssertReturnValue::Element(translator.encode(s)))
             }
@@ -733,9 +831,10 @@ impl AssertReturnValue {
             ) => Ok(AssertReturnValue::System(
                 graph.node_weight(node).unwrap().clone(),
             )),
-            (AssertReturnValue::System(sys), Unary::Qualifier(Qualifier::System(q))) => {
-                Ok(q.get(&sys))
-            }
+            (
+                AssertReturnValue::System(sys),
+                Unary::Qualifier(Qualifier::System(q)),
+            ) => Ok(q.get(&sys)),
             (val, u) => Err(format!(
                 "Incompatible unary operation {u:?} on value \
 			     {val:?}."
@@ -758,11 +857,15 @@ impl AssertReturnValue {
                 Set(s1.union(&s2).subtraction(&s1.intersection(&s2)))
             }
             (Binary::Less, Integer(i1), Integer(i2)) => Boolean(i1 < i2),
-            (Binary::Less, Set(s1), Set(s2)) => Boolean(s1.is_subset(&s2) && !s2.is_subset(&s1)),
+            (Binary::Less, Set(s1), Set(s2)) => {
+                Boolean(s1.is_subset(&s2) && !s2.is_subset(&s1))
+            }
             (Binary::LessEq, Integer(i1), Integer(i2)) => Boolean(i1 <= i2),
             (Binary::LessEq, Set(s1), Set(s2)) => Boolean(s1.is_subset(&s2)),
             (Binary::More, Integer(i1), Integer(i2)) => Boolean(i1 > i2),
-            (Binary::More, Set(s1), Set(s2)) => Boolean(s2.is_subset(&s1) && !s1.is_subset(&s2)),
+            (Binary::More, Set(s1), Set(s2)) => {
+                Boolean(s2.is_subset(&s1) && !s1.is_subset(&s2))
+            }
             (Binary::MoreEq, Integer(i1), Integer(i2)) => Boolean(i1 >= i2),
             (Binary::MoreEq, Set(s1), Set(s2)) => Boolean(s1.is_subset(&s2)),
             (Binary::Eq, Integer(i1), Integer(i2)) => Boolean(i1 == i2),
@@ -780,9 +883,13 @@ impl AssertReturnValue {
             (Binary::Plus, Integer(i1), Integer(i2)) => Integer(i1 + i2),
             (Binary::Plus, Set(set1), Set(set2)) => Set(set1.union(&set2)),
             (Binary::Minus, Integer(i1), Integer(i2)) => Integer(i1 - i2),
-            (Binary::Minus, Set(set1), Set(set2)) => Set(set1.subtraction(&set2)),
+            (Binary::Minus, Set(set1), Set(set2)) => {
+                Set(set1.subtraction(&set2))
+            }
             (Binary::Times, Integer(i1), Integer(i2)) => Integer(i1 * i2),
-            (Binary::Times, Set(set1), Set(set2)) => Set(set1.intersection(&set2)),
+            (Binary::Times, Set(set1), Set(set2)) => {
+                Set(set1.intersection(&set2))
+            }
             (Binary::Exponential, Integer(i1), Integer(i2)) => {
                 if i2 < 0 {
                     Integer(0)
@@ -790,8 +897,12 @@ impl AssertReturnValue {
                     Integer(i1.pow(i2 as u32))
                 }
             }
-            (Binary::Quotient, Integer(i1), Integer(i2)) => Integer(i1.div_euclid(i2)),
-            (Binary::Reminder, Integer(i1), Integer(i2)) => Integer(i1.rem_euclid(i2)),
+            (Binary::Quotient, Integer(i1), Integer(i2)) => {
+                Integer(i1.div_euclid(i2))
+            }
+            (Binary::Reminder, Integer(i1), Integer(i2)) => {
+                Integer(i1.rem_euclid(i2))
+            }
             (Binary::Concat, String(s1), String(s2)) => String(s1 + &s2),
             (Binary::SubStr, String(s1), String(s2)) => {
                 let mut len = s1.len() as i64;
@@ -825,7 +936,10 @@ impl AssertReturnValue {
     }
 }
 
-fn typecheck_helper<S, G>(tree: &Tree<S>, c: &mut TypeContext) -> Result<AssertionTypes, String>
+fn typecheck_helper<S, G>(
+    tree: &Tree<S>,
+    c: &mut TypeContext,
+) -> Result<AssertionTypes, String>
 where
     S: SpecialVariables<G>,
 {
@@ -880,7 +994,10 @@ where
     }
 }
 
-pub(super) fn typecheck<S, G>(tree: &Tree<S>, c: &mut TypeContext) -> Result<AssertionTypes, String>
+pub(super) fn typecheck<S, G>(
+    tree: &Tree<S>,
+    c: &mut TypeContext,
+) -> Result<AssertionTypes, String>
 where
     S: SpecialVariables<G>,
 {
@@ -917,7 +1034,10 @@ where
     }
 }
 
-fn typecheck_range<S, G>(range: &Range<S>, c: &mut TypeContext) -> Result<AssertionTypes, String>
+fn typecheck_range<S, G>(
+    range: &Range<S>,
+    c: &mut TypeContext,
+) -> Result<AssertionTypes, String>
 where
     S: SpecialVariables<G>,
 {
@@ -925,7 +1045,9 @@ where
         Range::IterateInRange(exp1, exp2) => {
             let type_exp1 = typecheck_expression(exp1, c)?;
             let type_exp2 = typecheck_expression(exp2, c)?;
-            if let (AssertionTypes::Integer, AssertionTypes::Integer) = (type_exp1, type_exp2) {
+            if let (AssertionTypes::Integer, AssertionTypes::Integer) =
+                (type_exp1, type_exp2)
+            {
                 Ok(AssertionTypes::RangeInteger)
             } else {
                 Err(format!(
@@ -938,7 +1060,9 @@ where
             let type_exp = typecheck_expression(exp, c)?;
             match type_exp {
                 AssertionTypes::Set => Ok(AssertionTypes::RangeSet),
-                AssertionTypes::RangeNeighbours => Ok(AssertionTypes::RangeNeighbours),
+                AssertionTypes::RangeNeighbours => {
+                    Ok(AssertionTypes::RangeNeighbours)
+                }
                 _ => Err(format!(
                     "Expressions in range is not a set or \
 				  neighbours of a node, but is: {type_exp:?}."
@@ -1034,7 +1158,10 @@ where
             let val1 = execute_exp(exp1, c, translator, graph)?;
             let val2 = execute_exp(exp2, c, translator, graph)?;
             match (val1, val2) {
-                (AssertReturnValue::Integer(i1), AssertReturnValue::Integer(i2)) => Ok((i1..i2)
+                (
+                    AssertReturnValue::Integer(i1),
+                    AssertReturnValue::Integer(i2),
+                ) => Ok((i1..i2)
                     .map(AssertReturnValue::Integer)
                     .collect::<Vec<_>>()
                     .into_iter()),

@@ -35,7 +35,9 @@ where
 }
 
 /// Deserializer for file that contains graph and translator.
-pub fn de<R>(reader: R) -> Result<(graph::SystemGraph, Translator), serde_cbor_2::Error>
+pub fn de<R>(
+    reader: R,
+) -> Result<(graph::SystemGraph, Translator), serde_cbor_2::Error>
 where
     R: io::Read,
 {

@@ -5,14 +5,23 @@ use std::fmt::Debug;
 
 use super::element::{IdType, PositiveType};
 use super::environment::{BasicEnvironment, Environment, PositiveEnvironment};
-use super::reaction::{BasicReaction, ExtensionReaction, PositiveReaction, Reaction};
+use super::reaction::{
+    BasicReaction, ExtensionReaction, PositiveReaction, Reaction,
+};
 use super::set::{BasicSet, ExtensionsSet, PositiveSet, Set};
-use super::system::{BasicSystem, ExtensionsSystem, LoopSystem, PositiveSystem, System};
-use super::translator::{Formatter, PRECISION, PrintableWithTranslator, Translator};
+use super::system::{
+    BasicSystem, ExtensionsSystem, LoopSystem, PositiveSystem, System,
+};
+use super::translator::{
+    Formatter, PRECISION, PrintableWithTranslator, Translator,
+};
 
-pub trait BasicFrequency: Debug + Clone + Default + PrintableWithTranslator {
+pub trait BasicFrequency:
+    Debug + Clone + Default + PrintableWithTranslator
+{
     type Set: BasicSet;
-    type Sys: BasicSystem<Set = Self::Set> + LoopSystem<Env = Self::Env, Reaction = Self::R>;
+    type Sys: BasicSystem<Set = Self::Set>
+        + LoopSystem<Env = Self::Env, Reaction = Self::R>;
     type Env: BasicEnvironment<Set = Self::Set, Reaction = Self::R, Id = Self::Id>;
     type R: BasicReaction<Set = Self::Set>;
     type Id;
@@ -47,7 +56,8 @@ pub struct Frequency {
 impl Frequency {
     fn add(&mut self, e: Set, run: usize) {
         for el in e.iter() {
-            let entry = self.frequency_map.entry(*el).or_insert(vec![0; run + 1]);
+            let entry =
+                self.frequency_map.entry(*el).or_insert(vec![0; run + 1]);
             if entry.len() < run + 1 {
                 entry.resize(run + 1, 0);
             }
@@ -70,7 +80,11 @@ impl Frequency {
 }
 
 impl PrintableWithTranslator for Frequency {
-    fn print(&self, f: &mut std::fmt::Formatter, translator: &Translator) -> std::fmt::Result {
+    fn print(
+        &self,
+        f: &mut std::fmt::Formatter,
+        translator: &Translator,
+    ) -> std::fmt::Result {
         use std::cmp::max;
 
         write!(f, "[")?;
@@ -161,8 +175,11 @@ impl BasicFrequency for Frequency {
         let mut available_entities = available_entities.clone();
 
         for q in q.iter().rev().skip(1).rev() {
-            let res =
-                Self::R::lollipops_only_loop_decomposed_q(reaction_rules, q, &available_entities);
+            let res = Self::R::lollipops_only_loop_decomposed_q(
+                reaction_rules,
+                q,
+                &available_entities,
+            );
             available_entities = res.into_iter().next()?;
         }
 
@@ -197,8 +214,11 @@ impl BasicFrequency for Frequency {
 
         for (pos, (q, &w)) in q.iter().zip(weights).enumerate() {
             freq.append_weight(w);
-            let hoop =
-                Self::R::lollipops_only_loop_decomposed_q(reaction_rules, q, &available_entities);
+            let hoop = Self::R::lollipops_only_loop_decomposed_q(
+                reaction_rules,
+                q,
+                &available_entities,
+            );
             hoop.iter().cloned().for_each(|e| freq.add(e, pos));
             available_entities = hoop.into_iter().next()?;
         }
@@ -246,7 +266,11 @@ impl PositiveFrequency {
 }
 
 impl PrintableWithTranslator for PositiveFrequency {
-    fn print(&self, f: &mut std::fmt::Formatter, translator: &Translator) -> std::fmt::Result {
+    fn print(
+        &self,
+        f: &mut std::fmt::Formatter,
+        translator: &Translator,
+    ) -> std::fmt::Result {
         use std::cmp::max;
 
         write!(f, "[")?;
@@ -337,8 +361,11 @@ impl BasicFrequency for PositiveFrequency {
         let mut available_entities = available_entities.clone();
 
         for q in q.iter().rev().skip(1).rev() {
-            let res =
-                Self::R::lollipops_only_loop_decomposed_q(reaction_rules, q, &available_entities);
+            let res = Self::R::lollipops_only_loop_decomposed_q(
+                reaction_rules,
+                q,
+                &available_entities,
+            );
             available_entities = res.into_iter().next()?;
         }
 
@@ -373,8 +400,11 @@ impl BasicFrequency for PositiveFrequency {
 
         for (pos, (q, &w)) in q.iter().zip(weights).enumerate() {
             freq.append_weight(w);
-            let hoop =
-                Self::R::lollipops_only_loop_decomposed_q(reaction_rules, q, &available_entities);
+            let hoop = Self::R::lollipops_only_loop_decomposed_q(
+                reaction_rules,
+                q,
+                &available_entities,
+            );
             hoop.iter().cloned().for_each(|e| freq.add(e, pos));
             available_entities = hoop.into_iter().next()?;
         }

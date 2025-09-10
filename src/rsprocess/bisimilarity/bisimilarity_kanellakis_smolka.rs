@@ -5,7 +5,8 @@
 use std::collections::{BTreeSet, HashMap, HashSet};
 
 use petgraph::visit::{
-    EdgeRef, GraphBase, IntoEdgeReferences, IntoEdges, IntoNodeIdentifiers, IntoNodeReferences,
+    EdgeRef, GraphBase, IntoEdgeReferences, IntoEdges, IntoNodeIdentifiers,
+    IntoNodeReferences,
 };
 
 // -----------------------------------------------------------------------------
@@ -96,7 +97,11 @@ where
     G: IntoEdges,
     G::NodeId: std::cmp::Eq + std::hash::Hash,
 {
-    fn reachable_blocks(&self, label: &G::EdgeWeight, s: &(usize, G::NodeId)) -> Vec<u32>
+    fn reachable_blocks(
+        &self,
+        label: &G::EdgeWeight,
+        s: &(usize, G::NodeId),
+    ) -> Vec<u32>
     where
         G::EdgeWeight: PartialEq,
     {
@@ -162,7 +167,8 @@ where
 {
     let graphs = [graph_a, graph_b];
 
-    let mut partition: GraphPartition<G> = GraphPartition::new(graph_a, graph_b);
+    let mut partition: GraphPartition<G> =
+        GraphPartition::new(graph_a, graph_b);
     for (p, graph) in graphs.iter().enumerate() {
         for node in graph.node_identifiers() {
             partition.add_node_last_partition(node, p);

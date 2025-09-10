@@ -2,6 +2,7 @@
 
 use lalrpop_util::ParseError;
 use petgraph::Graph;
+use std::collections::HashMap;
 use std::env;
 use std::fmt::Display;
 use std::fs;
@@ -103,16 +104,18 @@ pub enum Instruction {
         so: SaveOptions,
     },
     Digraph {
+        group: Option<Box<assert::grouping::Assert>>,
         gso: Vec<GraphSaveOptions>,
     },
     Bisimilarity {
         system_b: String,
-        edge_relabeler: Box<super::assert::types::Assert>,
+        edge_relabeler: Box<assert::relabel::Assert>,
         so: SaveOptions,
     },
 }
 
 /// Describes a system or a graph.
+#[derive(Clone)]
 pub enum System {
     Deserialize { path: String },
     System { sys: system::System },
@@ -120,7 +123,10 @@ pub enum System {
 
 impl System {
     /// Deserialize the graph if applicable.
-    pub fn compute(&self, translator: Translator) -> Result<EvaluatedSystem, String> {
+    pub fn compute(
+        &self,
+        translator: Translator,
+    ) -> Result<EvaluatedSystem, String> {
         match self {
             Self::System { sys } => Ok(EvaluatedSystem::System {
                 sys: sys.to_owned(),
@@ -134,6 +140,7 @@ impl System {
     }
 }
 
+#[derive(Clone)]
 pub enum EvaluatedSystem {
     Graph {
         graph: graph::SystemGraph,
@@ -167,7 +174,11 @@ pub struct Instructions {
 //                            IO Helper Functions
 // -----------------------------------------------------------------------------
 
-fn read_file<T, F>(translator: &mut Translator, path_string: String, parser: F) -> Result<T, String>
+fn read_file<T, F>(
+    translator: &mut Translator,
+    path_string: String,
+    parser: F,
+) -> Result<T, String>
 where
     F: Fn(&mut Translator, String) -> Result<T, String>,
 {
@@ -196,14 +207,17 @@ where
     Ok(result)
 }
 
-fn reformat_error<T, S>(e: ParseError<usize, T, &'static str>, input_str: &str) -> Result<S, String>
+fn reformat_error<T, S>(
+    e: ParseError<usize, T, &'static str>,
+    input_str: &str,
+) -> Result<S, String>
 where
     T: Display,
 {
     match e {
         ParseError::ExtraToken { token: (l, t, r) } => Err(format!(
             "Unexpected token \"{t}\" \
-		 between positions {l} and {r}."
+         between positions {l} and {r}."
         )),
         ParseError::UnrecognizedEof {
             location: _,
@@ -214,30 +228,30 @@ where
         }
         ParseError::UnrecognizedToken {
             token: (l, t, r),
-            expected: _,
+            expected,
         } => {
             use colored::Colorize;
 
             let mut err = format!(
                 "Unrecognized token {}{}{} \
-		 between positions {l} and {r}.",
+                 between positions {l} and {r}.",
                 "\"".red(),
                 t.to_string().red(),
                 "\"".red(),
             );
 
-            // // Temporary debug.
-            // err.push_str("Expected: ");
-            // let mut it = expected.iter().peekable();
-            // while let Some(s) = it.next() {
-            // 	err.push('(');
-            // 	err.push_str(&format!("{}", s.green()));
-            // 	err.push(')');
-            // 	if it.peek().is_some() {
-            // 	    err.push(',');
-            // 	    err.push(' ');
-            // 	}
-            // }
+            // Temporary debug.
+            err.push_str("Expected: ");
+            let mut it = expected.iter().peekable();
+            while let Some(s) = it.next() {
+                err.push('(');
+                err.push_str(&format!("{}", s.green()));
+                err.push(')');
+                if it.peek().is_some() {
+                    err.push(',');
+                    err.push(' ');
+                }
+            }
             let right_new_line = input_str[l..]
                 .find("\n")
                 .map(|pos| pos + l)
@@ -310,7 +324,12 @@ fn save_file(contents: &String, path_string: String) -> Result<(), String> {
 
     let mut f = match fs::File::create(&path) {
         Ok(f) => f,
-        Err(_) => return Err(format!("Error creating file {}.", path.to_str().unwrap())),
+        Err(_) => {
+            return Err(format!(
+                "Error creating file {}.",
+                path.to_str().unwrap()
+            ));
+        }
     };
     match write!(f, "{contents}") {
         Ok(_) => {}
@@ -327,7 +346,9 @@ fn save_file(contents: &String, path_string: String) -> Result<(), String> {
 /// Equivalent main_do(stat) or main_do(stat, MissingE)
 pub fn stats(system: &EvaluatedSystem) -> Result<String, String> {
     match system {
-        EvaluatedSystem::System { sys, translator } => Ok(sys.statistics(translator)),
+        EvaluatedSystem::System { sys, translator } => {
+            Ok(sys.statistics(translator))
+        }
         EvaluatedSystem::Graph { graph, translator } => {
             let Some(sys) = graph.node_weights().next() else {
                 return Err("No node found in graph.".into());
@@ -342,7 +363,9 @@ pub fn stats(system: &EvaluatedSystem) -> Result<String, String> {
 /// Equivalent to main_do(target, E)
 pub fn target(system: &EvaluatedSystem) -> Result<String, String> {
     let (res, translator) = match system {
-        EvaluatedSystem::System { sys, translator } => (sys.target()?, translator),
+        EvaluatedSystem::System { sys, translator } => {
+            (sys.target()?, translator)
+        }
         EvaluatedSystem::Graph { graph, translator } => {
             let Some(sys) = graph.node_weights().next() else {
                 return Err("No node found in graph.".into());
@@ -363,7 +386,9 @@ pub fn target(system: &EvaluatedSystem) -> Result<String, String> {
 /// equivalent to main_do(run,Es)
 pub fn traversed(system: &EvaluatedSystem) -> Result<String, String> {
     let (res, translator) = match system {
-        EvaluatedSystem::System { sys, translator } => (sys.run_separated()?, translator),
+        EvaluatedSystem::System { sys, translator } => {
+            (sys.run_separated()?, translator)
+        }
         EvaluatedSystem::Graph { graph, translator } => {
             let Some(sys) = graph.node_weights().next() else {
                 return Err("No node found in graph.".into());
@@ -376,7 +401,10 @@ pub fn traversed(system: &EvaluatedSystem) -> Result<String, String> {
 
     output.push_str("The trace is composed by the set of entities: ");
     for (e, _c, _t) in res {
-        output.push_str(&format!("{}", translator::Formatter::from(translator, &e)));
+        output.push_str(&format!(
+            "{}",
+            translator::Formatter::from(translator, &e)
+        ));
     }
     Ok(output)
 }
@@ -385,7 +413,10 @@ pub fn traversed(system: &EvaluatedSystem) -> Result<String, String> {
 /// context. IMPORTANT: for loops, we assume Delta defines the process constant
 /// x = Q.x and the context process is x .
 /// equivalent to main_do(loop,Es)
-pub fn hoop(system: &EvaluatedSystem, symbol: String) -> Result<String, String> {
+pub fn hoop(
+    system: &EvaluatedSystem,
+    symbol: String,
+) -> Result<String, String> {
     use system::LoopSystem;
 
     let (res, translator) = match system {
@@ -412,7 +443,10 @@ pub fn hoop(system: &EvaluatedSystem, symbol: String) -> Result<String, String> 
 
     output.push_str("The loop is composed by the sets: ");
     for e in res {
-        output.push_str(&format!("{}", translator::Formatter::from(translator, &e)));
+        output.push_str(&format!(
+            "{}",
+            translator::Formatter::from(translator, &e)
+        ));
     }
 
     Ok(output)
@@ -445,7 +479,10 @@ pub fn freq(system: &EvaluatedSystem) -> Result<String, String> {
 /// Finds the frequency of each entity in the limit loop of a nonterminating
 /// Reaction System whose context has the form Q1 ... Q1.Q2 ... Q2 ... Qn ...
 /// equivalent to main_do(limitfreq, PairList)
-pub fn limit_freq(system: &mut EvaluatedSystem, experiment: String) -> Result<String, String> {
+pub fn limit_freq(
+    system: &mut EvaluatedSystem,
+    experiment: String,
+) -> Result<String, String> {
     use frequency::BasicFrequency;
 
     let (sys, translator): (&system::System, &mut Translator) = match system {
@@ -482,7 +519,10 @@ pub fn limit_freq(system: &mut EvaluatedSystem, experiment: String) -> Result<St
 /// Q1 ... Q1.Q2 ... Q2 ... Qn ... Qn.nil and each Qi is repeated Wi times
 /// read from a corresponding file.
 /// equivalent to main_do(fastfreq, PairList)
-pub fn fast_freq(system: &mut EvaluatedSystem, experiment: String) -> Result<String, String> {
+pub fn fast_freq(
+    system: &mut EvaluatedSystem,
+    experiment: String,
+) -> Result<String, String> {
     use frequency::BasicFrequency;
 
     let (sys, translator): (&system::System, &mut Translator) = match system {
@@ -520,33 +560,91 @@ pub fn fast_freq(system: &mut EvaluatedSystem, experiment: String) -> Result<Str
 pub fn digraph(system: &mut EvaluatedSystem) -> Result<(), String> {
     if let EvaluatedSystem::System { sys, translator } = system {
         *system = EvaluatedSystem::Graph {
-            graph: sys.clone().digraph()?,
+            graph: sys.digraph()?,
             translator: translator.to_owned(),
         };
     }
     Ok(())
 }
 
+pub fn grouping(
+    system: &mut EvaluatedSystem,
+    group: &assert::grouping::Assert,
+) -> Result<(), String> {
+    let mut buckets = HashMap::new();
+    let mut leader: HashMap<petgraph::prelude::NodeIndex, _> = HashMap::new();
+
+    if let EvaluatedSystem::Graph { graph, translator } = system {
+        for node in graph.node_indices() {
+            let val = group.execute(graph, &node, translator)?;
+            buckets.entry(val.clone()).or_insert(vec![]).push(node);
+            let l = buckets.get(&val).unwrap().first().unwrap();
+            leader.insert(node, (*l, val));
+        }
+
+        for node in graph.node_indices().rev() {
+            let (origin, val) = leader.get(&node).unwrap();
+            if *origin == node {
+                continue;
+            }
+            if buckets.get(val).unwrap().len() <= 1 {
+                continue;
+            }
+
+            let mut edges =
+                graph.neighbors_directed(node, petgraph::Outgoing).detach();
+            while let Some(edge) = edges.next_edge(graph) {
+                graph.add_edge(
+                    *origin,
+                    graph.edge_endpoints(edge).unwrap().1,
+                    graph.edge_weight(edge).unwrap().clone(),
+                );
+            }
+            let mut edges =
+                graph.neighbors_directed(node, petgraph::Incoming).detach();
+            while let Some(edge) = edges.next_edge(graph) {
+                graph.add_edge(
+                    graph.edge_endpoints(edge).unwrap().0,
+                    *origin,
+                    graph.edge_weight(edge).unwrap().clone(),
+                );
+            }
+            graph
+                .remove_node(node)
+                .ok_or(format!("Could not remove node {node:?}"))?;
+        }
+
+        Ok(())
+    } else {
+        Err("Grouping can be done only on graphs.".into())
+    }
+}
+
 /// Computes bisimularity of two provided systems
 pub fn bisimilar(
     system_a: &mut EvaluatedSystem,
-    edge_relabeler: &super::assert::types::Assert,
+    edge_relabeler: &assert::relabel::Assert,
     system_b: String,
 ) -> Result<String, String> {
-    use super::assert::types::AssertReturnValue;
+    use assert::relabel::AssertReturnValue;
 
     let system_b = read_file(
         system_a.get_translator(),
         system_b.to_string(),
         parser_instructions,
     )?;
-    let mut system_b = match system_b.system.compute(system_a.get_translator().clone())? {
-        EvaluatedSystem::System { sys, translator } => EvaluatedSystem::System { sys, translator },
+    let mut system_b = match system_b
+        .system
+        .compute(system_a.get_translator().clone())?
+    {
+        EvaluatedSystem::System { sys, translator } => {
+            EvaluatedSystem::System { sys, translator }
+        }
         EvaluatedSystem::Graph { graph, translator } => {
             if translator != *system_a.get_translator() {
                 return Err("Bisimilarity not implemented for systems with \
-				different encodings. Serialize the systems \
-				with the same translator."
+                different encodings. Serialize the systems \
+                with the same translator."
                     .into());
             }
             EvaluatedSystem::Graph { graph, translator }
@@ -574,9 +672,9 @@ pub fn bisimilar(
                 b.map_edges(edge_relabeler, translator_b)?;
             Ok(format!(
                 "{}",
-                // super::bisimilarity::bisimilarity_kanellakis_smolka::bisimilarity(&&a, &&b)
-                // super::bisimilarity::bisimilarity_paige_tarjan::bisimilarity_ignore_labels(&&a, &&b)
-                super::bisimilarity::bisimilarity_paige_tarkan::bisimilarity(&&a, &&b)
+                // bisimilarity::bisimilarity_kanellakis_smolka::bisimilarity(&&a, &&b)
+                // bisimilarity::bisimilarity_paige_tarjan::bisimilarity_ignore_labels(&&a, &&b)
+                bisimilarity::bisimilarity_paige_tarkan::bisimilarity(&&a, &&b)
             ))
         }
         _ => {
@@ -611,12 +709,16 @@ pub fn dot(
 
             let graph = Rc::new(graph.to_owned());
 
-            let node_formatter =
-                node_color.generate(Rc::clone(&graph), translator.encode_not_mut("*"));
+            let node_formatter = node_color
+                .generate(Rc::clone(&graph), translator.encode_not_mut("*"));
             let edge_formatter = edge_color.generate(Rc::clone(&graph));
 
-            let dot =
-                dot::Dot::with_attr_getters(&modified_graph, &[], &edge_formatter, &node_formatter);
+            let dot = dot::Dot::with_attr_getters(
+                &modified_graph,
+                &[],
+                &edge_formatter,
+                &node_formatter,
+            );
 
             Ok(format!("{dot}"))
         }
@@ -670,7 +772,12 @@ pub fn serialize(system: &EvaluatedSystem, path: String) -> Result<(), String> {
 
             let f = match fs::File::create(&path) {
                 Ok(f) => f,
-                Err(_) => return Err(format!("Error creating file {}.", path.to_str().unwrap())),
+                Err(_) => {
+                    return Err(format!(
+                        "Error creating file {}.",
+                        path.to_str().unwrap()
+                    ));
+                }
             };
 
             match serialize::ser(f, graph, translator) {
@@ -684,7 +791,9 @@ pub fn serialize(system: &EvaluatedSystem, path: String) -> Result<(), String> {
 /// Reads the specified serialized system from a file.
 /// N.B. graph size in memory might be much larger after serialization and
 /// deserialization
-pub fn deserialize(input_path: String) -> Result<(graph::SystemGraph, Translator), String> {
+pub fn deserialize(
+    input_path: String,
+) -> Result<(graph::SystemGraph, Translator), String> {
     // relative path
     let mut path = match env::current_dir() {
         Ok(p) => p,
@@ -695,7 +804,12 @@ pub fn deserialize(input_path: String) -> Result<(graph::SystemGraph, Translator
 
     let f = match fs::File::open(&path) {
         Ok(f) => f,
-        Err(_) => return Err(format!("Error opening file {}.", path.to_str().unwrap())),
+        Err(_) => {
+            return Err(format!(
+                "Error opening file {}.",
+                path.to_str().unwrap()
+            ));
+        }
     };
 
     match serialize::de(f) {
@@ -723,7 +837,10 @@ macro_rules! save_options {
     };
 }
 
-fn execute(instruction: Instruction, system: &mut EvaluatedSystem) -> Result<(), String> {
+fn execute(
+    instruction: Instruction,
+    system: &mut EvaluatedSystem,
+) -> Result<(), String> {
     match instruction {
         Instruction::Stats { so } => {
             save_options!(stats(system)?, so);
@@ -746,9 +863,14 @@ fn execute(instruction: Instruction, system: &mut EvaluatedSystem) -> Result<(),
         Instruction::FastFrequency { experiment, so } => {
             save_options!(fast_freq(system, experiment)?, so);
         }
-        Instruction::Digraph { gso } => {
+        Instruction::Digraph { group, gso } => {
+            let mut graph = system.clone();
+            digraph(&mut graph)?;
+            if let Some(group) = group {
+                group.typecheck()?;
+                grouping(&mut graph, &group)?;
+            }
             for save in gso {
-                digraph(system)?;
                 match save {
                     GraphSaveOptions::Dot {
                         node_display: nd,
@@ -757,17 +879,17 @@ fn execute(instruction: Instruction, system: &mut EvaluatedSystem) -> Result<(),
                         edge_color: ec,
                         so,
                     } => {
-                        save_options!(dot(system, nd, ed, nc, ec)?, so);
+                        save_options!(dot(&graph, nd, ed, nc, ec)?, so);
                     }
                     GraphSaveOptions::GraphML {
                         node_display: nd,
                         edge_display: ed,
                         so,
                     } => {
-                        save_options!(graphml(system, nd, ed)?, so);
+                        save_options!(graphml(&graph, nd, ed)?, so);
                     }
                     GraphSaveOptions::Serialize { path } => {
-                        serialize(system, path)?;
+                        serialize(&graph, path)?;
                     }
                 }
             }

@@ -106,17 +106,23 @@ where
 {
     fn map_edges(
         &self,
-        edge_map: &super::assert::types::Assert,
+        edge_map: &super::assert::relabel::Assert,
         translator: &mut super::translator::Translator,
-    ) -> Result<Graph<System, super::assert::types::AssertReturnValue, Ty, Ix>, String>;
+    ) -> Result<
+        Graph<System, super::assert::relabel::AssertReturnValue, Ty, Ix>,
+        String,
+    >;
 }
 
 impl<'a> MapEdges<'a, System, Label, Directed, u32> for SystemGraph {
     fn map_edges(
         &self,
-        edge_map: &super::assert::types::Assert,
+        edge_map: &super::assert::relabel::Assert,
         translator: &mut super::translator::Translator,
-    ) -> Result<Graph<System, super::assert::types::AssertReturnValue, Directed, u32>, String> {
+    ) -> Result<
+        Graph<System, super::assert::relabel::AssertReturnValue, Directed, u32>,
+        String,
+    > {
         use petgraph::graph::EdgeIndex;
 
         let mut g = Graph::with_capacity(self.node_count(), self.edge_count());
@@ -126,12 +132,12 @@ impl<'a> MapEdges<'a, System, Label, Directed, u32> for SystemGraph {
         let edges = edges
             .iter()
             .enumerate()
-            .map(
-                |(i, edge)| match edge_map.execute(self, &EdgeIndex::new(i), translator) {
+            .map(|(i, edge)| {
+                match edge_map.execute(self, &EdgeIndex::new(i), translator) {
                     Err(e) => Err(e),
                     Ok(val) => Ok((edge.source(), edge.target(), val)),
-                },
-            )
+                }
+            })
             .collect::<Result<Vec<_>, _>>()?;
         nodes.iter().for_each(|node| {
             g.add_node(node.weight.clone());
@@ -164,7 +170,8 @@ pub struct NodeDisplay {
     pub base: Vec<NodeDisplayBase>,
 }
 
-type GraphMapNodesFnTy<'a> = dyn Fn(petgraph::prelude::NodeIndex, &'a System) -> String + 'a;
+type GraphMapNodesFnTy<'a> =
+    dyn Fn(petgraph::prelude::NodeIndex, &'a System) -> String + 'a;
 
 fn match_node_display<'a>(
     base: &NodeDisplayBase,
@@ -179,12 +186,17 @@ fn match_node_display<'a>(
         Hide => format_hide(translator),
         Entities => format_entities(translator),
         MaskEntities { mask } => format_mask_entities(translator, mask.clone()),
-        ExcludeEntities { mask } => format_exclude_entities(translator, mask.clone()),
-        Context => format_context(translator),
-        UncommonEntities => format_exclude_entities(translator, (*common_entities).clone()),
-        MaskUncommonEntities { mask } => {
-            format_exclude_entities(translator, mask.intersection(&common_entities))
+        ExcludeEntities { mask } => {
+            format_exclude_entities(translator, mask.clone())
         }
+        Context => format_context(translator),
+        UncommonEntities => {
+            format_exclude_entities(translator, (*common_entities).clone())
+        }
+        MaskUncommonEntities { mask } => format_exclude_entities(
+            translator,
+            mask.intersection(&common_entities),
+        ),
     }
 }
 
@@ -213,7 +225,11 @@ impl NodeDisplay {
         Box::new(move |i, n| {
             let mut accumulator = String::new();
             for b in &self.base {
-                let f = match_node_display(b, Rc::clone(&common_entities), Rc::clone(&translator));
+                let f = match_node_display(
+                    b,
+                    Rc::clone(&common_entities),
+                    Rc::clone(&translator),
+                );
 
                 accumulator.push_str(&(f)(i, n));
             }
@@ -264,7 +280,8 @@ pub struct EdgeDisplay {
     pub base: Vec<EdgeDisplayBase>,
 }
 
-type GraphMapEdgesFnTy<'a> = dyn Fn(petgraph::prelude::EdgeIndex, &'a Label) -> String + 'a;
+type GraphMapEdgesFnTy<'a> =
+    dyn Fn(petgraph::prelude::EdgeIndex, &'a Label) -> String + 'a;
 
 #[derive(Default, Clone)]
 struct CommonEntities {
@@ -293,7 +310,11 @@ fn match_edge_display<'a>(
             filter_common,
         } => {
             if *filter_common {
-                format_products(translator, mask.clone(), Some(common.common_products))
+                format_products(
+                    translator,
+                    mask.clone(),
+                    Some(common.common_products),
+                )
             } else {
                 format_products(translator, mask.clone(), None)
             }
@@ -303,7 +324,11 @@ fn match_edge_display<'a>(
             filter_common,
         } => {
             if *filter_common {
-                format_entities(translator, mask.clone(), Some(common.common_entities))
+                format_entities(
+                    translator,
+                    mask.clone(),
+                    Some(common.common_entities),
+                )
             } else {
                 format_entities(translator, mask.clone(), None)
             }
@@ -313,7 +338,11 @@ fn match_edge_display<'a>(
             filter_common,
         } => {
             if *filter_common {
-                format_context(translator, mask.clone(), Some(common.common_context))
+                format_context(
+                    translator,
+                    mask.clone(),
+                    Some(common.common_context),
+                )
             } else {
                 format_context(translator, mask.clone(), None)
             }
@@ -323,7 +352,11 @@ fn match_edge_display<'a>(
             filter_common,
         } => {
             if *filter_common {
-                format_union(translator, mask.clone(), Some(common.common_union))
+                format_union(
+                    translator,
+                    mask.clone(),
+                    Some(common.common_union),
+                )
             } else {
                 format_union(translator, mask.clone(), None)
             }
@@ -333,7 +366,11 @@ fn match_edge_display<'a>(
             filter_common,
         } => {
             if *filter_common {
-                format_difference(translator, mask.clone(), Some(common.common_difference))
+                format_difference(
+                    translator,
+                    mask.clone(),
+                    Some(common.common_difference),
+                )
             } else {
                 format_difference(translator, mask.clone(), None)
             }
@@ -357,7 +394,11 @@ fn match_edge_display<'a>(
             filter_common,
         } => {
             if *filter_common {
-                format_entities_added(translator, mask.clone(), Some(common.common_entities_added))
+                format_entities_added(
+                    translator,
+                    mask.clone(),
+                    Some(common.common_entities_added),
+                )
             } else {
                 format_entities_added(translator, mask.clone(), None)
             }
@@ -461,10 +502,12 @@ impl EdgeDisplay {
                 tmp.common_difference = common_label_difference(current_graph);
             }
             if self.common_entities_deleted() {
-                tmp.common_entities_deleted = common_label_entities_deleted(current_graph);
+                tmp.common_entities_deleted =
+                    common_label_entities_deleted(current_graph);
             }
             if self.common_entities_added() {
-                tmp.common_entities_added = common_label_entities_added(current_graph);
+                tmp.common_entities_added =
+                    common_label_entities_added(current_graph);
             }
             tmp
         };
@@ -472,7 +515,11 @@ impl EdgeDisplay {
         Box::new(move |i, n| {
             let mut accumulator = String::new();
             for b in &self.base {
-                let f = match_edge_display(b, Rc::clone(&translator), common.clone());
+                let f = match_edge_display(
+                    b,
+                    Rc::clone(&translator),
+                    common.clone(),
+                );
                 accumulator.push_str(&(f)(i, n));
             }
             accumulator
@@ -486,10 +533,16 @@ impl EdgeDisplay {
 
 // Node ------------------------------------------------------------------------
 type RSdotGraph = Graph<String, String, Directed, u32>;
-type RSformatNodeTy<'a> =
-    dyn Fn(&'a RSdotGraph, <&'a RSdotGraph as IntoNodeReferences>::NodeRef) -> String + 'a;
-type RSformatNodeTyOpt<'a> =
-    dyn Fn(&'a RSdotGraph, <&'a RSdotGraph as IntoNodeReferences>::NodeRef) -> Option<String> + 'a;
+type RSformatNodeTy<'a> = dyn Fn(
+        &'a RSdotGraph,
+        <&'a RSdotGraph as IntoNodeReferences>::NodeRef,
+    ) -> String
+    + 'a;
+type RSformatNodeTyOpt<'a> = dyn Fn(
+        &'a RSdotGraph,
+        <&'a RSdotGraph as IntoNodeReferences>::NodeRef,
+    ) -> Option<String>
+    + 'a;
 
 #[derive(Clone, Copy)]
 pub enum OperationType {
@@ -553,7 +606,12 @@ fn match_node_color_conditional<'a>(
                 format_nill(Rc::clone(&original_graph), color.to_string(), star)
             }
             ContextColorConditional::RecursiveIdentifier(s) => {
-                format_recursive_identifier(Rc::clone(&original_graph), color.to_string(), star, *s)
+                format_recursive_identifier(
+                    Rc::clone(&original_graph),
+                    color.to_string(),
+                    star,
+                    *s,
+                )
             }
             ContextColorConditional::EntitySet(ot, set) => format_entity_set(
                 Rc::clone(&original_graph),
@@ -563,22 +621,32 @@ fn match_node_color_conditional<'a>(
                 set.clone(),
             ),
             ContextColorConditional::NonDeterministicChoice => {
-                format_non_deterministic_choice(Rc::clone(&original_graph), color.to_string(), star)
+                format_non_deterministic_choice(
+                    Rc::clone(&original_graph),
+                    color.to_string(),
+                    star,
+                )
             }
-            ContextColorConditional::Summation => {
-                format_summation(Rc::clone(&original_graph), color.to_string(), star)
-            }
-            ContextColorConditional::WaitEntity => {
-                format_wait_entity(Rc::clone(&original_graph), color.to_string(), star)
-            }
+            ContextColorConditional::Summation => format_summation(
+                Rc::clone(&original_graph),
+                color.to_string(),
+                star,
+            ),
+            ContextColorConditional::WaitEntity => format_wait_entity(
+                Rc::clone(&original_graph),
+                color.to_string(),
+                star,
+            ),
         },
-        NodeColorConditional::EntitiesConditional(ot, set) => format_entities_conditional(
-            Rc::clone(&original_graph),
-            color.to_string(),
-            star,
-            *ot,
-            set.clone(),
-        ),
+        NodeColorConditional::EntitiesConditional(ot, set) => {
+            format_entities_conditional(
+                Rc::clone(&original_graph),
+                color.to_string(),
+                star,
+                *ot,
+                set.clone(),
+            )
+        }
     }
 }
 
@@ -590,7 +658,12 @@ impl NodeColor {
     ) -> Box<RSformatNodeTy<'a>> {
         Box::new(move |i, n| {
             for (rule, color) in &self.conditionals {
-                let f = match_node_color_conditional(rule, color, Rc::clone(&original_graph), star);
+                let f = match_node_color_conditional(
+                    rule,
+                    color,
+                    Rc::clone(&original_graph),
+                    star,
+                );
 
                 if let Some(s) = (f)(i, n) {
                     return s;
@@ -603,10 +676,16 @@ impl NodeColor {
 
 // Edge ------------------------------------------------------------------------
 
-type RSformatEdgeTy<'a> =
-    dyn Fn(&'a RSdotGraph, <&'a RSdotGraph as IntoEdgeReferences>::EdgeRef) -> String + 'a;
-type RSformatEdgeTyOpt<'a> =
-    dyn Fn(&'a RSdotGraph, <&'a RSdotGraph as IntoEdgeReferences>::EdgeRef) -> Option<String> + 'a;
+type RSformatEdgeTy<'a> = dyn Fn(
+        &'a RSdotGraph,
+        <&'a RSdotGraph as IntoEdgeReferences>::EdgeRef,
+    ) -> String
+    + 'a;
+type RSformatEdgeTyOpt<'a> = dyn Fn(
+        &'a RSdotGraph,
+        <&'a RSdotGraph as IntoEdgeReferences>::EdgeRef,
+    ) -> Option<String>
+    + 'a;
 
 #[derive(Clone)]
 pub enum EdgeColorConditional {
@@ -661,24 +740,28 @@ fn match_edge_color_conditional<'a>(
             *ot,
             set.clone(),
         ),
-        EdgeColorConditional::ReactantsAbsent(ot, set) => format_reactants_absent(
-            Rc::clone(&original_graph),
-            color.to_string(),
-            *ot,
-            set.clone(),
-        ),
+        EdgeColorConditional::ReactantsAbsent(ot, set) => {
+            format_reactants_absent(
+                Rc::clone(&original_graph),
+                color.to_string(),
+                *ot,
+                set.clone(),
+            )
+        }
         EdgeColorConditional::Inhibitors(ot, set) => format_inhibitors(
             Rc::clone(&original_graph),
             color.to_string(),
             *ot,
             set.clone(),
         ),
-        EdgeColorConditional::InhibitorsPresent(ot, set) => format_inhibitors_present(
-            Rc::clone(&original_graph),
-            color.to_string(),
-            *ot,
-            set.clone(),
-        ),
+        EdgeColorConditional::InhibitorsPresent(ot, set) => {
+            format_inhibitors_present(
+                Rc::clone(&original_graph),
+                color.to_string(),
+                *ot,
+                set.clone(),
+            )
+        }
         EdgeColorConditional::Products(ot, set) => format_products(
             Rc::clone(&original_graph),
             color.to_string(),
@@ -689,10 +772,17 @@ fn match_edge_color_conditional<'a>(
 }
 
 impl EdgeColor {
-    pub fn generate<'a>(self, original_graph: Rc<SystemGraph>) -> Box<RSformatEdgeTy<'a>> {
+    pub fn generate<'a>(
+        self,
+        original_graph: Rc<SystemGraph>,
+    ) -> Box<RSformatEdgeTy<'a>> {
         Box::new(move |i, n| {
             for (rule, color) in &self.conditionals {
-                let f = match_edge_color_conditional(rule, color, Rc::clone(&original_graph));
+                let f = match_edge_color_conditional(
+                    rule,
+                    color,
+                    Rc::clone(&original_graph),
+                );
 
                 if let Some(s) = (f)(i, n) {
                     return s;

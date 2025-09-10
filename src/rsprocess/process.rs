@@ -11,7 +11,14 @@ use super::translator::{Formatter, PrintableWithTranslator, Translator};
 
 pub trait BasicProcess
 where
-    Self: Clone + Debug + Default + PartialEq + Eq + Hash + Serialize + PrintableWithTranslator,
+    Self: Clone
+        + Debug
+        + Default
+        + PartialEq
+        + Eq
+        + Hash
+        + Serialize
+        + PrintableWithTranslator,
     for<'a> Self: Deserialize<'a>,
 {
     type Id;
@@ -149,7 +156,11 @@ impl Default for Process {
 }
 
 impl PrintableWithTranslator for Process {
-    fn print(&self, f: &mut std::fmt::Formatter, translator: &Translator) -> std::fmt::Result {
+    fn print(
+        &self,
+        f: &mut std::fmt::Formatter,
+        translator: &Translator,
+    ) -> std::fmt::Result {
         match self {
             Self::Nill => {
                 write!(f, "Nill")
@@ -202,7 +213,11 @@ impl PrintableWithTranslator for Process {
                     if it.peek().is_none() {
                         write!(f, "{}", Formatter::from(translator, &**child))?;
                     } else {
-                        write!(f, "{} + ", Formatter::from(translator, &**child))?;
+                        write!(
+                            f,
+                            "{} + ",
+                            Formatter::from(translator, &**child)
+                        )?;
                     }
                 }
                 write!(f, "]")
@@ -214,7 +229,11 @@ impl PrintableWithTranslator for Process {
                     if it.peek().is_none() {
                         write!(f, "{}", Formatter::from(translator, &**child))?;
                     } else {
-                        write!(f, "{}, ", Formatter::from(translator, &**child))?;
+                        write!(
+                            f,
+                            "{}, ",
+                            Formatter::from(translator, &**child)
+                        )?;
                     }
                 }
                 write!(f, "]")
@@ -349,7 +368,11 @@ impl Default for PositiveProcess {
 }
 
 impl PrintableWithTranslator for PositiveProcess {
-    fn print(&self, f: &mut std::fmt::Formatter, translator: &Translator) -> std::fmt::Result {
+    fn print(
+        &self,
+        f: &mut std::fmt::Formatter,
+        translator: &Translator,
+    ) -> std::fmt::Result {
         match self {
             Self::Nill => {
                 write!(f, "Nill")
@@ -402,7 +425,11 @@ impl PrintableWithTranslator for PositiveProcess {
                     if it.peek().is_none() {
                         write!(f, "{}", Formatter::from(translator, &**child))?;
                     } else {
-                        write!(f, "{} + ", Formatter::from(translator, &**child))?;
+                        write!(
+                            f,
+                            "{} + ",
+                            Formatter::from(translator, &**child)
+                        )?;
                     }
                 }
                 write!(f, "]")
@@ -414,7 +441,11 @@ impl PrintableWithTranslator for PositiveProcess {
                     if it.peek().is_none() {
                         write!(f, "{}", Formatter::from(translator, &**child))?;
                     } else {
-                        write!(f, "{}, ", Formatter::from(translator, &**child))?;
+                        write!(
+                            f,
+                            "{}, ",
+                            Formatter::from(translator, &**child)
+                        )?;
                     }
                 }
                 write!(f, "]")
@@ -434,9 +465,11 @@ impl From<&Process> for PositiveProcess {
                 entities: entities.to_positive_set(IdState::Positive),
                 next_process: Rc::new((&**next_process).into()),
             },
-            Process::RecursiveIdentifier { identifier } => Self::RecursiveIdentifier {
-                identifier: *identifier,
-            },
+            Process::RecursiveIdentifier { identifier } => {
+                Self::RecursiveIdentifier {
+                    identifier: *identifier,
+                }
+            }
             Process::Guarded {
                 reaction,
                 next_process,
@@ -448,8 +481,14 @@ impl From<&Process> for PositiveProcess {
                         reactants: reaction
                             .reactants
                             .to_positive_set(IdState::Positive)
-                            .union(&reaction.inhibitors.to_positive_set(IdState::Negative)),
-                        products: reaction.products.to_positive_set(IdState::Positive),
+                            .union(
+                                &reaction
+                                    .inhibitors
+                                    .to_positive_set(IdState::Negative),
+                            ),
+                        products: reaction
+                            .products
+                            .to_positive_set(IdState::Positive),
                     },
                     next_process: Rc::new((&**next_process).into()),
                 }
@@ -464,11 +503,19 @@ impl From<&Process> for PositiveProcess {
                 next_process: Rc::new((&**next_process).into()),
             },
             Process::Summation { children } => Self::Summation {
-                children: children.iter().map(|c| Rc::new((&**c).into())).collect(),
+                children: children
+                    .iter()
+                    .map(|c| Rc::new((&**c).into()))
+                    .collect(),
             },
-            Process::NondeterministicChoice { children } => Self::NondeterministicChoice {
-                children: children.iter().map(|c| Rc::new((&**c).into())).collect(),
-            },
+            Process::NondeterministicChoice { children } => {
+                Self::NondeterministicChoice {
+                    children: children
+                        .iter()
+                        .map(|c| Rc::new((&**c).into()))
+                        .collect(),
+                }
+            }
         }
     }
 }

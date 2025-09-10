@@ -6,7 +6,7 @@ use super::label::{Label, PositiveLabel};
 use super::process::{BasicProcess, PositiveProcess, Process};
 use super::reaction::BasicReaction;
 use super::set::{BasicSet, PositiveSet, Set};
-use super::system::{BasicSystem, PositiveSystem, System, ExtensionsSystem};
+use super::system::{BasicSystem, ExtensionsSystem, PositiveSystem, System};
 
 #[derive(Clone, Debug)]
 pub struct TransitionsIterator<
@@ -38,35 +38,40 @@ impl<'a> Iterator for TransitionsIterator<'a, Set, System, Process> {
     fn next(&mut self) -> Option<(Label, System)> {
         let (c, k) = self.choices_iterator.next()?;
         let t = self.system.available_entities.union(c.as_ref());
-        let (reactants, reactants_absent, inhibitors, inhibitors_present, products) =
-            self.system.reaction_rules.iter().fold(
-                (
-                    Set::default(), // reactants
-                    Set::default(), // reactants_absent
-                    Set::default(), // inhibitors
-                    Set::default(), // inhibitors_present
-                    Set::default(), // products
-                ),
-                |acc, reaction| {
-                    if reaction.enabled(&t) {
-                        (
-                            acc.0.union(&reaction.reactants),
-                            acc.1,
-                            acc.2.union(&reaction.inhibitors),
-                            acc.3,
-                            acc.4.union(&reaction.products),
-                        )
-                    } else {
-                        (
-                            acc.0,
-                            acc.1.union(&reaction.inhibitors.intersection(&t)),
-                            acc.2,
-                            acc.3.union(&reaction.reactants.subtraction(&t)),
-                            acc.4,
-                        )
-                    }
-                },
-            );
+        let (
+            reactants,
+            reactants_absent,
+            inhibitors,
+            inhibitors_present,
+            products,
+        ) = self.system.reaction_rules.iter().fold(
+            (
+                Set::default(), // reactants
+                Set::default(), // reactants_absent
+                Set::default(), // inhibitors
+                Set::default(), // inhibitors_present
+                Set::default(), // products
+            ),
+            |acc, reaction| {
+                if reaction.enabled(&t) {
+                    (
+                        acc.0.union(&reaction.reactants),
+                        acc.1,
+                        acc.2.union(&reaction.inhibitors),
+                        acc.3,
+                        acc.4.union(&reaction.products),
+                    )
+                } else {
+                    (
+                        acc.0,
+                        acc.1.union(&reaction.inhibitors.intersection(&t)),
+                        acc.2,
+                        acc.3.union(&reaction.reactants.subtraction(&t)),
+                        acc.4,
+                    )
+                }
+            },
+        );
 
         let label = Label::from(
             self.system.available_entities.clone(),
@@ -102,43 +107,53 @@ impl<'a> TransitionsIterator<'a, PositiveSet, PositiveSystem, PositiveProcess> {
     }
 }
 
-impl<'a> Iterator for TransitionsIterator<'a, PositiveSet, PositiveSystem, PositiveProcess> {
+impl<'a> Iterator
+    for TransitionsIterator<'a, PositiveSet, PositiveSystem, PositiveProcess>
+{
     type Item = (PositiveLabel, PositiveSystem);
 
     /// Creates the next arc from the current system.
     fn next(&mut self) -> Option<Self::Item> {
         let (c, k) = self.choices_iterator.next()?;
         let t = self.system.available_entities.union(c.as_ref());
-        let (reactants, reactants_absent, inhibitors, inhibitors_present, products)
-            = self.system.reaction_rules.iter()
-            .fold(
-                (
-                    PositiveSet::default(), // reactants
-                    PositiveSet::default(), // reactants_absent
-                    PositiveSet::default(), // inhibitors
-                    PositiveSet::default(), // inhibitors_present
-                    PositiveSet::default(), // products
-                ),
-                |acc, reaction| {
-                    if reaction.enabled(&t) {
-                        (
-                            acc.0.union(&reaction.reactants.positives()),
-                            acc.1,
-                            acc.2.union(&reaction.reactants.negatives()),
-                            acc.3,
-                            acc.4.union(&reaction.products),
-                        )
-                    } else {
-                        (
-                            acc.0,
-                            acc.1.union(&reaction.reactants.negatives().intersection(&t)),
-                            acc.2,
-                            acc.3.union(&reaction.reactants.positives().subtraction(&t)),
-                            acc.4,
-                        )
-                    }
-                },
-            );
+        let (
+            reactants,
+            reactants_absent,
+            inhibitors,
+            inhibitors_present,
+            products,
+        ) = self.system.reaction_rules.iter().fold(
+            (
+                PositiveSet::default(), // reactants
+                PositiveSet::default(), // reactants_absent
+                PositiveSet::default(), // inhibitors
+                PositiveSet::default(), // inhibitors_present
+                PositiveSet::default(), // products
+            ),
+            |acc, reaction| {
+                if reaction.enabled(&t) {
+                    (
+                        acc.0.union(&reaction.reactants.positives()),
+                        acc.1,
+                        acc.2.union(&reaction.reactants.negatives()),
+                        acc.3,
+                        acc.4.union(&reaction.products),
+                    )
+                } else {
+                    (
+                        acc.0,
+                        acc.1.union(
+                            &reaction.reactants.negatives().intersection(&t),
+                        ),
+                        acc.2,
+                        acc.3.union(
+                            &reaction.reactants.positives().subtraction(&t),
+                        ),
+                        acc.4,
+                    )
+                }
+            },
+        );
 
         let label = PositiveLabel::from(
             self.system.available_entities.clone(),

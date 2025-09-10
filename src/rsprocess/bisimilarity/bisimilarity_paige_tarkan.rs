@@ -9,8 +9,8 @@ use std::rc::Rc;
 
 use petgraph::Direction::{Incoming, Outgoing};
 use petgraph::visit::{
-    EdgeCount, EdgeRef, GraphBase, IntoEdgeReferences, IntoNeighborsDirected, IntoNodeIdentifiers,
-    IntoNodeReferences, NodeCount,
+    EdgeCount, EdgeRef, GraphBase, IntoEdgeReferences, IntoNeighborsDirected,
+    IntoNodeIdentifiers, IntoNodeReferences, NodeCount,
 };
 
 type NodeIdType = u32;
@@ -234,12 +234,16 @@ where
         let leaf_node_block = SimpleBlock {
             block: leaf_node_indices,
 
-            coarse_block_that_supersets_self: Rc::clone(&compound_initial_block_pointer),
+            coarse_block_that_supersets_self: Rc::clone(
+                &compound_initial_block_pointer,
+            ),
         };
         let non_leaf_node_block = SimpleBlock {
             block: non_leaf_node_indices,
 
-            coarse_block_that_supersets_self: Rc::clone(&compound_initial_block_pointer),
+            coarse_block_that_supersets_self: Rc::clone(
+                &compound_initial_block_pointer,
+            ),
         };
 
         (
@@ -265,7 +269,8 @@ where
             .iter()
             .copied()
             .for_each(|value| {
-                node_to_block.insert(value, Rc::clone(&non_leaf_node_block_pointer));
+                node_to_block
+                    .insert(value, Rc::clone(&non_leaf_node_block_pointer));
             });
 
         (*leaf_node_block_pointer)
@@ -274,7 +279,8 @@ where
             .iter()
             .copied()
             .for_each(|value| {
-                node_to_block.insert(value, Rc::clone(&leaf_node_block_pointer));
+                node_to_block
+                    .insert(value, Rc::clone(&leaf_node_block_pointer));
             });
         node_to_block
     };
@@ -300,7 +306,8 @@ where
 
     block.block().iter().for_each(|node_index_pointer| {
         backedges.insert(*node_index_pointer, {
-            let (node_id, graph_id) = convert_nodes.decode(node_index_pointer).unwrap();
+            let (node_id, graph_id) =
+                convert_nodes.decode(node_index_pointer).unwrap();
             graphs[*graph_id as usize]
                 .neighbors_directed(*node_id, Incoming)
                 .collect::<HashSet<_>>()
@@ -315,7 +322,10 @@ where
     backedges
 }
 
-fn group_by_backedges(backedges: BackEdges, node_to_block: &NodeToBlock) -> BackEdgesGrouped {
+fn group_by_backedges(
+    backedges: BackEdges,
+    node_to_block: &NodeToBlock,
+) -> BackEdgesGrouped {
     let mut backedges_grouped: BackEdgesGrouped = HashMap::new();
 
     for incoming_neighbor_group in backedges.values() {
@@ -324,7 +334,9 @@ fn group_by_backedges(backedges: BackEdges, node_to_block: &NodeToBlock) -> Back
             let key = (*block).borrow().block.clone();
 
             match backedges_grouped.entry(key) {
-                Entry::Occupied(mut entry) => entry.get_mut().subblock.push(*node),
+                Entry::Occupied(mut entry) => {
+                    entry.get_mut().subblock.push(*node)
+                }
                 Entry::Vacant(entry) => {
                     entry.insert(BackEdgesGroup {
                         block: Rc::clone(&block),
@@ -360,7 +372,9 @@ fn split_blocks_with_grouped_backedges(
             let simple_block = SimpleBlock {
                 block: back_edges_group.subblock.clone(),
 
-                coarse_block_that_supersets_self: Rc::clone(&borrowed_compound_block),
+                coarse_block_that_supersets_self: Rc::clone(
+                    &borrowed_compound_block,
+                ),
             };
 
             Rc::new(RefCell::new(simple_block))
@@ -384,7 +398,8 @@ fn split_blocks_with_grouped_backedges(
             .collect();
 
         if (*back_edges_group.block).borrow().block.is_empty() {
-            borrowed_compound_block.remove_simple_block(&back_edges_group.block);
+            borrowed_compound_block
+                .remove_simple_block(&back_edges_group.block);
             all_removed_simple_blocks.push(Rc::clone(&back_edges_group.block));
         }
         all_new_simple_blocks.push(Rc::clone(&proper_subblock));
@@ -441,7 +456,8 @@ where
                 }
             };
 
-            let smaller_component = simple_blocks_in_splitter_block.remove(smaller_component_index);
+            let smaller_component =
+                simple_blocks_in_splitter_block.remove(smaller_component_index);
 
             let simple_splitter_block_values: Block = splitter_block
                 .block
@@ -454,7 +470,9 @@ where
             let simple_splitter_block = CompoundBlock {
                 block: simple_splitter_block_values,
 
-                simple_blocks_subsets_of_self: RefCell::new(simple_blocks_in_splitter_block),
+                simple_blocks_subsets_of_self: RefCell::new(
+                    simple_blocks_in_splitter_block,
+                ),
             };
             let simple_splitter_block_pointer = Rc::new(simple_splitter_block);
 
@@ -478,20 +496,32 @@ where
                     Rc::clone(&simple_splitter_block);
             });
 
-        let mut back_edges = build_backedges(graphs, smaller_component, &converter);
+        let mut back_edges =
+            build_backedges(graphs, smaller_component, &converter);
 
-        let back_edges_group = group_by_backedges(back_edges.clone(), &node_to_block);
-        let ((new_simple_blocks, removeable_simple_blocks), compound_block_that_are_now_compound) =
-            split_blocks_with_grouped_backedges(back_edges_group, &mut node_to_block);
+        let back_edges_group =
+            group_by_backedges(back_edges.clone(), &node_to_block);
+        let (
+            (new_simple_blocks, removeable_simple_blocks),
+            compound_block_that_are_now_compound,
+        ) = split_blocks_with_grouped_backedges(
+            back_edges_group,
+            &mut node_to_block,
+        );
 
         all_simple_blocks.extend(new_simple_blocks);
-        all_simple_blocks.retain(|x| !removeable_simple_blocks.iter().any(|y| Rc::ptr_eq(x, y)));
+        all_simple_blocks.retain(|x| {
+            !removeable_simple_blocks.iter().any(|y| Rc::ptr_eq(x, y))
+        });
         queue.extend(compound_block_that_are_now_compound);
 
         // back edges = E^{-1}(B) - E^{-1}(S-B)
         {
-            let back_edges_splitter_complement =
-                build_backedges(graphs, (*simple_splitter_block).clone(), &converter);
+            let back_edges_splitter_complement = build_backedges(
+                graphs,
+                (*simple_splitter_block).clone(),
+                &converter,
+            );
 
             back_edges_splitter_complement.keys().for_each(|node| {
                 back_edges.remove(node);
@@ -499,11 +529,18 @@ where
         }
 
         let back_edges_group = group_by_backedges(back_edges, &node_to_block);
-        let ((new_fine_blocks, removeable_fine_blocks), coarse_block_that_are_now_compound) =
-            split_blocks_with_grouped_backedges(back_edges_group, &mut node_to_block);
+        let (
+            (new_fine_blocks, removeable_fine_blocks),
+            coarse_block_that_are_now_compound,
+        ) = split_blocks_with_grouped_backedges(
+            back_edges_group,
+            &mut node_to_block,
+        );
 
         all_simple_blocks.extend(new_fine_blocks);
-        all_simple_blocks.retain(|x| !removeable_fine_blocks.iter().any(|y| Rc::ptr_eq(x, y)));
+        all_simple_blocks.retain(|x| {
+            !removeable_fine_blocks.iter().any(|y| Rc::ptr_eq(x, y))
+        });
         queue.extend(coarse_block_that_are_now_compound);
     }
 
@@ -532,7 +569,10 @@ where
     G::EdgeWeight: std::cmp::Eq + std::hash::Hash + Clone,
 {
     let mut new_graph_a: petgraph::Graph<_, u32> =
-        petgraph::Graph::with_capacity(graph.node_count() * 4, graph.edge_count() * 4);
+        petgraph::Graph::with_capacity(
+            graph.node_count() * 4,
+            graph.edge_count() * 4,
+        );
     let mut association_weight_id = HashMap::new();
     let mut original_nodes = HashSet::new();
     let mut last_id = 0;
@@ -611,7 +651,8 @@ where
         }
         // slight optimization: we reorder the edges such that edges with the
         // most occurrences have smaller index
-        let mut labels: Vec<(G::EdgeWeight, u32)> = labels.into_iter().collect();
+        let mut labels: Vec<(G::EdgeWeight, u32)> =
+            labels.into_iter().collect();
         labels.sort_by(|a, b| b.1.cmp(&a.1));
 
         for (label, _) in labels.into_iter() {
@@ -643,7 +684,8 @@ where
     val.into_iter().all(|el| {
         let mut keep_track = [false, false];
         for e in el {
-            let (_node_id, graph_id) = converter_bisimulated_graph.decode(&e).unwrap();
+            let (_node_id, graph_id) =
+                converter_bisimulated_graph.decode(&e).unwrap();
             if original_nodes[*graph_id as usize].contains(&e.0) {
                 keep_track[*graph_id as usize] = true;
             }
@@ -671,13 +713,18 @@ where
     let ((new_graph_a, original_nodes_a), (new_graph_b, original_nodes_b)) =
         modify_graph(graph_a, graph_b);
 
-    let (result, _converter) = match maximum_bisimulation(&[&&new_graph_a, &&new_graph_b]) {
-        (None, _) => return false,
-        (Some(val), converter) => (
-            check_bisimilarity::<G>(val, &converter, [original_nodes_a, original_nodes_b]),
-            converter,
-        ),
-    };
+    let (result, _converter) =
+        match maximum_bisimulation(&[&&new_graph_a, &&new_graph_b]) {
+            (None, _) => return false,
+            (Some(val), converter) => (
+                check_bisimilarity::<G>(
+                    val,
+                    &converter,
+                    [original_nodes_a, original_nodes_b],
+                ),
+                converter,
+            ),
+        };
 
     result
 }

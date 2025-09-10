@@ -5,34 +5,47 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::rc::Rc;
 
+use super::choices::Choices;
 use super::choices::{BasicChoices, PositiveChoices};
 use super::element::IdState;
 use super::environment::{
-    BasicEnvironment, Environment, ExtensionsEnvironment, LoopEnvironment, PositiveEnvironment,
+    BasicEnvironment, Environment, ExtensionsEnvironment, LoopEnvironment,
+    PositiveEnvironment,
 };
 use super::label::{BasicLabel, Label, PositiveLabel};
 use super::process::{BasicProcess, PositiveProcess, Process};
-use super::reaction::{BasicReaction, ExtensionReaction, PositiveReaction, Reaction};
+use super::reaction::{
+    BasicReaction, ExtensionReaction, PositiveReaction, Reaction,
+};
 use super::set::{BasicSet, PositiveSet, Set};
 use super::transitions::TransitionsIterator;
 use super::translator::{Formatter, PrintableWithTranslator, Translator};
-use super::choices::Choices;
 
 pub trait BasicSystem
 where
-    Self: Clone + Debug + Serialize + Default + Eq + Hash + PrintableWithTranslator,
+    Self: Clone
+        + Debug
+        + Serialize
+        + Default
+        + Eq
+        + Hash
+        + PrintableWithTranslator,
     for<'de> Self: Deserialize<'de>,
 {
     type Set: BasicSet;
     type Reaction: BasicReaction<Set = Self::Set>;
     type Label: BasicLabel<Set = Self::Set>;
     type Process: BasicProcess<Set = Self::Set>;
-    type Environment: BasicEnvironment<Set = Self::Set,
-                                       Process = Self::Process,
-                                       Choices = Self::Choices>;
+    type Environment: BasicEnvironment<
+            Set = Self::Set,
+            Process = Self::Process,
+            Choices = Self::Choices,
+        >;
     type Choices: BasicChoices;
 
-    fn to_transitions_iterator(&self) -> Result<impl Iterator<Item = (Self::Label, Self)>, String>;
+    fn to_transitions_iterator(
+        &self,
+    ) -> Result<impl Iterator<Item = (Self::Label, Self)>, String>;
 
     fn environment(&self) -> &Self::Environment;
     fn available_entities(&self) -> &Self::Set;
@@ -44,37 +57,46 @@ type Trace<L, S> = Vec<(Option<Rc<L>>, Rc<S>)>;
 
 pub trait ExtensionsSystem: BasicSystem {
     fn unfold(&self) -> Result<Self::Choices, String>;
-    
+
     fn one_transition(&self) -> Result<Option<(Self::Label, Self)>, String>;
 
-    fn nth_transition(&self, n: usize) -> Result<Option<(Self::Label, Self)>, String>;
+    fn nth_transition(
+        &self,
+        n: usize,
+    ) -> Result<Option<(Self::Label, Self)>, String>;
 
     fn all_transitions(&self) -> Result<Vec<(Self::Label, Self)>, String>;
 
     fn run(&self) -> Result<Vec<Rc<Self>>, String>;
 
-    fn digraph(self) -> Result<DiGraph<Self, Self::Label>, String>;
+    fn digraph(&self) -> Result<DiGraph<Self, Self::Label>, String>;
 
     fn target(&self) -> Result<(i64, Self::Set), String>;
 
     #[allow(clippy::type_complexity)]
-    fn run_separated(&self) -> Result<Vec<(Self::Set, Self::Set, Self::Set)>, String>;
+    fn run_separated(
+        &self,
+    ) -> Result<Vec<(Self::Set, Self::Set, Self::Set)>, String>;
 
     fn traces(self, n: usize) -> Result<Vec<Trace<Self::Label, Self>>, String>;
 }
 
 impl<T: BasicSystem> ExtensionsSystem for T {
     fn unfold(&self) -> Result<Self::Choices, String> {
-        self.environment().unfold(self.context(), self.available_entities())
+        self.environment()
+            .unfold(self.context(), self.available_entities())
     }
-    
+
     /// see oneTransition, transition, smartTransition, smartOneTransition
     fn one_transition(&self) -> Result<Option<(Self::Label, Self)>, String> {
         let mut tr = self.to_transitions_iterator()?;
         Ok(tr.next())
     }
 
-    fn nth_transition(&self, n: usize) -> Result<Option<(Self::Label, Self)>, String> {
+    fn nth_transition(
+        &self,
+        n: usize,
+    ) -> Result<Option<(Self::Label, Self)>, String> {
         let mut tr = self.to_transitions_iterator()?;
         Ok(tr.nth(n))
     }
@@ -95,16 +117,16 @@ impl<T: BasicSystem> ExtensionsSystem for T {
     }
 
     /// Creates a graph starting from a system as root node.
-    fn digraph(self) -> Result<DiGraph<Self, Self::Label>, String> {
+    fn digraph(&self) -> Result<DiGraph<Self, Self::Label>, String> {
         use petgraph::Graph;
 
-        let mut graph = Graph::default();
+        let mut graph: DiGraph<Self, Self::Label> = Graph::default();
         let node = graph.add_node(self.clone());
 
         let mut association = HashMap::new();
         association.insert(self.clone(), node);
 
-        let mut stack = vec![self];
+        let mut stack = vec![self.clone()];
 
         while let Some(current) = stack.pop() {
             // depth first
@@ -112,10 +134,11 @@ impl<T: BasicSystem> ExtensionsSystem for T {
 
             for (label, next) in current.to_transitions_iterator()? {
                 // if not already visited
-                let next_node = association.entry(next.clone()).or_insert_with(|| {
-                    stack.push(next.clone());
-                    graph.add_node(next)
-                });
+                let next_node =
+                    association.entry(next.clone()).or_insert_with(|| {
+                        stack.push(next.clone());
+                        graph.add_node(next)
+                    });
                 graph.add_edge(current_node, *next_node, label);
             }
         }
@@ -140,7 +163,9 @@ impl<T: BasicSystem> ExtensionsSystem for T {
     }
 
     /// see smartOneRunECT, smartRunECT
-    fn run_separated(&self) -> Result<Vec<(Self::Set, Self::Set, Self::Set)>, String> {
+    fn run_separated(
+        &self,
+    ) -> Result<Vec<(Self::Set, Self::Set, Self::Set)>, String> {
         let mut res = vec![];
         let current = self.one_transition()?;
         if current.is_none() {
@@ -167,22 +192,28 @@ impl<T: BasicSystem> ExtensionsSystem for T {
         }
         let mut n = n;
         let mut res: Vec<Trace<Self::Label, Self>> = vec![];
-        let mut current_trace: Trace<Self::Label, Self> = vec![(None, Rc::new(self))];
+        let mut current_trace: Trace<Self::Label, Self> =
+            vec![(None, Rc::new(self))];
         let mut branch = vec![0];
         let mut depth = 0;
         let mut new_branch = true;
 
         loop {
-            let next_sys = current_trace[depth].1.nth_transition(branch[depth])?;
+            let next_sys =
+                current_trace[depth].1.nth_transition(branch[depth])?;
 
             if let Some((current_label, next_sys)) = next_sys {
                 depth += 1;
                 if depth >= branch.len() {
                     branch.push(0);
-                    current_trace.push((Some(Rc::new(current_label)), Rc::new(next_sys)));
+                    current_trace.push((
+                        Some(Rc::new(current_label)),
+                        Rc::new(next_sys),
+                    ));
                 } else {
                     branch[depth] = 0;
-                    current_trace[depth] = (Some(Rc::new(current_label)), Rc::new(next_sys));
+                    current_trace[depth] =
+                        (Some(Rc::new(current_label)), Rc::new(next_sys));
                 }
                 new_branch = true;
             } else {
@@ -234,8 +265,12 @@ pub trait LoopSystem: BasicSystem {
     ) -> Option<Vec<Self::Set>>;
 }
 
-impl<S, E, R: ExtensionReaction<Set = S>, T: BasicSystem<Reaction = R, Environment = E, Set = S>>
-    LoopSystem for T
+impl<
+    S,
+    E,
+    R: ExtensionReaction<Set = S>,
+    T: BasicSystem<Reaction = R, Environment = E, Set = S>,
+> LoopSystem for T
 where
     E: BasicEnvironment<Reaction = R, Set = S> + ExtensionsEnvironment,
     for<'a> &'a E: IntoIterator<Item = (&'a E::Id, &'a E::Process)>,
@@ -266,7 +301,9 @@ where
             .iter()
             .filter_map(|l| l.1.filter_delta(l.0));
 
-        let find_loop_fn = |q| R::find_only_loop(self.reactions(), self.available_entities(), q);
+        let find_loop_fn = |q| {
+            R::find_only_loop(self.reactions(), self.available_entities(), q)
+        };
 
         filtered.map(find_loop_fn).collect::<Vec<_>>()
     }
@@ -280,7 +317,10 @@ where
     /// Under these assumptions, the predicate lollipop finds the Prefixes and
     /// the Loops sequences of entities.
     /// see lollipop
-    fn lollipops_named(&self, symb: E::Id) -> Option<(Vec<Self::Set>, Vec<Self::Set>)> {
+    fn lollipops_named(
+        &self,
+        symb: E::Id,
+    ) -> Option<(Vec<Self::Set>, Vec<Self::Set>)> {
         self.environment().lollipops_decomposed_named(
             self.reactions(),
             self.available_entities(),
@@ -304,7 +344,9 @@ where
             })
             .next();
 
-        let find_loop_fn = |q| R::find_only_loop(self.reactions(), self.available_entities(), q);
+        let find_loop_fn = |q| {
+            R::find_only_loop(self.reactions(), self.available_entities(), q)
+        };
 
         filtered.map(find_loop_fn)
     }
@@ -328,7 +370,9 @@ impl BasicSystem for System {
     type Environment = Environment;
     type Choices = Choices;
 
-    fn to_transitions_iterator(&self) -> Result<impl Iterator<Item = (Self::Label, Self)>, String> {
+    fn to_transitions_iterator(
+        &self,
+    ) -> Result<impl Iterator<Item = (Self::Label, Self)>, String> {
         TransitionsIterator::<Self::Set, Self, Self::Process>::from(self)
     }
 
@@ -385,7 +429,11 @@ impl Default for System {
 }
 
 impl PrintableWithTranslator for System {
-    fn print(&self, f: &mut std::fmt::Formatter, translator: &Translator) -> std::fmt::Result {
+    fn print(
+        &self,
+        f: &mut std::fmt::Formatter,
+        translator: &Translator,
+    ) -> std::fmt::Result {
         write!(
             f,
             "[delta: {}, available_entities: {}, context_process: {}, \
@@ -434,7 +482,9 @@ impl System {
         use super::translator::Formatter;
 
         let mut result: String = "Statistics:\n".into();
-        result.push_str("=============================================================\n");
+        result.push_str(
+            "=============================================================\n",
+        );
         result.push_str(&format!(
             "the initial state has {} entities:\n",
             self.available_entities.len()
@@ -549,7 +599,9 @@ impl System {
             "- there are {} reactions that will never be enabled.\n",
             nonadmissible_reactions.len()
         ));
-        result.push_str("=============================================================");
+        result.push_str(
+            "=============================================================",
+        );
 
         result
     }
@@ -575,7 +627,9 @@ impl BasicSystem for PositiveSystem {
     type Environment = PositiveEnvironment;
     type Choices = PositiveChoices;
 
-    fn to_transitions_iterator(&self) -> Result<impl Iterator<Item = (Self::Label, Self)>, String> {
+    fn to_transitions_iterator(
+        &self,
+    ) -> Result<impl Iterator<Item = (Self::Label, Self)>, String> {
         TransitionsIterator::<Self::Set, Self, Self::Process>::from(self)
     }
 
@@ -632,7 +686,11 @@ impl Default for PositiveSystem {
 }
 
 impl PrintableWithTranslator for PositiveSystem {
-    fn print(&self, f: &mut std::fmt::Formatter, translator: &Translator) -> std::fmt::Result {
+    fn print(
+        &self,
+        f: &mut std::fmt::Formatter,
+        translator: &Translator,
+    ) -> std::fmt::Result {
         write!(
             f,
             "[delta: {}, available_entities: {}, context_process: {}, \
@@ -668,16 +726,14 @@ impl From<System> for PositiveSystem {
             .context_process
             .all_elements()
             .union(&value.environment().all_elements())
-            .union(
-                &value
-                    .reactions()
-                    .iter()
-                    .fold(Set::default(), |acc: Set, el| {
-                        acc.union(&el.inhibitors)
-                            .union(&el.products)
-                            .union(&el.reactants)
-                    }),
-            )
+            .union(&value.reactions().iter().fold(
+                Set::default(),
+                |acc: Set, el| {
+                    acc.union(&el.inhibitors)
+                        .union(&el.products)
+                        .union(&el.reactants)
+                },
+            ))
             .subtraction(&value.available_entities)
             .to_positive_set(IdState::Negative);
         let new_available_entities =
@@ -697,19 +753,19 @@ impl From<System> for PositiveSystem {
                     tmp.push(PositiveReaction::create(
                         r.reactants.clone(),
                         r.inhibitors.clone(),
-                        Set::from([el])
+                        Set::from([el]),
                     ))
                 }
                 tmp.sort_by(|r1, r2| r1.reactants.cmp(&r2.reactants));
 
                 // remove reactions with only one element of opposite state
                 // as intersection (same product ```el```)
-                let mut pos = tmp.len()-1;
+                let mut pos = tmp.len() - 1;
                 while pos > 0 {
-                    if let Some(intersection)
-                        = tmp[pos].differ_only_one_element(&tmp[pos-1])
+                    if let Some(intersection) =
+                        tmp[pos].differ_only_one_element(&tmp[pos - 1])
                     {
-                        tmp[pos-1].reactants = intersection;
+                        tmp[pos - 1].reactants = intersection;
                         tmp.remove(pos);
                     }
                     pos -= 1;
@@ -719,7 +775,8 @@ impl From<System> for PositiveSystem {
                 let prohib_set = Set::prohibiting_set(
                     &p.iter().map(|p| p.reactants.clone()).collect::<Vec<_>>(),
                     &p.iter().map(|p| p.inhibitors.clone()).collect::<Vec<_>>(),
-                ).unwrap(); // since we have in input a valid system
+                )
+                .unwrap(); // since we have in input a valid system
                 for s in prohib_set {
                     res.push(PositiveReaction {
                         reactants: s,
@@ -727,8 +784,7 @@ impl From<System> for PositiveSystem {
                     })
                 }
             }
-            
-            
+
             Rc::new(res)
         };
 

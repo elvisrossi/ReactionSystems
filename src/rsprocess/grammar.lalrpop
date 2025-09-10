@@ -2,10 +2,10 @@ use std::rc::Rc;
 use std::str::FromStr;
 use lalrpop_util::ParseError;
 use crate::rsprocess::{set, reaction, process, environment, system, label};
-use crate::rsprocess::assert::types;
 use crate::rsprocess::element::IdType;
 use crate::rsprocess::translator::Translator;
 use crate::rsprocess::presets;
+use crate::rsprocess::assert::{relabel, grouping};
 use crate::rsprocess::graph;
 
 grammar(translator: &mut Translator);
@@ -41,9 +41,10 @@ match {
     "Difference", "MaskDifference",
     "UncommonDifference", "UncommonMaskDifference",
     "EntitiesDeleted", "MaskEntitiesDeleted",
-	"UncommonEntitiesDeleted", "UncommonMaskEntitiesDeleted",
+        "UncommonEntitiesDeleted", "UncommonMaskEntitiesDeleted",
     "EntitiesAdded", "MaskEntitiesAdded",
-	"UncommonEntitiesAdded", "UncommonMaskEntitiesAdded",
+        "UncommonEntitiesAdded", "UncommonMaskEntitiesAdded",
+    "node", "entities", "system", "neighbours",
     "label", "edge", "if", "then", "else", "let", "=", "return", "for", "in",
     "not", "rand", "empty", "length", "tostr", "source", "target",
     "&&", "||", "^^", "<=", ">=", "==", "!=", "+", "*", "/", "%",
@@ -121,7 +122,11 @@ LiteralProcess: String = {
     "MaskEntitiesAdded" => <>.into(),
     "UncommonEntitiesAdded" => <>.into(),
     "UncommonMaskEntitiesAdded" => <>.into(),
+    "node" => <>.into(),
+    "entities" => <>.into(),
+    "system" => <>.into(),
     "label" => <>.into(),
+    "neighbours" => <>.into(),
     "edge" => <>.into(),
     "if" => <>.into(),
     "then" => <>.into(),
@@ -152,7 +157,7 @@ LiteralProcess: String = {
 // all numbers are i64
 Num: i64 = {
     NUMBER =>? i64::from_str(<>)
-	       .map_err(|_| ParseError::User { error: "Number is too big" })
+               .map_err(|_| ParseError::User { error: "Number is too big" })
 };
 
 Path: String = {
@@ -162,11 +167,11 @@ Path: String = {
 // macro for matching sequence of patterns with C as separator
 Separated<T, C>: Vec<T> = {
     <mut v:(<T> C)+> <e:T?> => match e {
-	None => v,
-	Some(e) => {
-	    v.push(e);
-	    v
-	}
+        None => v,
+        Some(e) => {
+            v.push(e);
+            v
+        }
     }
 };
 
@@ -185,8 +190,8 @@ pub Set: set::Set = {
 Set_of_entities: set::Set = {
     "{" "}" => set::Set::from(vec![]),
     "{" <t: Separated_Or<Literal, ",">> "}" =>
-	set::Set::from(t.into_iter().map(|t| translator.encode(t))
-						    .collect::<Vec<_>>())
+        set::Set::from(t.into_iter().map(|t| translator.encode(t))
+                                                    .collect::<Vec<_>>())
 };
 
 
@@ -202,11 +207,11 @@ pub Reactions: Vec<reaction::Reaction> = {
 Reaction: reaction::Reaction = {
     #[precedence(level="1")]
     "[" <r: Set> "," <i: Set> "," <p: Set> "]" =>
-	reaction::Reaction::from(r, i, p),
+        reaction::Reaction::from(r, i, p),
 
     #[precedence(level="0")]
     "[" "r:" <r: Set> "," "i:" <i: Set> "," "p:" <p: Set> "]" =>
-	reaction::Reaction::from(r, i, p),
+        reaction::Reaction::from(r, i, p),
 }
 
 
@@ -216,7 +221,7 @@ Reaction: reaction::Reaction = {
 pub Context: process::Process = {
     "[" "]" => process::Process::NondeterministicChoice{ children: vec![] },
     "[" <t: Separated_Or<Boxed_CTX_process, ",">> "]" =>
-	process::Process::NondeterministicChoice{ children: t }
+        process::Process::NondeterministicChoice{ children: t }
 };
 
 Boxed_CTX_process: Rc<process::Process> = {
@@ -227,27 +232,27 @@ CTX_process: process::Process = {
     "nill" => process::Process::Nill,
 
     <c: Set_of_entities> "." <k: CTX_process> =>
-	process::Process::EntitySet{ entities: c, next_process: Rc::new(k) },
+        process::Process::EntitySet{ entities: c, next_process: Rc::new(k) },
 
     "(" <k: CTX_process>  ")" => k,
 
     "(" <k: Separated<CTX_process, "+">> ")" =>
-	process::Process::Summation{
-		children: k.into_iter().map(Rc::new).collect::<Vec<_>>()
-	},
+        process::Process::Summation{
+                children: k.into_iter().map(Rc::new).collect::<Vec<_>>()
+        },
 
     "?" <r: Reaction> "?" "." <k: CTX_process> =>
-	process::Process::Guarded{ reaction: r, next_process: Rc::new(k) },
+        process::Process::Guarded{ reaction: r, next_process: Rc::new(k) },
 
     "<" <n: Num> "," <k1: CTX_process> ">" "." <k: CTX_process> =>
-	process::Process::WaitEntity{ repeat: n,
-			       repeated_process: Rc::new(k1),
-			       next_process: Rc::new(k) },
+        process::Process::WaitEntity{ repeat: n,
+                               repeated_process: Rc::new(k1),
+                               next_process: Rc::new(k) },
 
     <identifier: LiteralProcess> =>
-	process::Process::RecursiveIdentifier{
-		identifier: translator.encode(identifier)
-	}
+        process::Process::RecursiveIdentifier{
+                identifier: translator.encode(identifier)
+        }
 };
 
 
@@ -256,199 +261,21 @@ CTX_process: process::Process = {
 // -----------------------------------------------------------------------------
 pub Environment: Box<environment::Environment> = {
     "[" "]" =>
-	Box::new(environment::Environment::default()),
+        Box::new(environment::Environment::default()),
     "[" <t: Separated_Or<Env_term, ",">> "]" =>
-	Box::new(environment::Environment::from(t))
+        Box::new(environment::Environment::from(t))
 };
 
 Env_term: (IdType, process::Process) = {
     <identifier: LiteralProcess> "=" <k: CTX_process> =>
-	(translator.encode(identifier), k)
+        (translator.encode(identifier), k)
 };
 
-
 // -----------------------------------------------------------------------------
-//                                AssertParser
+//                                LabelParser
 // -----------------------------------------------------------------------------
-pub Assert: Box<types::Assert> = {
-     "label" "{" <f: AssertTree> "}" =>
-	Box::new(types::Assert{tree: f}),
-};
 
-AssertTree: types::Tree = {
-    <t1: AssertTree2> ";" <t2: AssertTree> =>
-	types::Tree::Concat(Box::new(t1), Box::new(t2)),
-    <t: AssertTree2> => t,
-}
-
-AssertTree2: types::Tree = {
-    #[precedence(level="1")]
-    "if" <e: AssertExpression>
-    "then" "{" <t: AssertTree> "}" =>
-	types::Tree::If(Box::new(e), Box::new(t)),
-
-    #[precedence(level="0")]
-    "if" <e: AssertExpression>
-    "then" "{" <t1: AssertTree> "}"
-    "else" "{" <t2: AssertTree> "}" =>
-	types::Tree::IfElse(Box::new(e), Box::new(t1), Box::new(t2)),
-
-    #[precedence(level="2")]
-    "let" <v: AssertVariable> <q: AssertQualifier?> "=" <e: AssertExpression> =>
-	types::Tree::Assignment(v, q, Box::new(e)),
-
-    #[precedence(level="3")]
-    "return" <e: AssertExpression> =>
-	types::Tree::Return(Box::new(e)),
-
-    #[precedence(level="4")]
-    "for" <v: AssertVariable> "in" <r: AssertRange> "{" <t: AssertTree> "}" =>
-	types::Tree::For(v, r, Box::new(t)),
-}
-
-AssertVariable: types::Variable = {
-    #[precedence(level="0")]
-    "label" => types::Variable::Special(types::Special::Label),
-    #[precedence(level="1")]
-    "edge"  => types::Variable::Special(types::Special::Edge),
-    #[precedence(level="2")]
-    <v: Literal> => types::Variable::Id(v),
-}
-
-
-AssertExpression: types::Expression = {
-    // Unary
-    #[precedence(level="0")]
-    <unp: AssertUnaryPrefix> <e: AssertExpression> =>
-	types::Expression::Unary(unp, Box::new(e)),
-    #[precedence(level="2")]
-    <e: AssertExpression> <uns: AssertUnarySuffix> =>
-	types::Expression::Unary(uns, Box::new(e)),
-
-    // binary
-    #[precedence(level="3")] #[assoc(side="left")]
-    <e1: AssertExpression> <b: AssertBinary> <e2: AssertExpression> =>
-	types::Expression::Binary(b, Box::new(e1), Box::new(e2)),
-    #[precedence(level="1")]
-    <b: AssertBinaryPrefix>
-    "(" <e1: AssertExpression> "," <e2: AssertExpression> ")" =>
-	types::Expression::Binary(b, Box::new(e1), Box::new(e2)),
-
-    #[precedence(level="4")]
-    "(" <e: AssertExpression> ")" => e,
-    "true" => types::Expression::True,
-    "false" => types::Expression::False,
-
-    #[precedence(level="5")]
-    <v: AssertVariable> => types::Expression::Var(v),
-
-    // If changing IntegerType in assert.rs, also change from Num to another
-    // similar parser with different return type
-    #[precedence(level="6")]
-    <i: Num> => types::Expression::Integer(i),
-
-    #[precedence(level="7")]
-    <lab: AssertLabel> => types::Expression::Label(Box::new(lab)),
-    <set: Set_of_entities> => types::Expression::Set(set),
-    "'" <el: Literal> "'" => types::Expression::Element(translator.encode(el)),
-
-    // strings
-    #[precedence(level="8")]
-    PATH => types::Expression::String(<>.trim_end_matches("\"")
-					 .trim_start_matches("\"")
-					 .to_string()),
-}
-
-AssertRange: types::Range = {
-    "{" <e: AssertExpression> "}" => types::Range::IterateOverSet(Box::new(e)),
-    "{" <e1: AssertExpression> ".." <e2: AssertExpression> "}" =>
-	types::Range::IterateInRange(Box::new(e1), Box::new(e2)),
-}
-
-AssertUnaryPrefix: types::Unary = {
-    "not" => types::Unary::Not,
-    "rand" => types::Unary::Rand,
-}
-
-AssertUnarySuffix: types::Unary = {
-    #[precedence(level="0")]
-    "." "empty" => types::Unary::Empty,
-    "." "length" => types::Unary::Length,
-    "." "tostr" => types::Unary::ToStr,
-    "." "toel" => types::Unary::ToEl,
-
-    #[precedence(level="1")]
-    "." <q: AssertQualifier> => types::Unary::Qualifier(q),
-}
-
-AssertQualifierRestricted: types::QualifierRestricted = {
-    "Entities" => types::QualifierRestricted::Entities,
-    "Context" => types::QualifierRestricted::Context,
-    "Reactants" => types::QualifierRestricted::Reactants,
-    "ReactantsAbsent" => types::QualifierRestricted::ReactantsAbsent,
-    "Inhibitors" => types::QualifierRestricted::Inhibitors,
-    "InhibitorsPresent" => types::QualifierRestricted::InhibitorsPresent,
-    "Products" => types::QualifierRestricted::Products,
-}
-
-AssertQualifierLabel: types::QualifierLabel = {
-    "AvailableEntities" => types::QualifierLabel::AvailableEntities,
-    "AllReactants" => types::QualifierLabel::AllReactants,
-    "AllInhibitors" => types::QualifierLabel::AllInhibitors,
-}
-
-AssertQualifierSystem: types::QualifierSystem = {
-    "SystemEntities" => types::QualifierSystem::Entities,
-    "SystemContext" => types::QualifierSystem::Context,
-}
-
-AssertQualifierEdge: types::QualifierEdge = {
-    "source" => types::QualifierEdge::Source,
-    "target" => types::QualifierEdge::Target,
-}
-
-AssertQualifierNode: types::QualifierNode = {
-    "neighbours" => types::QualifierNode::Neighbours,
-    "system" => types::QualifierNode::System,
-}
-
-AssertQualifier: types::Qualifier = {
-    <q: AssertQualifierSystem> => types::Qualifier::System(q),
-    <q: AssertQualifierLabel> => types::Qualifier::Label(q),
-    <q: AssertQualifierRestricted> => types::Qualifier::Restricted(q),
-    <q: AssertQualifierEdge> => types::Qualifier::Edge(q),
-    <q: AssertQualifierNode> => types::Qualifier::Node(q),
-}
-
-
-AssertBinary: types::Binary = {
-    "&&" => types::Binary::And,
-    "||" => types::Binary::Or,
-    "^^" => types::Binary::Xor,
-    "<" => types::Binary::Less,
-    "<=" => types::Binary::LessEq,
-    ">" => types::Binary::More,
-    ">=" => types::Binary::MoreEq,
-    "==" => types::Binary::Eq,
-    "!=" => types::Binary::NotEq,
-    "+" => types::Binary::Plus,
-    "-" => types::Binary::Minus,
-    "*" => types::Binary::Times,
-    "^" => types::Binary::Exponential,
-    "/" => types::Binary::Quotient,
-    "%" => types::Binary::Reminder,
-    "::" => types::Binary::Concat,
-}
-
-AssertBinaryPrefix: types::Binary = {
-    "substr" => types::Binary::SubStr,
-    "min" => types::Binary::Min,
-    "max" => types::Binary::Max,
-    "commonsubstr" => types::Binary::CommonSubStr,
-}
-
-
-AssertLabel: label::Label = {
+Label: label::Label = {
     "["
        "Entities" ":" <e: Set_of_entities> ","
        "Context" ":" <c: Set_of_entities> ","
@@ -459,6 +286,370 @@ AssertLabel: label::Label = {
        "Products" ":" <p: Set_of_entities> ","
     "]" => label::Label::create(e, c, r, r_a, i, i_p, p)
 }
+
+
+// -----------------------------------------------------------------------------
+//                                AssertParser
+// -----------------------------------------------------------------------------
+pub Assert: Box<relabel::Assert> = {
+     "label" "{" <f: AssertTree> "}" =>
+        Box::new(relabel::Assert{tree: f}),
+};
+
+AssertTree: relabel::Tree = {
+    <t1: AssertTree2> ";" <t2: AssertTree> =>
+        relabel::Tree::Concat(Box::new(t1), Box::new(t2)),
+    <t: AssertTree2> => t,
+}
+
+AssertTree2: relabel::Tree = {
+    #[precedence(level="1")]
+    "if" <e: AssertExpression>
+    "then" "{" <t: AssertTree> "}" =>
+        relabel::Tree::If(Box::new(e), Box::new(t)),
+
+    #[precedence(level="0")]
+    "if" <e: AssertExpression>
+    "then" "{" <t1: AssertTree> "}"
+    "else" "{" <t2: AssertTree> "}" =>
+        relabel::Tree::IfElse(Box::new(e), Box::new(t1), Box::new(t2)),
+
+    #[precedence(level="2")]
+    "let" <v: AssertVariable> <q: AssertQualifier?> "=" <e: AssertExpression> =>
+        relabel::Tree::Assignment(v, q, Box::new(e)),
+
+    #[precedence(level="3")]
+    "return" <e: AssertExpression> =>
+        relabel::Tree::Return(Box::new(e)),
+
+    #[precedence(level="4")]
+    "for" <v: AssertVariable> "in" <r: AssertRange> "{" <t: AssertTree> "}" =>
+        relabel::Tree::For(v, r, Box::new(t)),
+}
+
+AssertVariable: relabel::Variable = {
+    #[precedence(level="0")]
+    "label" => relabel::Variable::Special(relabel::Special::Label),
+    #[precedence(level="1")]
+    "edge"  => relabel::Variable::Special(relabel::Special::Edge),
+    #[precedence(level="2")]
+    <v: Literal> => relabel::Variable::Id(v),
+}
+
+
+AssertExpression: relabel::Expression = {
+    // Unary
+    #[precedence(level="0")]
+    <unp: AssertUnaryPrefix> <e: AssertExpression> =>
+        relabel::Expression::Unary(unp, Box::new(e)),
+    #[precedence(level="2")]
+    <e: AssertExpression> <uns: AssertUnarySuffix> =>
+        relabel::Expression::Unary(uns, Box::new(e)),
+
+    // binary
+    #[precedence(level="3")] #[assoc(side="left")]
+    <e1: AssertExpression> <b: AssertBinary> <e2: AssertExpression> =>
+        relabel::Expression::Binary(b, Box::new(e1), Box::new(e2)),
+    #[precedence(level="1")]
+    <b: AssertBinaryPrefix>
+    "(" <e1: AssertExpression> "," <e2: AssertExpression> ")" =>
+        relabel::Expression::Binary(b, Box::new(e1), Box::new(e2)),
+
+    #[precedence(level="4")]
+    "(" <e: AssertExpression> ")" => e,
+    "true" => relabel::Expression::True,
+    "false" => relabel::Expression::False,
+
+    #[precedence(level="5")]
+    <v: AssertVariable> => relabel::Expression::Var(v),
+
+    // If changing IntegerType in assert.rs, also change from Num to another
+    // similar parser with different return type
+    #[precedence(level="6")]
+    <i: Num> => relabel::Expression::Integer(i),
+
+    #[precedence(level="7")]
+    <lab: Label> => relabel::Expression::Label(Box::new(lab)),
+    <set: Set_of_entities> => relabel::Expression::Set(set),
+    "'" <el: Literal> "'" => relabel::Expression::Element(translator.encode(el)),
+
+    // strings
+    #[precedence(level="8")]
+    PATH => relabel::Expression::String(<>.trim_end_matches("\"")
+                                         .trim_start_matches("\"")
+                                         .to_string()),
+}
+
+AssertRange: relabel::Range = {
+    "{" <e: AssertExpression> "}" => relabel::Range::IterateOverSet(Box::new(e)),
+    "{" <e1: AssertExpression> ".." <e2: AssertExpression> "}" =>
+        relabel::Range::IterateInRange(Box::new(e1), Box::new(e2)),
+}
+
+AssertUnaryPrefix: relabel::Unary = {
+    "not" => relabel::Unary::Not,
+    "rand" => relabel::Unary::Rand,
+}
+
+AssertUnarySuffix: relabel::Unary = {
+    #[precedence(level="0")]
+    "." "empty" => relabel::Unary::Empty,
+    "." "length" => relabel::Unary::Length,
+    "." "tostr" => relabel::Unary::ToStr,
+    "." "toel" => relabel::Unary::ToEl,
+
+    #[precedence(level="1")]
+    "." <q: AssertQualifier> => relabel::Unary::Qualifier(q),
+}
+
+AssertQualifierRestricted: relabel::QualifierRestricted = {
+    "Entities" => relabel::QualifierRestricted::Entities,
+    "Context" => relabel::QualifierRestricted::Context,
+    "Reactants" => relabel::QualifierRestricted::Reactants,
+    "ReactantsAbsent" => relabel::QualifierRestricted::ReactantsAbsent,
+    "Inhibitors" => relabel::QualifierRestricted::Inhibitors,
+    "InhibitorsPresent" => relabel::QualifierRestricted::InhibitorsPresent,
+    "Products" => relabel::QualifierRestricted::Products,
+}
+
+AssertQualifierLabel: relabel::QualifierLabel = {
+    "AvailableEntities" => relabel::QualifierLabel::AvailableEntities,
+    "AllReactants" => relabel::QualifierLabel::AllReactants,
+    "AllInhibitors" => relabel::QualifierLabel::AllInhibitors,
+}
+
+AssertQualifierSystem: relabel::QualifierSystem = {
+    "SystemEntities" => relabel::QualifierSystem::Entities,
+    "SystemContext" => relabel::QualifierSystem::Context,
+}
+
+AssertQualifierEdge: relabel::QualifierEdge = {
+    "source" => relabel::QualifierEdge::Source,
+    "target" => relabel::QualifierEdge::Target,
+}
+
+AssertQualifierNode: relabel::QualifierNode = {
+    "neighbours" => relabel::QualifierNode::Neighbours,
+    "system" => relabel::QualifierNode::System,
+}
+
+AssertQualifier: relabel::Qualifier = {
+    <q: AssertQualifierSystem> => relabel::Qualifier::System(q),
+    <q: AssertQualifierLabel> => relabel::Qualifier::Label(q),
+    <q: AssertQualifierRestricted> => relabel::Qualifier::Restricted(q),
+    <q: AssertQualifierEdge> => relabel::Qualifier::Edge(q),
+    <q: AssertQualifierNode> => relabel::Qualifier::Node(q),
+}
+
+
+AssertBinary: relabel::Binary = {
+    "&&" => relabel::Binary::And,
+    "||" => relabel::Binary::Or,
+    "^^" => relabel::Binary::Xor,
+    "<" => relabel::Binary::Less,
+    "<=" => relabel::Binary::LessEq,
+    ">" => relabel::Binary::More,
+    ">=" => relabel::Binary::MoreEq,
+    "==" => relabel::Binary::Eq,
+    "!=" => relabel::Binary::NotEq,
+    "+" => relabel::Binary::Plus,
+    "-" => relabel::Binary::Minus,
+    "*" => relabel::Binary::Times,
+    "^" => relabel::Binary::Exponential,
+    "/" => relabel::Binary::Quotient,
+    "%" => relabel::Binary::Reminder,
+    "::" => relabel::Binary::Concat,
+}
+
+AssertBinaryPrefix: relabel::Binary = {
+    "substr" => relabel::Binary::SubStr,
+    "min" => relabel::Binary::Min,
+    "max" => relabel::Binary::Max,
+    "commonsubstr" => relabel::Binary::CommonSubStr,
+}
+
+// -----------------------------------------------------------------------------
+//                               GroupingParser
+// -----------------------------------------------------------------------------
+pub Group: Box<grouping::Assert> = {
+     ">" "node" "{" <f: GroupTree> "}" =>
+        Box::new(grouping::Assert{tree: f}),
+};
+
+GroupTree: grouping::Tree = {
+    <t1: GroupTree2> ";" <t2: GroupTree> =>
+        grouping::Tree::Concat(Box::new(t1), Box::new(t2)),
+    <t: GroupTree2> => t,
+}
+
+GroupTree2: grouping::Tree = {
+    #[precedence(level="1")]
+    "if" <e: GroupExpression>
+    "then" "{" <t: GroupTree> "}" =>
+        grouping::Tree::If(Box::new(e), Box::new(t)),
+
+    #[precedence(level="0")]
+    "if" <e: GroupExpression>
+    "then" "{" <t1: GroupTree> "}"
+    "else" "{" <t2: GroupTree> "}" =>
+        grouping::Tree::IfElse(Box::new(e), Box::new(t1), Box::new(t2)),
+
+    #[precedence(level="2")]
+    "let" <v: GroupVariable> <q: GroupQualifier?> "=" <e: GroupExpression> =>
+        grouping::Tree::Assignment(v, q, Box::new(e)),
+
+    #[precedence(level="3")]
+    "return" <e: GroupExpression> =>
+        grouping::Tree::Return(Box::new(e)),
+
+    #[precedence(level="4")]
+    "for" <v: GroupVariable> "in" <r: GroupRange> "{" <t: GroupTree> "}" =>
+        grouping::Tree::For(v, r, Box::new(t)),
+}
+
+GroupVariable: grouping::Variable = {
+    #[precedence(level="0")]
+    "entities" => grouping::Variable::Special(grouping::Special::Entities),
+    #[precedence(level="1")]
+    "node"  => grouping::Variable::Special(grouping::Special::Node),
+    #[precedence(level="2")]
+    <v: Literal> => grouping::Variable::Id(v),
+}
+
+GroupExpression: grouping::Expression = {
+    #[precedence(level="100")]
+    <unp: GroupUnaryPrefix> "(" <e: GroupExpression> ")" =>
+        grouping::Expression::Unary(unp, Box::new(e)),
+
+    #[precedence(level="100")]
+    <e: GroupExpression> "." <uns: GroupUnarySuffix> =>
+        grouping::Expression::Unary(uns, Box::new(e)),
+
+    #[precedence(level="100")] #[assoc(side="left")]
+    "(" <e1: GroupExpression> <b: GroupBinary> <e2: GroupExpression> ")" =>
+        grouping::Expression::Binary(b, Box::new(e1), Box::new(e2)),
+
+    #[precedence(level="100")]
+    <b: GroupBinaryPrefix>
+    "(" <e1: GroupExpression> "," <e2: GroupExpression> ")" =>
+        grouping::Expression::Binary(b, Box::new(e1), Box::new(e2)),
+
+    #[precedence(level="50")]
+    "(" <e: GroupExpression> ")" => e,
+
+    #[precedence(level="0")]
+    <t: GroupTerm> => t,
+}
+
+GroupTerm: grouping::Expression = {
+    "true" => grouping::Expression::True,
+    "false" => grouping::Expression::False,
+
+    <v: GroupVariable> => grouping::Expression::Var(v),
+
+    // If changing IntegerType in assert.rs, also change from Num to another
+    // similar parser with different return type
+    <i: Num> => grouping::Expression::Integer(i),
+
+    <lab: Label> => grouping::Expression::Label(Box::new(lab)),
+    <set: Set_of_entities> => grouping::Expression::Set(set),
+    "'" <el: Literal> "'" => grouping::Expression::Element(translator.encode(el)),
+
+    // strings
+    PATH => grouping::Expression::String(<>.trim_end_matches("\"")
+                                         .trim_start_matches("\"")
+                                         .to_string()),
+}
+
+GroupRange: grouping::Range = {
+    "{" <e: GroupExpression> "}" => grouping::Range::IterateOverSet(Box::new(e)),
+    "{" <e1: GroupExpression> ".." <e2: GroupExpression> "}" =>
+        grouping::Range::IterateInRange(Box::new(e1), Box::new(e2)),
+}
+
+GroupUnaryPrefix: grouping::Unary = {
+    "not" => grouping::Unary::Not,
+    "rand" => grouping::Unary::Rand,
+}
+
+GroupUnarySuffix: grouping::Unary = {
+    #[precedence(level="0")]
+    "empty" => grouping::Unary::Empty,
+    "length" => grouping::Unary::Length,
+    "tostr" => grouping::Unary::ToStr,
+    "toel" => grouping::Unary::ToEl,
+
+    #[precedence(level="1")]
+    <q: GroupQualifier> => grouping::Unary::Qualifier(q),
+}
+
+GroupQualifierRestricted: grouping::QualifierRestricted = {
+    "Entities" => grouping::QualifierRestricted::Entities,
+    "Context" => grouping::QualifierRestricted::Context,
+    "Reactants" => grouping::QualifierRestricted::Reactants,
+    "ReactantsAbsent" => grouping::QualifierRestricted::ReactantsAbsent,
+    "Inhibitors" => grouping::QualifierRestricted::Inhibitors,
+    "InhibitorsPresent" => grouping::QualifierRestricted::InhibitorsPresent,
+    "Products" => grouping::QualifierRestricted::Products,
+}
+
+GroupQualifierLabel: grouping::QualifierLabel = {
+    "AvailableEntities" => grouping::QualifierLabel::AvailableEntities,
+    "AllReactants" => grouping::QualifierLabel::AllReactants,
+    "AllInhibitors" => grouping::QualifierLabel::AllInhibitors,
+}
+
+GroupQualifierSystem: grouping::QualifierSystem = {
+    "SystemEntities" => grouping::QualifierSystem::Entities,
+    "SystemContext" => grouping::QualifierSystem::Context,
+}
+
+GroupQualifierEdge: grouping::QualifierEdge = {
+    "source" => grouping::QualifierEdge::Source,
+    "target" => grouping::QualifierEdge::Target,
+}
+
+GroupQualifierNode: grouping::QualifierNode = {
+    "neighbours" => grouping::QualifierNode::Neighbours,
+    "system" => grouping::QualifierNode::System,
+}
+
+GroupQualifier: grouping::Qualifier = {
+    <q: GroupQualifierSystem> => grouping::Qualifier::System(q),
+    <q: GroupQualifierLabel> => grouping::Qualifier::Label(q),
+    <q: GroupQualifierRestricted> => grouping::Qualifier::Restricted(q),
+    <q: GroupQualifierEdge> => grouping::Qualifier::Edge(q),
+    <q: GroupQualifierNode> => grouping::Qualifier::Node(q),
+}
+
+
+GroupBinary: grouping::Binary = {
+    "&&" => grouping::Binary::And,
+    "||" => grouping::Binary::Or,
+    "^^" => grouping::Binary::Xor,
+    "<" => grouping::Binary::Less,
+    "<=" => grouping::Binary::LessEq,
+    ">" => grouping::Binary::More,
+    ">=" => grouping::Binary::MoreEq,
+    "==" => grouping::Binary::Eq,
+    "!=" => grouping::Binary::NotEq,
+    "+" => grouping::Binary::Plus,
+    "-" => grouping::Binary::Minus,
+    "*" => grouping::Binary::Times,
+    "^" => grouping::Binary::Exponential,
+    "/" => grouping::Binary::Quotient,
+    "%" => grouping::Binary::Reminder,
+    "::" => grouping::Binary::Concat,
+}
+
+GroupBinaryPrefix: grouping::Binary = {
+    "substr" => grouping::Binary::SubStr,
+    "min" => grouping::Binary::Min,
+    "max" => grouping::Binary::Max,
+    "commonsubstr" => grouping::Binary::CommonSubStr,
+}
+
+
 
 // -----------------------------------------------------------------------------
 //                                 BHMLParser
@@ -473,9 +664,9 @@ AssertLabel: label::Label = {
 //     "(" <g: Separated<Formula_BHML, "\\/">> ")" => RSBHML::Or(g),
 //     "(" <g: Separated<Formula_BHML, "/\\">> ")" => RSBHML::And(g),
 //     "<" <f: Formula_Assert> ">" <g: Formula_BHML> =>
-//	RSBHML::Diamond(Box::new(f), Box::new(g)),
+//      RSBHML::Diamond(Box::new(f), Box::new(g)),
 //     "[" <f: Formula_Assert> "]" <g: Formula_BHML> =>
-//	RSBHML::Box(Box::new(f), Box::new(g)),
+//      RSBHML::Box(Box::new(f), Box::new(g)),
 // };
 
 
@@ -491,10 +682,10 @@ pub System: system::System = {
     "Initial Entities" ":" <available_entities: Set>
     "Context" ":" <context_process: Context>
     "Reactions" ":" <reaction_rules: Reactions>
-	=> system::System::from(delta.into(),
-				available_entities,
-				context_process,
-				Rc::new(reaction_rules))
+        => system::System::from(delta.into(),
+                                available_entities,
+                                context_process,
+                                Rc::new(reaction_rules))
 }
 
 // experiment
@@ -503,7 +694,7 @@ pub System: system::System = {
 pub Experiment: (Vec<u32>, Vec<set::Set>) = {
     "Weights" ":" <w: Separated_Or<Num, ",">>
     "Sets" ":" <s: Separated_Or<Set_of_entities, ",">>
-	=> (w.into_iter().map(|x| x as u32).collect::<Vec<_>>(), s),
+        => (w.into_iter().map(|x| x as u32).collect::<Vec<_>>(), s),
 }
 
 
@@ -514,202 +705,202 @@ pub Experiment: (Vec<u32>, Vec<set::Set>) = {
 /// Decides whetherer to print to stdout or to save to file
 Helper_SO: presets::SaveOptions = {
     "Print" =>
-	presets::SaveOptions {print: true, save: None},
+        presets::SaveOptions {print: true, save: None},
     "Save" "(" <p: Path> ")" =>
-	presets::SaveOptions {print: false, save: Some(vec![p])}
+        presets::SaveOptions {print: false, save: Some(vec![p])}
 }
 
 /// we could need to save to multiple files
 SaveOptions: presets::SaveOptions = {
     <p: Separated_Or<Helper_SO, ";">> => {
-	p.into_iter()
-	 .reduce(|mut acc, mut e| {acc.combine(&mut e); acc})
-	 .unwrap_or_default()
+        p.into_iter()
+         .reduce(|mut acc, mut e| {acc.combine(&mut e); acc})
+         .unwrap_or_default()
     }
 }
 
 /// Match for strings between nodes formatters
 LiteralSeparatorNode: graph::NodeDisplayBase = {
     PATH =>
-	graph::NodeDisplayBase::String {
-	    string: <>.trim_end_matches("\"")
-		      .trim_start_matches("\"")
-		      .to_string()
-	}
+        graph::NodeDisplayBase::String {
+            string: <>.trim_end_matches("\"")
+                      .trim_start_matches("\"")
+                      .to_string()
+        }
 };
 
 /// Match for strings between edge formatters
 LiteralSeparatorEdge: graph::EdgeDisplayBase = {
     PATH =>
-	graph::EdgeDisplayBase::String {
-	    string: <>.trim_end_matches("\"")
-		      .trim_start_matches("\"")
-		      .to_string()
-	}
+        graph::EdgeDisplayBase::String {
+            string: <>.trim_end_matches("\"")
+                      .trim_start_matches("\"")
+                      .to_string()
+        }
 };
 
 NodeDisplayBase: graph::NodeDisplayBase = {
     "Hide" =>
-	graph::NodeDisplayBase::Hide,
+        graph::NodeDisplayBase::Hide,
     "Entities" =>
-	graph::NodeDisplayBase::Entities,
+        graph::NodeDisplayBase::Entities,
     "MaskEntities" <mask: Set> =>
-	graph::NodeDisplayBase::MaskEntities{mask},
+        graph::NodeDisplayBase::MaskEntities{mask},
     "ExcludeEntities" <mask: Set> =>
       graph::NodeDisplayBase::ExcludeEntities{mask},
     "Context" =>
-	graph::NodeDisplayBase::Context,
+        graph::NodeDisplayBase::Context,
     "UncommonEntities" =>
-	graph::NodeDisplayBase::UncommonEntities,
+        graph::NodeDisplayBase::UncommonEntities,
     "MaskUncommonentities" <mask: Set> =>
-	graph::NodeDisplayBase::MaskUncommonEntities{mask},
+        graph::NodeDisplayBase::MaskUncommonEntities{mask},
 }
 
 /// Node display formatters separated by arbitrary strings in quotes
 SeparatorNode: graph::NodeDisplay = {
     <v: NodeDisplayBase> => graph::NodeDisplay {base: vec![v]},
     <v:(<NodeDisplayBase> <LiteralSeparatorNode>)+> <e: NodeDisplayBase?> =>
-	match e {
-	    None => graph::NodeDisplay {
-			base:
-			v.iter().fold(vec![],
-			    |mut acc, (a, b)| {
-				acc.push(a.clone());
-				acc.push(b.clone());
-				acc.clone()
-			    })
-			},
-	    Some(e) => {
-		let mut v = v.iter().fold(vec![],
-					  |mut acc, (a, b)| {
-					      acc.push(a.clone());
-					      acc.push(b.clone());
-					      acc.clone()
-					  });
-		v.push(e);
-		graph::NodeDisplay { base: v }
-	    }
-	}
+        match e {
+            None => graph::NodeDisplay {
+                        base:
+                        v.iter().fold(vec![],
+                            |mut acc, (a, b)| {
+                                acc.push(a.clone());
+                                acc.push(b.clone());
+                                acc.clone()
+                            })
+                        },
+            Some(e) => {
+                let mut v = v.iter().fold(vec![],
+                                          |mut acc, (a, b)| {
+                                              acc.push(a.clone());
+                                              acc.push(b.clone());
+                                              acc.clone()
+                                          });
+                v.push(e);
+                graph::NodeDisplay { base: v }
+            }
+        }
 }
 
 EdgeDisplay: graph::EdgeDisplayBase = {
     "Hide" =>
-	graph::EdgeDisplayBase::Hide,
+        graph::EdgeDisplayBase::Hide,
 
     "Products" =>
-	graph::EdgeDisplayBase::Products
-	{ mask: None, filter_common: false },
+        graph::EdgeDisplayBase::Products
+        { mask: None, filter_common: false },
     "MaskProducts" <mask: Set> =>
-	graph::EdgeDisplayBase::Entities
-	{ mask: Some(mask), filter_common: false },
+        graph::EdgeDisplayBase::Entities
+        { mask: Some(mask), filter_common: false },
     "UncommonProducts" =>
-	graph::EdgeDisplayBase::Products
-	{ mask: None, filter_common: true },
+        graph::EdgeDisplayBase::Products
+        { mask: None, filter_common: true },
     "UncommonMaskProducts" <mask: Set> =>
-	graph::EdgeDisplayBase::Entities
-	{ mask: Some(mask), filter_common: true },
+        graph::EdgeDisplayBase::Entities
+        { mask: Some(mask), filter_common: true },
 
     "Entities" =>
-	graph::EdgeDisplayBase::Entities
-	{ mask: None, filter_common: false },
+        graph::EdgeDisplayBase::Entities
+        { mask: None, filter_common: false },
     "MaskEntities" <mask: Set> =>
-	graph::EdgeDisplayBase::Entities
-	{ mask: Some(mask), filter_common: false },
+        graph::EdgeDisplayBase::Entities
+        { mask: Some(mask), filter_common: false },
     "UncommonEntities" =>
-	graph::EdgeDisplayBase::Entities
-	{ mask: None, filter_common: true },
+        graph::EdgeDisplayBase::Entities
+        { mask: None, filter_common: true },
     "UncommonMaskEntities" <mask: Set> =>
-	graph::EdgeDisplayBase::Entities
-	{ mask: Some(mask), filter_common: true },
+        graph::EdgeDisplayBase::Entities
+        { mask: Some(mask), filter_common: true },
 
     "Context" =>
-	graph::EdgeDisplayBase::Context
-	{ mask: None, filter_common: false },
+        graph::EdgeDisplayBase::Context
+        { mask: None, filter_common: false },
     "MaskContext" <mask: Set> =>
-	graph::EdgeDisplayBase::Context
-	{ mask: Some(mask), filter_common: false },
+        graph::EdgeDisplayBase::Context
+        { mask: Some(mask), filter_common: false },
     "UncommonContext" =>
-	graph::EdgeDisplayBase::Context
-	{ mask: None, filter_common: true },
+        graph::EdgeDisplayBase::Context
+        { mask: None, filter_common: true },
     "UncommonMaskContext" <mask: Set> =>
-	graph::EdgeDisplayBase::Context
-	{ mask: Some(mask), filter_common: true },
+        graph::EdgeDisplayBase::Context
+        { mask: Some(mask), filter_common: true },
 
     "Union" =>
-	graph::EdgeDisplayBase::Union
-	{ mask: None, filter_common: false },
+        graph::EdgeDisplayBase::Union
+        { mask: None, filter_common: false },
     "MaskUnion" <mask: Set> =>
-	graph::EdgeDisplayBase::Union
-	{ mask: Some(mask), filter_common: false },
+        graph::EdgeDisplayBase::Union
+        { mask: Some(mask), filter_common: false },
     "UncommonUnion" =>
-	graph::EdgeDisplayBase::Union
-	{ mask: None, filter_common: true },
+        graph::EdgeDisplayBase::Union
+        { mask: None, filter_common: true },
     "UncommonMaskUnion" <mask: Set> =>
-	graph::EdgeDisplayBase::Union
-	{ mask: Some(mask), filter_common: true },
+        graph::EdgeDisplayBase::Union
+        { mask: Some(mask), filter_common: true },
 
     "Difference" =>
-	graph::EdgeDisplayBase::Difference
-	{ mask: None, filter_common: false },
+        graph::EdgeDisplayBase::Difference
+        { mask: None, filter_common: false },
     "MaskDifference" <mask: Set> =>
-	graph::EdgeDisplayBase::Difference
-	{ mask: Some(mask), filter_common: false },
+        graph::EdgeDisplayBase::Difference
+        { mask: Some(mask), filter_common: false },
     "UncommonDifference" =>
-	graph::EdgeDisplayBase::Difference
-	{ mask: None, filter_common: true },
+        graph::EdgeDisplayBase::Difference
+        { mask: None, filter_common: true },
     "UncommonMaskDifference" <mask: Set> =>
-	graph::EdgeDisplayBase::Difference
-	{ mask: Some(mask), filter_common: true },
+        graph::EdgeDisplayBase::Difference
+        { mask: Some(mask), filter_common: true },
 
     "EntitiesDeleted" =>
-	graph::EdgeDisplayBase::EntitiesDeleted
-	{ mask: None, filter_common: false },
+        graph::EdgeDisplayBase::EntitiesDeleted
+        { mask: None, filter_common: false },
     "MaskEntitiesDeleted" <mask: Set> =>
-	graph::EdgeDisplayBase::EntitiesDeleted
-	{ mask: Some(mask), filter_common: false },
+        graph::EdgeDisplayBase::EntitiesDeleted
+        { mask: Some(mask), filter_common: false },
     "UncommonEntitiesDeleted" =>
-	graph::EdgeDisplayBase::EntitiesDeleted
-	{ mask: None, filter_common: true },
+        graph::EdgeDisplayBase::EntitiesDeleted
+        { mask: None, filter_common: true },
     "UncommonMaskEntitiesDeleted" <mask: Set> =>
-	graph::EdgeDisplayBase::EntitiesDeleted
-	{ mask: Some(mask), filter_common: true },
+        graph::EdgeDisplayBase::EntitiesDeleted
+        { mask: Some(mask), filter_common: true },
 
     "EntitiesAdded" =>
-	graph::EdgeDisplayBase::EntitiesAdded
-	{ mask: None, filter_common: false },
+        graph::EdgeDisplayBase::EntitiesAdded
+        { mask: None, filter_common: false },
     "MaskEntitiesAdded" <mask: Set> =>
-	graph::EdgeDisplayBase::EntitiesAdded
-	{ mask: Some(mask), filter_common: false },
+        graph::EdgeDisplayBase::EntitiesAdded
+        { mask: Some(mask), filter_common: false },
     "UncommonEntitiesAdded" =>
-	graph::EdgeDisplayBase::EntitiesAdded
-	{ mask: None, filter_common: true },
+        graph::EdgeDisplayBase::EntitiesAdded
+        { mask: None, filter_common: true },
     "UncommonMaskEntitiesAdded" <mask: Set> =>
-	graph::EdgeDisplayBase::EntitiesAdded
-	{ mask: Some(mask), filter_common: true },
+        graph::EdgeDisplayBase::EntitiesAdded
+        { mask: Some(mask), filter_common: true },
 }
 
 /// Edge display formatters separated by arbitrary strings in quotes
 SeparatorEdge: graph::EdgeDisplay = {
     <v: EdgeDisplay> => graph::EdgeDisplay{ base: vec![v] },
     <v:(<EdgeDisplay> <LiteralSeparatorEdge>)+> <e: EdgeDisplay?> =>
-	match e {
-	    None => graph::EdgeDisplay{ base: v.iter().fold(vec![],
-					      |mut acc, (a, b)| {
-						  acc.push(a.clone());
-						  acc.push(b.clone());
-						  acc.clone()
-					      }) },
-	    Some(e) => {
-		let mut v = v.iter().fold(vec![],
-					  |mut acc, (a, b)| {
-					      acc.push(a.clone());
-					      acc.push(b.clone());
-					      acc.clone()
-					  });
-		v.push(e);
-		graph::EdgeDisplay{ base: v }
-	    }
-	}
+        match e {
+            None => graph::EdgeDisplay{ base: v.iter().fold(vec![],
+                                              |mut acc, (a, b)| {
+                                                  acc.push(a.clone());
+                                                  acc.push(b.clone());
+                                                  acc.clone()
+                                              }) },
+            Some(e) => {
+                let mut v = v.iter().fold(vec![],
+                                          |mut acc, (a, b)| {
+                                              acc.push(a.clone());
+                                              acc.push(b.clone());
+                                              acc.clone()
+                                          });
+                v.push(e);
+                graph::EdgeDisplay{ base: v }
+            }
+        }
 }
 
 Operation: graph::OperationType = {
@@ -727,34 +918,34 @@ Operation: graph::OperationType = {
 
 NodeColorConditional: (graph::NodeColorConditional, String) = {
     "Entities" <op: Operation> <set: Set> "?" <color: PATH> =>
-	(graph::NodeColorConditional::EntitiesConditional(op, set),
-	    color.to_string()),
+        (graph::NodeColorConditional::EntitiesConditional(op, set),
+            color.to_string()),
     "Context.Nill" "?" <color: PATH> =>
-	(graph::NodeColorConditional::ContextConditional(
-	    graph::ContextColorConditional::Nill),
-	    color.to_string()),
+        (graph::NodeColorConditional::ContextConditional(
+            graph::ContextColorConditional::Nill),
+            color.to_string()),
     "Context.RecursiveIdentifier" "(" <x: Literal> ")" "?" <color: PATH> =>
-	(graph::NodeColorConditional::ContextConditional(
-	    graph::ContextColorConditional::RecursiveIdentifier(
-		translator.encode(x)
-	    )),
-	    color.to_string()),
+        (graph::NodeColorConditional::ContextConditional(
+            graph::ContextColorConditional::RecursiveIdentifier(
+                translator.encode(x)
+            )),
+            color.to_string()),
     "Context.EntitySet" <op: Operation> <set: Set> "?" <color: PATH> =>
-	(graph::NodeColorConditional::ContextConditional(
-	    graph::ContextColorConditional::EntitySet(op, set)),
-	    color.to_string()),
+        (graph::NodeColorConditional::ContextConditional(
+            graph::ContextColorConditional::EntitySet(op, set)),
+            color.to_string()),
     "Context.NonDeterministicChoice" "?" <color: PATH> =>
-	(graph::NodeColorConditional::ContextConditional(
-	    graph::ContextColorConditional::NonDeterministicChoice),
-	    color.to_string()),
+        (graph::NodeColorConditional::ContextConditional(
+            graph::ContextColorConditional::NonDeterministicChoice),
+            color.to_string()),
     "Context.Summation" "?" <color: PATH> =>
-	(graph::NodeColorConditional::ContextConditional(
-	    graph::ContextColorConditional::Summation),
-	    color.to_string()),
+        (graph::NodeColorConditional::ContextConditional(
+            graph::ContextColorConditional::Summation),
+            color.to_string()),
     "Context.WaitEntity" "?" <color: PATH> =>
-	(graph::NodeColorConditional::ContextConditional(
-	    graph::ContextColorConditional::WaitEntity),
-	    color.to_string()),
+        (graph::NodeColorConditional::ContextConditional(
+            graph::ContextColorConditional::WaitEntity),
+            color.to_string()),
 }
 
 
@@ -762,112 +953,127 @@ NodeColorConditional: (graph::NodeColorConditional, String) = {
 ColorNode: graph::NodeColor = {
     <conditionals: Separated_Or<NodeColorConditional, "||">>
     "!" <base_color: PATH> =>
-	graph::NodeColor { conditionals,
-			   base_color: base_color.to_string() },
+        graph::NodeColor { conditionals,
+                           base_color: base_color.to_string() },
 
     "!" <base_color: PATH> =>
-	graph::NodeColor { conditionals: vec![],
-			   base_color: base_color.to_string() },
+        graph::NodeColor { conditionals: vec![],
+                           base_color: base_color.to_string() },
 }
 
 EdgeColorConditional: (graph::EdgeColorConditional, String) = {
     "Entities" <op: Operation> <set: Set> "?" <color: PATH> =>
-	(graph::EdgeColorConditional::Entities(op, set),
-	    color.to_string()),
+        (graph::EdgeColorConditional::Entities(op, set),
+            color.to_string()),
     "Context" <op: Operation> <set: Set> "?" <color: PATH> =>
-	(graph::EdgeColorConditional::Context(op, set),
-	    color.to_string()),
+        (graph::EdgeColorConditional::Context(op, set),
+            color.to_string()),
     "T" <op: Operation> <set: Set> "?" <color: PATH> =>
-	(graph::EdgeColorConditional::T(op, set),
-	    color.to_string()),
+        (graph::EdgeColorConditional::T(op, set),
+            color.to_string()),
     "Reactants" <op: Operation> <set: Set> "?" <color: PATH> =>
-	(graph::EdgeColorConditional::Reactants(op, set),
-	    color.to_string()),
+        (graph::EdgeColorConditional::Reactants(op, set),
+            color.to_string()),
     "AbsentReactants" <op: Operation> <set: Set> "?" <color: PATH> =>
-	(graph::EdgeColorConditional::ReactantsAbsent(op, set),
-	    color.to_string()),
+        (graph::EdgeColorConditional::ReactantsAbsent(op, set),
+            color.to_string()),
     "Inhibitors" <op: Operation> <set: Set> "?" <color: PATH> =>
-	(graph::EdgeColorConditional::Inhibitors(op, set),
-	    color.to_string()),
+        (graph::EdgeColorConditional::Inhibitors(op, set),
+            color.to_string()),
     "PresentInhibitors" <op: Operation> <set: Set> "?" <color: PATH> =>
-	(graph::EdgeColorConditional::InhibitorsPresent(op, set),
-	    color.to_string()),
+        (graph::EdgeColorConditional::InhibitorsPresent(op, set),
+            color.to_string()),
     "Products" <op: Operation> <set: Set> "?" <color: PATH> =>
-	(graph::EdgeColorConditional::Products(op, set),
-	    color.to_string()),
+        (graph::EdgeColorConditional::Products(op, set),
+            color.to_string()),
 }
 
 ColorEdge: graph::EdgeColor = {
     <conditionals: Separated_Or<EdgeColorConditional, "||">>
     "!" <base_color: PATH> =>
-	graph::EdgeColor { conditionals,
-			   base_color: base_color.to_string() },
+        graph::EdgeColor { conditionals,
+                           base_color: base_color.to_string() },
 
     "!" <base_color: PATH> =>
-	graph::EdgeColor { conditionals: vec![],
-			   base_color: base_color.to_string() },
+        graph::EdgeColor { conditionals: vec![],
+                           base_color: base_color.to_string() },
 }
 
 
 GraphSaveOptions: presets::GraphSaveOptions = {
-    "Dot" "|"? <s_node: SeparatorNode> "|" <s_edge: SeparatorEdge> "|"
-	  <c_node: ColorNode> "|" <c_edge: ColorEdge> ">"
-	<so: SaveOptions> =>
-	presets::GraphSaveOptions::Dot { node_display: s_node,
-					 edge_display: s_edge,
-					 node_color:   c_node,
-					 edge_color:   c_edge,
-					 so },
-    "GraphML" "|"? <s_node: SeparatorNode> "|" <s_edge: SeparatorEdge> ">"
-	<so: SaveOptions> =>
-	presets::GraphSaveOptions::GraphML { node_display: s_node,
-					     edge_display: s_edge,
-					     so },
+    "Dot"
+          "|"? <s_node: SeparatorNode>
+          "|" <s_edge: SeparatorEdge>
+          "|" <c_node: ColorNode>
+          "|" <c_edge: ColorEdge>
+          ">" <so: SaveOptions> =>
+        presets::GraphSaveOptions::Dot { node_display: s_node,
+                                         edge_display: s_edge,
+                                         node_color:   c_node,
+                                         edge_color:   c_edge,
+                                         so },
+    "GraphML"
+          "|"? <s_node: SeparatorNode>
+          "|" <s_edge: SeparatorEdge>
+          ">" <so: SaveOptions> =>
+        presets::GraphSaveOptions::GraphML { node_display: s_node,
+                                             edge_display: s_edge,
+                                             so },
     "Serialize" "(" <path: Path> ")" =>
-	presets::GraphSaveOptions::Serialize { path },
+        presets::GraphSaveOptions::Serialize { path },
 }
 
 
 Instruction: presets::Instruction = {
-    "Stats" ">" <so: SaveOptions> =>
-	presets::Instruction::Stats { so },
-    "Target" ">" <so: SaveOptions> =>
-	presets::Instruction::Target { so },
-    "Run" ">" <so: SaveOptions> =>
-	presets::Instruction::Run { so },
-    "Loop" "(" <symbol: Literal> ")" ">" <so: SaveOptions> =>
-	presets::Instruction::Loop { symbol,  so },
-    "Frequency" ">" <so: SaveOptions> =>
-	presets::Instruction::Frequency { so },
-    "LimitFrequency" "(" <p: Path> ")" ">" <so: SaveOptions> =>
-	presets::Instruction::LimitFrequency { experiment: p, so },
-    "FastFrequency" "(" <p: Path> ")" ">" <so: SaveOptions> =>
-	presets::Instruction::FastFrequency { experiment: p, so },
-    "Digraph" ">" <gso: Separated_Or<GraphSaveOptions, "|">> =>
-	presets::Instruction::Digraph { gso },
-    "Bisimilarity" "(" <p: Path> ")" "relabel" <edge_relabeler: Assert>
-    ">" <so: SaveOptions> =>
-	presets::Instruction::Bisimilarity {
-	    system_b: p,
-	    edge_relabeler,
-	    so
-	},
+    "Stats"
+      ">" <so: SaveOptions> =>
+        presets::Instruction::Stats { so },
+    "Target"
+      ">" <so: SaveOptions> =>
+        presets::Instruction::Target { so },
+    "Run"
+      ">" <so: SaveOptions> =>
+        presets::Instruction::Run { so },
+    "Loop" "(" <symbol: Literal> ")"
+      ">" <so: SaveOptions> =>
+        presets::Instruction::Loop { symbol,  so },
+    "Frequency"
+      ">" <so: SaveOptions> =>
+        presets::Instruction::Frequency { so },
+    "LimitFrequency" "(" <p: Path> ")"
+      ">" <so: SaveOptions> =>
+        presets::Instruction::LimitFrequency { experiment: p, so },
+    "FastFrequency" "(" <p: Path> ")"
+      ">" <so: SaveOptions> =>
+        presets::Instruction::FastFrequency { experiment: p, so },
+    "Digraph"
+      <group: Group?>
+      ">" <gso: Separated_Or<GraphSaveOptions, "|">> =>
+        presets::Instruction::Digraph { group, gso },
+    "Bisimilarity" "(" <p: Path> ")"
+      "relabel" <edge_relabeler: Assert>
+      ">" <so: SaveOptions> =>
+        presets::Instruction::Bisimilarity {
+            system_b: p,
+            edge_relabeler,
+            so
+        },
 }
 
 pub Run: presets::Instructions = {
     #[precedence(level="0")]
     <sys: System> <instr: Separated_Or<Instruction, ",">> =>
-	presets::Instructions { system: presets::System::System { sys },
-				instructions: instr },
+        presets::Instructions { system: presets::System::System { sys },
+                                instructions: instr },
 
     #[precedence(level="1")]
     <sys: System> =>
-	presets::Instructions { system: presets::System::System { sys },
-				instructions: vec![] },
+        presets::Instructions { system: presets::System::System { sys },
+                                instructions: vec![] },
 
     #[precedence(level="2")]
     "Deserialize" "(" <path: Path> ")"
     <instr: Separated_Or<Instruction, ",">> =>
-	presets::Instructions { system: presets::System::Deserialize { path },
-				instructions: instr },
+        presets::Instructions { system: presets::System::Deserialize { path },
+                                instructions: instr },
 }

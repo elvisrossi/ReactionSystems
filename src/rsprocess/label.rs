@@ -7,7 +7,14 @@ use super::translator::{Formatter, PrintableWithTranslator, Translator};
 
 pub trait BasicLabel
 where
-    Self: Default + Clone + Debug + Serialize + Eq + Ord + Hash + PrintableWithTranslator,
+    Self: Default
+        + Clone
+        + Debug
+        + Serialize
+        + Eq
+        + Ord
+        + Hash
+        + PrintableWithTranslator,
     for<'a> Self: Deserialize<'a>,
 {
     type Set: BasicSet;
@@ -17,7 +24,9 @@ where
 
 // -----------------------------------------------------------------------------
 
-#[derive(Default, Clone, Debug, Serialize, Deserialize, Eq, PartialOrd, Ord)]
+#[derive(
+    Default, Clone, Debug, Serialize, Deserialize, Eq, PartialOrd, Ord,
+)]
 pub struct Label {
     pub available_entities: Set,
     pub context: Set,
@@ -112,7 +121,11 @@ impl Hash for Label {
 }
 
 impl PrintableWithTranslator for Label {
-    fn print(&self, f: &mut std::fmt::Formatter, translator: &Translator) -> std::fmt::Result {
+    fn print(
+        &self,
+        f: &mut std::fmt::Formatter,
+        translator: &Translator,
+    ) -> std::fmt::Result {
         write!(
             f,
             "{{available_entities: {}, \
@@ -137,7 +150,9 @@ impl PrintableWithTranslator for Label {
 
 // -----------------------------------------------------------------------------
 
-#[derive(Default, Clone, Debug, Serialize, Deserialize, Eq, PartialOrd, Ord)]
+#[derive(
+    Default, Clone, Debug, Serialize, Deserialize, Eq, PartialOrd, Ord,
+)]
 pub struct PositiveLabel {
     pub available_entities: PositiveSet,
     pub context: PositiveSet,
@@ -185,7 +200,11 @@ impl Hash for PositiveLabel {
 }
 
 impl PrintableWithTranslator for PositiveLabel {
-    fn print(&self, f: &mut std::fmt::Formatter, translator: &Translator) -> std::fmt::Result {
+    fn print(
+        &self,
+        f: &mut std::fmt::Formatter,
+        translator: &Translator,
+    ) -> std::fmt::Result {
         write!(
             f,
             "{{available_entities: {}, \
@@ -220,14 +239,15 @@ impl PositiveLabel {
         inhibitors_present: PositiveSet,
         products: PositiveSet,
     ) -> Self {
-        Self { available_entities,
-               context,
-               t,
-               reactants,
-               reactants_absent,
-               inhibitors,
-               inhibitors_present,
-               products
+        Self {
+            available_entities,
+            context,
+            t,
+            reactants,
+            reactants_absent,
+            inhibitors,
+            inhibitors_present,
+            products,
         }
     }
 
