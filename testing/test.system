@@ -1,0 +1,270 @@
+Environment: [x = {a}.y, y =({a}.x + {b}.y) ]
+Initial Entities: {a, b}
+Context: [({a,b}.{a}.{a,c}.x + {a,b}.{a}.{a}.nill)]
+Reactions: ([{a,b}, {c}, {b}])
+
+Digraph > node {
+            let x = 10;
+            if false
+            then { return {a}; }
+            return {a, b, c};
+        }
+        > Dot
+        | Entities
+        | Context
+        | ! "white"
+        | ! "black"
+        > Print,
+
+Digraph > node {
+            if false
+            then { return "abc"; }
+            else { let x = 11; };
+            return x.tostr;
+        }
+        > Dot
+        | Entities
+        | Context
+        | ! "white"
+        | ! "black"
+        > Print,
+
+Digraph > node {
+            return not(true);
+        }
+        > Dot
+        | Entities
+        | Context
+        | ! "white"
+        | ! "black"
+        > Print,
+
+Digraph > node {
+            return rand(10 - 3);
+        }
+        > Dot
+        | Entities
+        | Context
+        | ! "white"
+        | ! "black"
+        > Print,
+
+Digraph > node {
+            if {a, b}.empty
+            then {return 0;}
+            else {return 1;}
+        }
+        > Dot
+        | Entities
+        | Context
+        | ! "white"
+        | ! "black"
+        > Print,
+
+Digraph > node {
+            if entities.length < 2
+            then {
+                return 1;
+            } else {
+                if "123".length > 3 then {
+                    return 2;
+                }
+            }
+            return 3;
+        }
+        > Dot
+        | Entities
+        | Context
+        | ! "white"
+        | ! "black"
+        > Print,
+
+Digraph > node {
+            let x = 10;
+            let d = (true.tostr :: ('a'.tostr :: x.tostr));
+
+            return d :: "test";
+        }
+        > Dot
+        | Entities
+        | Context
+        | ! "white"
+        | ! "black"
+        > Print,
+
+Digraph > node {
+            let x = entities.length;
+            let y = ((x + 1 - (2 * 3)) ^ (x / 5 % 6));
+
+            return y;
+        }
+        > Dot
+        | Entities
+        | Context
+        | ! "white"
+        | ! "black"
+        > Print,
+
+Digraph > node {
+            for next in {node.neighbours} {
+                return next.target.system.SystemEntities;
+            };
+            return {a, b, c};
+        }
+        > Dot
+        | Entities
+        | Context
+        | ! "white"
+        | ! "black"
+        > Print,
+
+Digraph > node {
+            let x = entities.length;
+            let y = x + 1 / 2;
+            let z = x + (1 / 2);
+
+            let out = x.tostr :: " - " :: y.tostr :: " - " :: z.tostr;
+
+            return out;
+        }
+        > Dot
+        | Entities
+        | Context
+        | ! "white"
+        | ! "black"
+        > Print,
+
+Digraph > node {
+            let sum = 0;
+            for i in {0..100} {
+                let sum = sum + i;
+            };
+            return sum;
+        }
+        > Dot
+        | Entities
+        | Context
+        | ! "white"
+        | ! "black"
+        > Print,
+
+Digraph > node {
+            let string_b = "b";
+            let element_b = string_b.toel;
+            return entities >= ({} :: element_b);
+        }
+        > Dot
+        | Entities
+        | Context
+        | ! "white"
+        | ! "black"
+        > Print,
+
+Digraph > node {
+            let l = [
+                Entities: {a},
+                Context: {b},
+                Reactants: {c},
+                ReactantsAbsent: {d},
+                Inhibitors: {e},
+                InhibitorsPresent: {f},
+                Products: {g}
+            ];
+            return l.Entities + l.Context + l.Reactants + l.ReactantsAbsent +
+                   l.Inhibitors + l.InhibitorsPresent + l.Products;
+        }
+        > Dot
+        | Entities
+        | Context
+        | ! "white"
+        | ! "black"
+        > Print,
+
+Digraph > node {
+            let l = [
+                Entities: {a},
+                Context: {b},
+                Reactants: {c},
+                ReactantsAbsent: {d},
+                Inhibitors: {e},
+                InhibitorsPresent: {f},
+                Products: {g}
+            ];
+            return l.AvailableEntities - l.AllReactants - l.AllInhibitors;
+        }
+        > Dot
+        | Entities
+        | Context
+        | ! "white"
+        | ! "black"
+        > Print,
+
+Digraph > node {
+            for next in {node.neighbours} {
+                return next.source.system.SystemContext;
+            };
+            return node.system.SystemContext;
+        }
+        > Dot
+        | Entities
+        | Context
+        | ! "white"
+        | ! "black"
+        > Print,
+
+Digraph > node {
+            let one = substr("a", "abc");
+            let two = substr("abd", "abc");
+            return min(one, two) + (max(one, two));
+        }
+        > Dot
+        | Entities
+        | Context
+        | ! "white"
+        | ! "black"
+        > Print,
+
+Digraph > node {
+            return (commonsubstr("abc", "abd")).length;
+        }
+        > Dot
+        | Entities
+        | Context
+        | ! "white"
+        | ! "black"
+        > Print,
+
+Digraph > node {
+            let x = true && true;
+            let x = true || false;
+            let x = true ^^ false;
+            let x = {a, b, c} ^^ {b, e} == {a, c, e};
+            let x = 1 < 2;
+            let x = {a, b} < {a, b, c};
+            let x = 1 <= 2;
+            let x = {a, b} <= {a, b, c};
+            let x = 2 > 1;
+            let x = {a} > {};
+            let x = 2 >= 2;
+            let x = {} >= {};
+            let x = (1 == 1) && (false == false) && ('a' == 'a') && ("ab" == "ab");
+            let x = (1 != 2) && (false != true) && ('a' != 'b') && ("ab" != "b");
+            let x = 1 + 2 == 3;
+            let x = {a, b} + {c} == {a, b, c};
+            let x = 1 - 2 == (0-1);
+            let x = {a, b} - {b} == {a};
+            let x = 1 * 2 == 2;
+            let x = {a, b, c} * {b, c, d} == {b, c};
+            let x = 2 ^ 4 == 16;
+            let x = 10 / 3 == 3;
+            let x = 10 % 3 == 1;
+            let x = "ab" :: "c" == "abc";
+            let x = {a, b} :: 'c' == {a, b, c};
+            return x;
+        }
+        > Dot
+        | Entities
+        | Context
+        | ! "white"
+        | ! "black"
+        > Print,

@@ -16,8 +16,8 @@ Digraph > GraphML
 	> Print,
 
 Digraph > node { if (entities == {a, b})
-                 then { return 0 }
-                 else { return 2 } }
+                 then { return 0; }
+                 else { return 2; } }
         > Dot
         | Entities
         | Entities
@@ -25,7 +25,7 @@ Digraph > node { if (entities == {a, b})
         | ! "black"
         > Print,
 
-Digraph > node { return entities == {b} }
+Digraph > node { return entities == {b}; }
         > Dot
         | Entities
         | Entities

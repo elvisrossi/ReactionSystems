@@ -241,7 +241,7 @@ where
             );
 
             // Temporary debug.
-            err.push_str("Expected: ");
+            err.push_str("\nExpected: ");
             let mut it = expected.iter().peekable();
             while let Some(s) = it.next() {
                 err.push('(');
@@ -577,6 +577,7 @@ pub fn grouping(
     if let EvaluatedSystem::Graph { graph, translator } = system {
         for node in graph.node_indices() {
             let val = group.execute(graph, &node, translator)?;
+            println!("node: {node:?} -> val: {val:?}");
             buckets.entry(val.clone()).or_insert(vec![]).push(node);
             let l = buckets.get(&val).unwrap().first().unwrap();
             leader.insert(node, (*l, val));

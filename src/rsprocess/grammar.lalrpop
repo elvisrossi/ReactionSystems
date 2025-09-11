@@ -35,16 +35,16 @@ match {
     "?",
     "Hide",
     "Entities", "MaskEntities", "UncommonEntities", "UncommonMaskEntities",
-    "MaskContext", "UncommonContext", "UncommonMaskContext",
+    "MaskContext", "UncommonContext", "UncommonMaskContext", "Reactants",
     "Products", "MaskProducts", "UncommonProducts", "UncommonMaskProducts",
     "Union", "MaskUnion", "UncommonUnion", "UncommonMaskUnion",
-    "Difference", "MaskDifference",
-    "UncommonDifference", "UncommonMaskDifference",
+    "Difference", "MaskDifference", "ReactantsAbsent", "Inhibitors",
+    "UncommonDifference", "UncommonMaskDifference", "InhibitorsPresent",
     "EntitiesDeleted", "MaskEntitiesDeleted",
         "UncommonEntitiesDeleted", "UncommonMaskEntitiesDeleted",
     "EntitiesAdded", "MaskEntitiesAdded",
         "UncommonEntitiesAdded", "UncommonMaskEntitiesAdded",
-    "node", "entities", "system", "neighbours",
+    "node", "entities", "system", "neighbours", "toel",
     "label", "edge", "if", "then", "else", "let", "=", "return", "for", "in",
     "not", "rand", "empty", "length", "tostr", "source", "target",
     "&&", "||", "^^", "<=", ">=", "==", "!=", "+", "*", "/", "%",
@@ -95,6 +95,10 @@ LiteralProcess: String = {
     "Bisimilarity" => <>.into(),
     "Deserialize" => <>.into(),
     "Hide" => <>.into(),
+    "Reactants" => <>.into(),
+    "ReactantsAbsent" => <>.into(),
+    "Inhibitors" => <>.into(),
+    "InhibitorsPresent" => <>.into(),
     "Entities" => <>.into(),
     "MaskEntities" => <>.into(),
     "UncommonEntities" => <>.into(),
@@ -127,6 +131,7 @@ LiteralProcess: String = {
     "system" => <>.into(),
     "label" => <>.into(),
     "neighbours" => <>.into(),
+    "toel" => <>.into(),
     "edge" => <>.into(),
     "if" => <>.into(),
     "then" => <>.into(),
@@ -183,7 +188,7 @@ Separated_Or<T, C>: Vec<T> = {
 // -----------------------------------------------------------------------------
 //                                 SetParser
 // -----------------------------------------------------------------------------
-pub Set: set::Set = {
+Set: set::Set = {
     <s: Set_of_entities> => s
 };
 
@@ -199,7 +204,7 @@ Set_of_entities: set::Set = {
 //                               ReactionParser
 // -----------------------------------------------------------------------------
 
-pub Reactions: Vec<reaction::Reaction> = {
+Reactions: Vec<reaction::Reaction> = {
     "(" ")" => vec![],
     "(" <s: Separated_Or<Reaction, ";">> ")" => s
 }
@@ -218,7 +223,7 @@ Reaction: reaction::Reaction = {
 // -----------------------------------------------------------------------------
 //                               ContextParser
 // -----------------------------------------------------------------------------
-pub Context: process::Process = {
+Context: process::Process = {
     "[" "]" => process::Process::NondeterministicChoice{ children: vec![] },
     "[" <t: Separated_Or<Boxed_CTX_process, ",">> "]" =>
         process::Process::NondeterministicChoice{ children: t }
@@ -259,7 +264,7 @@ CTX_process: process::Process = {
 // -----------------------------------------------------------------------------
 //                             EnvironmentParser
 // -----------------------------------------------------------------------------
-pub Environment: Box<environment::Environment> = {
+Environment: Box<environment::Environment> = {
     "[" "]" =>
         Box::new(environment::Environment::default()),
     "[" <t: Separated_Or<Env_term, ",">> "]" =>
@@ -283,21 +288,20 @@ Label: label::Label = {
        "ReactantsAbsent" ":" <r_a: Set_of_entities> ","
        "Inhibitors" ":" <i: Set_of_entities> ","
        "InhibitorsPresent" ":" <i_p: Set_of_entities> ","
-       "Products" ":" <p: Set_of_entities> ","
+       "Products" ":" <p: Set_of_entities> ","?
     "]" => label::Label::create(e, c, r, r_a, i, i_p, p)
 }
-
 
 // -----------------------------------------------------------------------------
 //                                AssertParser
 // -----------------------------------------------------------------------------
-pub Assert: Box<relabel::Assert> = {
+Assert: Box<relabel::Assert> = {
      "label" "{" <f: AssertTree> "}" =>
         Box::new(relabel::Assert{tree: f}),
 };
 
 AssertTree: relabel::Tree = {
-    <t1: AssertTree2> ";" <t2: AssertTree> =>
+    <t1: AssertTree2> <t2: AssertTree> =>
         relabel::Tree::Concat(Box::new(t1), Box::new(t2)),
     <t: AssertTree2> => t,
 }
@@ -305,83 +309,83 @@ AssertTree: relabel::Tree = {
 AssertTree2: relabel::Tree = {
     #[precedence(level="1")]
     "if" <e: AssertExpression>
-    "then" "{" <t: AssertTree> "}" =>
+    "then" "{" <t: AssertTree> "}" ";"? =>
         relabel::Tree::If(Box::new(e), Box::new(t)),
 
     #[precedence(level="0")]
     "if" <e: AssertExpression>
     "then" "{" <t1: AssertTree> "}"
-    "else" "{" <t2: AssertTree> "}" =>
+    "else" "{" <t2: AssertTree> "}" ";"? =>
         relabel::Tree::IfElse(Box::new(e), Box::new(t1), Box::new(t2)),
 
-    #[precedence(level="2")]
-    "let" <v: AssertVariable> <q: AssertQualifier?> "=" <e: AssertExpression> =>
-        relabel::Tree::Assignment(v, q, Box::new(e)),
+    "let" <v: AssertVariable> <q: AssertQualifier?> "=" <e: AssertExpression>
+    ";"
+        => relabel::Tree::Assignment(v, q, Box::new(e)),
 
-    #[precedence(level="3")]
-    "return" <e: AssertExpression> =>
+    "return" <e: AssertExpression> ";" =>
         relabel::Tree::Return(Box::new(e)),
 
-    #[precedence(level="4")]
-    "for" <v: AssertVariable> "in" <r: AssertRange> "{" <t: AssertTree> "}" =>
-        relabel::Tree::For(v, r, Box::new(t)),
+    "for" <v: AssertVariable> "in" <r: AssertRange> "{" <t: AssertTree> "}" ";"?
+        => relabel::Tree::For(v, r, Box::new(t)),
 }
 
 AssertVariable: relabel::Variable = {
     #[precedence(level="0")]
     "label" => relabel::Variable::Special(relabel::Special::Label),
-    #[precedence(level="1")]
     "edge"  => relabel::Variable::Special(relabel::Special::Edge),
-    #[precedence(level="2")]
+    #[precedence(level="1")]
     <v: Literal> => relabel::Variable::Id(v),
 }
 
-
 AssertExpression: relabel::Expression = {
-    // Unary
-    #[precedence(level="0")]
-    <unp: AssertUnaryPrefix> <e: AssertExpression> =>
+    #[precedence(level="100")]
+    <unp: AssertUnaryPrefix> "(" <e: AssertExpression> ")" =>
         relabel::Expression::Unary(unp, Box::new(e)),
-    #[precedence(level="2")]
-    <e: AssertExpression> <uns: AssertUnarySuffix> =>
+
+    #[precedence(level="100")]
+    <e: AssertExpression> "." <uns: AssertUnarySuffix> =>
         relabel::Expression::Unary(uns, Box::new(e)),
 
-    // binary
-    #[precedence(level="3")] #[assoc(side="left")]
-    <e1: AssertExpression> <b: AssertBinary> <e2: AssertExpression> =>
+    #[precedence(level="100")] #[assoc(side="left")]
+    "(" <e1: AssertExpression> <b: AssertBinary> <e2: AssertExpression> ")" =>
         relabel::Expression::Binary(b, Box::new(e1), Box::new(e2)),
-    #[precedence(level="1")]
+
+    #[precedence(level="100")]
     <b: AssertBinaryPrefix>
     "(" <e1: AssertExpression> "," <e2: AssertExpression> ")" =>
         relabel::Expression::Binary(b, Box::new(e1), Box::new(e2)),
 
-    #[precedence(level="4")]
+    #[precedence(level="50")]
     "(" <e: AssertExpression> ")" => e,
+
+    #[precedence(level="0")]
+    <t: AssertTerm> => t,
+}
+
+AssertTerm: relabel::Expression = {
     "true" => relabel::Expression::True,
     "false" => relabel::Expression::False,
 
-    #[precedence(level="5")]
     <v: AssertVariable> => relabel::Expression::Var(v),
 
     // If changing IntegerType in assert.rs, also change from Num to another
     // similar parser with different return type
-    #[precedence(level="6")]
     <i: Num> => relabel::Expression::Integer(i),
 
-    #[precedence(level="7")]
     <lab: Label> => relabel::Expression::Label(Box::new(lab)),
     <set: Set_of_entities> => relabel::Expression::Set(set),
-    "'" <el: Literal> "'" => relabel::Expression::Element(translator.encode(el)),
+    "'" <el: Literal> "'" =>
+        relabel::Expression::Element(translator.encode(el)),
 
     // strings
-    #[precedence(level="8")]
     PATH => relabel::Expression::String(<>.trim_end_matches("\"")
-                                         .trim_start_matches("\"")
-                                         .to_string()),
+                                        .trim_start_matches("\"")
+                                        .to_string()),
 }
 
 AssertRange: relabel::Range = {
-    "{" <e: AssertExpression> "}" => relabel::Range::IterateOverSet(Box::new(e)),
+    "{" <e: AssertExpression> "}" =>
+        relabel::Range::IterateOverSet(Box::new(e)),
     "{" <e1: AssertExpression> ".." <e2: AssertExpression> "}" =>
         relabel::Range::IterateInRange(Box::new(e1), Box::new(e2)),
 }
@@ -393,13 +397,13 @@ AssertUnaryPrefix: relabel::Unary = {
 
 AssertUnarySuffix: relabel::Unary = {
     #[precedence(level="0")]
-    "." "empty" => relabel::Unary::Empty,
-    "." "length" => relabel::Unary::Length,
-    "." "tostr" => relabel::Unary::ToStr,
-    "." "toel" => relabel::Unary::ToEl,
+    "empty" => relabel::Unary::Empty,
+    "length" => relabel::Unary::Length,
+    "tostr" => relabel::Unary::ToStr,
+    "toel" => relabel::Unary::ToEl,
 
     #[precedence(level="1")]
-    "." <q: AssertQualifier> => relabel::Unary::Qualifier(q),
+    <q: AssertQualifier> => relabel::Unary::Qualifier(q),
 }
 
 AssertQualifierRestricted: relabel::QualifierRestricted = {
@@ -441,7 +445,6 @@ AssertQualifier: relabel::Qualifier = {
     <q: AssertQualifierNode> => relabel::Qualifier::Node(q),
 }
 
-
 AssertBinary: relabel::Binary = {
     "&&" => relabel::Binary::And,
     "||" => relabel::Binary::Or,
@@ -471,13 +474,13 @@ AssertBinaryPrefix: relabel::Binary = {
 // -----------------------------------------------------------------------------
 //                               GroupingParser
 // -----------------------------------------------------------------------------
-pub Group: Box<grouping::Assert> = {
+Group: Box<grouping::Assert> = {
      ">" "node" "{" <f: GroupTree> "}" =>
         Box::new(grouping::Assert{tree: f}),
 };
 
 GroupTree: grouping::Tree = {
-    <t1: GroupTree2> ";" <t2: GroupTree> =>
+    <t1: GroupTree2> <t2: GroupTree> =>
         grouping::Tree::Concat(Box::new(t1), Box::new(t2)),
     <t: GroupTree2> => t,
 }
@@ -485,34 +488,30 @@ GroupTree: grouping::Tree = {
 GroupTree2: grouping::Tree = {
     #[precedence(level="1")]
     "if" <e: GroupExpression>
-    "then" "{" <t: GroupTree> "}" =>
+    "then" "{" <t: GroupTree> "}" ";"? =>
         grouping::Tree::If(Box::new(e), Box::new(t)),
 
     #[precedence(level="0")]
     "if" <e: GroupExpression>
     "then" "{" <t1: GroupTree> "}"
-    "else" "{" <t2: GroupTree> "}" =>
+    "else" "{" <t2: GroupTree> "}" ";"? =>
         grouping::Tree::IfElse(Box::new(e), Box::new(t1), Box::new(t2)),
 
-    #[precedence(level="2")]
-    "let" <v: GroupVariable> <q: GroupQualifier?> "=" <e: GroupExpression> =>
-        grouping::Tree::Assignment(v, q, Box::new(e)),
+    "let" <v: GroupVariable> <q: GroupQualifier?> "=" <e: GroupExpression> ";"
+        => grouping::Tree::Assignment(v, q, Box::new(e)),
 
-    #[precedence(level="3")]
-    "return" <e: GroupExpression> =>
+    "return" <e: GroupExpression> ";" =>
         grouping::Tree::Return(Box::new(e)),
 
-    #[precedence(level="4")]
-    "for" <v: GroupVariable> "in" <r: GroupRange> "{" <t: GroupTree> "}" =>
+    "for" <v: GroupVariable> "in" <r: GroupRange> "{" <t: GroupTree> "}" ";"? =>
         grouping::Tree::For(v, r, Box::new(t)),
 }
 
 GroupVariable: grouping::Variable = {
     #[precedence(level="0")]
     "entities" => grouping::Variable::Special(grouping::Special::Entities),
-    #[precedence(level="1")]
     "node"  => grouping::Variable::Special(grouping::Special::Node),
-    #[precedence(level="2")]
+    #[precedence(level="1")]
     <v: Literal> => grouping::Variable::Id(v),
 }
 
@@ -521,21 +520,18 @@ GroupExpression: grouping::Expression = {
     <unp: GroupUnaryPrefix> "(" <e: GroupExpression> ")" =>
         grouping::Expression::Unary(unp, Box::new(e)),
 
-    #[precedence(level="100")]
+    #[precedence(level="50")]
     <e: GroupExpression> "." <uns: GroupUnarySuffix> =>
         grouping::Expression::Unary(uns, Box::new(e)),
 
     #[precedence(level="100")] #[assoc(side="left")]
-    "(" <e1: GroupExpression> <b: GroupBinary> <e2: GroupExpression> ")" =>
+    <e1: GroupExpression> <b: GroupBinary> <e2: GroupExpression> =>
         grouping::Expression::Binary(b, Box::new(e1), Box::new(e2)),
 
     #[precedence(level="100")]
     <b: GroupBinaryPrefix>
     "(" <e1: GroupExpression> "," <e2: GroupExpression> ")" =>
         grouping::Expression::Binary(b, Box::new(e1), Box::new(e2)),
-
-    #[precedence(level="50")]
-    "(" <e: GroupExpression> ")" => e,
 
     #[precedence(level="0")]
     <t: GroupTerm> => t,
@@ -553,25 +549,32 @@ GroupTerm: grouping::Expression = {
 
     <lab: Label> => grouping::Expression::Label(Box::new(lab)),
     <set: Set_of_entities> => grouping::Expression::Set(set),
-    "'" <el: Literal> "'" => grouping::Expression::Element(translator.encode(el)),
+    "'" <el: Literal> "'" =>
+        grouping::Expression::Element(translator.encode(el)),
 
     // strings
     PATH => grouping::Expression::String(<>.trim_end_matches("\"")
                                          .trim_start_matches("\"")
                                          .to_string()),
+    // allow arbitrary parenthesis
+    "(" <e: GroupExpression> ")" => e,
 }
 
+#[inline]
 GroupRange: grouping::Range = {
-    "{" <e: GroupExpression> "}" => grouping::Range::IterateOverSet(Box::new(e)),
+    "{" <e: GroupExpression> "}" =>
+        grouping::Range::IterateOverSet(Box::new(e)),
     "{" <e1: GroupExpression> ".." <e2: GroupExpression> "}" =>
         grouping::Range::IterateInRange(Box::new(e1), Box::new(e2)),
 }
 
+#[inline]
 GroupUnaryPrefix: grouping::Unary = {
     "not" => grouping::Unary::Not,
     "rand" => grouping::Unary::Rand,
 }
 
+#[inline]
 GroupUnarySuffix: grouping::Unary = {
     #[precedence(level="0")]
     "empty" => grouping::Unary::Empty,
@@ -583,6 +586,7 @@ GroupUnarySuffix: grouping::Unary = {
     <q: GroupQualifier> => grouping::Unary::Qualifier(q),
 }
 
+#[inline]
 GroupQualifierRestricted: grouping::QualifierRestricted = {
     "Entities" => grouping::QualifierRestricted::Entities,
     "Context" => grouping::QualifierRestricted::Context,
@@ -593,27 +597,32 @@ GroupQualifierRestricted: grouping::QualifierRestricted = {
     "Products" => grouping::QualifierRestricted::Products,
 }
 
+#[inline]
 GroupQualifierLabel: grouping::QualifierLabel = {
     "AvailableEntities" => grouping::QualifierLabel::AvailableEntities,
     "AllReactants" => grouping::QualifierLabel::AllReactants,
     "AllInhibitors" => grouping::QualifierLabel::AllInhibitors,
 }
 
+#[inline]
 GroupQualifierSystem: grouping::QualifierSystem = {
     "SystemEntities" => grouping::QualifierSystem::Entities,
     "SystemContext" => grouping::QualifierSystem::Context,
 }
 
+#[inline]
 GroupQualifierEdge: grouping::QualifierEdge = {
     "source" => grouping::QualifierEdge::Source,
     "target" => grouping::QualifierEdge::Target,
 }
 
+#[inline]
 GroupQualifierNode: grouping::QualifierNode = {
     "neighbours" => grouping::QualifierNode::Neighbours,
     "system" => grouping::QualifierNode::System,
 }
 
+#[inline]
 GroupQualifier: grouping::Qualifier = {
     <q: GroupQualifierSystem> => grouping::Qualifier::System(q),
     <q: GroupQualifierLabel> => grouping::Qualifier::Label(q),
@@ -622,7 +631,7 @@ GroupQualifier: grouping::Qualifier = {
     <q: GroupQualifierNode> => grouping::Qualifier::Node(q),
 }
 
-
+#[inline]
 GroupBinary: grouping::Binary = {
     "&&" => grouping::Binary::And,
     "||" => grouping::Binary::Or,
@@ -642,6 +651,7 @@ GroupBinary: grouping::Binary = {
     "::" => grouping::Binary::Concat,
 }
 
+#[inline]
 GroupBinaryPrefix: grouping::Binary = {
     "substr" => grouping::Binary::SubStr,
     "min" => grouping::Binary::Min,
@@ -649,12 +659,10 @@ GroupBinaryPrefix: grouping::Binary = {
     "commonsubstr" => grouping::Binary::CommonSubStr,
 }
 
-
-
 // -----------------------------------------------------------------------------
 //                                 BHMLParser
 // -----------------------------------------------------------------------------
-// pub BHML: Box<RSBHML> = {
+// BHML: Box<RSBHML> = {
 //     <g: Formula_BHML> => Box::new(g)
 // };
 
@@ -677,7 +685,7 @@ GroupBinaryPrefix: grouping::Binary = {
 // system
 // a system is an environment, a set of entities as initial state, a context and
 // a set of reaction rules.
-pub System: system::System = {
+System: system::System = {
     "Environment" ":" <delta: Environment>
     "Initial Entities" ":" <available_entities: Set>
     "Context" ":" <context_process: Context>
