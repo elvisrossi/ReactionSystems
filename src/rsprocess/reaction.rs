@@ -3,8 +3,9 @@
 //! Allows to define the 'classical' mechanism to compute in a Reaction System
 //! (RS) Framework.
 
-use serde::{Deserialize, Serialize};
 use std::hash::Hash;
+
+use serde::{Deserialize, Serialize};
 
 use super::element::{IdState, IdType};
 use super::set::{BasicSet, ExtensionsSet, PositiveSet, Set};
@@ -141,9 +142,9 @@ impl<T: BasicReaction<Set = Set>, Set: BasicSet> ExtensionReaction for T {
     Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq, Hash,
 )]
 pub struct Reaction {
-    pub reactants: Set,
+    pub reactants:  Set,
     pub inhibitors: Set,
-    pub products: Set,
+    pub products:   Set,
 }
 
 impl BasicReaction for Reaction {
@@ -219,7 +220,7 @@ impl Reaction {
 )]
 pub struct PositiveReaction {
     pub reactants: PositiveSet,
-    pub products: PositiveSet,
+    pub products:  PositiveSet,
 }
 
 impl BasicReaction for PositiveReaction {
@@ -266,7 +267,7 @@ impl PositiveReaction {
             reactants: reactants
                 .to_positive_set(IdState::Positive)
                 .union(&inhibitors.to_positive_set(IdState::Negative)),
-            products: products.to_positive_set(IdState::Positive),
+            products:  products.to_positive_set(IdState::Positive),
         }
     }
 
@@ -278,12 +279,11 @@ impl PositiveReaction {
         let mut found = false;
         for el in self.reactants.iter() {
             match other.reactants.identifiers.get(el.0) {
-                None => return None,
-                Some(s) => {
+                | None => return None,
+                | Some(s) =>
                     if s != el.1 {
                         if found { return None } else { found = true }
-                    }
-                }
+                    },
             }
         }
         Some(self.reactants.intersection(&other.reactants))

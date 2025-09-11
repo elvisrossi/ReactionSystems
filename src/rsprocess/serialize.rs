@@ -5,14 +5,14 @@
 
 use std::io;
 
-use super::graph;
 use serde::{Deserialize, Serialize};
 
+use super::graph;
 use super::translator::Translator;
 
 #[derive(Serialize, Deserialize)]
 struct GraphAndTranslator {
-    graph: graph::SystemGraph,
+    graph:      graph::SystemGraph,
     translator: Translator,
 }
 
@@ -25,13 +25,10 @@ pub fn ser<W>(
 where
     W: io::Write,
 {
-    serde_cbor_2::to_writer(
-        writer,
-        &GraphAndTranslator {
-            graph: graph.clone(),
-            translator: translator.clone(),
-        },
-    )
+    serde_cbor_2::to_writer(writer, &GraphAndTranslator {
+        graph:      graph.clone(),
+        translator: translator.clone(),
+    })
 }
 
 /// Deserializer for file that contains graph and translator.

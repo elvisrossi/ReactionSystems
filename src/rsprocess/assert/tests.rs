@@ -1273,11 +1273,12 @@ fn for_8() {
 
 #[test]
 fn nodes() {
+    use std::rc::Rc;
+
     use environment::Environment;
     use label::Label;
     use process::Process;
     use set::Set;
-    use std::rc::Rc;
     use system::System;
     use translator::Translator;
 

@@ -1,11 +1,12 @@
 // -----------------------------------------------------------------------------
 //                    Display Implementation for all types
 // -----------------------------------------------------------------------------
+use std::fmt;
+
 use super::super::translator::{
     Formatter, PrintableWithTranslator, Translator,
 };
 use super::dsl::*;
-use std::fmt;
 
 impl<S> fmt::Debug for Assert<S>
 where
@@ -22,28 +23,27 @@ where
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Concat(t1, t2) => {
+            | Self::Concat(t1, t2) => {
                 write!(f, "{t1:?};\n{t2:?}")
-            }
-            Self::If(exp, t) => {
+            },
+            | Self::If(exp, t) => {
                 write!(f, "if {exp:?} {{\n{t:?}\n}}")
-            }
-            Self::IfElse(exp, t1, t2) => {
+            },
+            | Self::IfElse(exp, t1, t2) => {
                 write!(f, "if {exp:?} {{\n{t1:?}\n}} else {{\n{t2:?}\n}}")
-            }
-            Self::Assignment(v, q, exp) => {
+            },
+            | Self::Assignment(v, q, exp) =>
                 if let Some(q) = q {
                     write!(f, "{v:?}.{q:?} = {exp:?}")
                 } else {
                     write!(f, "{v:?} = {exp:?}")
-                }
-            }
-            Self::Return(exp) => {
+                },
+            | Self::Return(exp) => {
                 write!(f, "return {exp:?}")
-            }
-            Self::For(v, r, t) => {
+            },
+            | Self::For(v, r, t) => {
                 write!(f, "for {v:?} in {r:?} {{\n{t:?}\n}}")
-            }
+            },
         }
     }
 }
@@ -54,12 +54,12 @@ where
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Special(s) => {
+            | Self::Special(s) => {
                 write!(f, "{s:?}")
-            }
-            Self::Id(s) => {
+            },
+            | Self::Id(s) => {
                 write!(f, "{s:?}")
-            }
+            },
         }
     }
 }
@@ -70,40 +70,39 @@ where
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::True => {
+            | Self::True => {
                 write!(f, "True")
-            }
-            Self::False => {
+            },
+            | Self::False => {
                 write!(f, "False")
-            }
-            Self::Integer(i) => {
+            },
+            | Self::Integer(i) => {
                 write!(f, "{i}")
-            }
-            Self::Label(rslabel) => {
+            },
+            | Self::Label(rslabel) => {
                 write!(f, "{{debug: {rslabel:?}}}")
-            }
-            Self::Set(set) => {
+            },
+            | Self::Set(set) => {
                 write!(f, "{{debug: {set:?}}}")
-            }
-            Self::Element(el) => {
+            },
+            | Self::Element(el) => {
                 write!(f, "'{{debug: {el:?}}}'")
-            }
-            Self::String(s) => {
+            },
+            | Self::String(s) => {
                 write!(f, r#""{s:?}""#)
-            }
-            Self::Var(v) => {
+            },
+            | Self::Var(v) => {
                 write!(f, "{v:?}")
-            }
-            Self::Unary(u, exp) => {
+            },
+            | Self::Unary(u, exp) =>
                 if u.is_prefix() {
                     write!(f, "{u:?}({exp:?})")
                 } else if u.is_suffix() {
                     write!(f, "{exp:?}{u:?}")
                 } else {
                     unreachable!()
-                }
-            }
-            Self::Binary(b, exp1, exp2) => {
+                },
+            | Self::Binary(b, exp1, exp2) =>
                 if b.is_prefix() {
                     write!(f, "{b:?}({exp1:?}, {exp2:?})")
                 } else if b.is_suffix() {
@@ -112,8 +111,7 @@ where
                     write!(f, "({exp1:?} {b:?} {exp2:?})")
                 } else {
                     unreachable!()
-                }
-            }
+                },
         }
     }
 }
@@ -124,8 +122,10 @@ where
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::IterateOverSet(exp) => write!(f, "{{{exp:?}}}"),
-            Self::IterateInRange(exp1, exp2) => write!(f, "{exp1:?}..{exp2:?}"),
+            | Self::IterateOverSet(exp) => write!(f, "{{{exp:?}}}"),
+            | Self::IterateInRange(exp1, exp2) => {
+                write!(f, "{exp1:?}..{exp2:?}")
+            },
         }
     }
 }
@@ -133,13 +133,13 @@ where
 impl fmt::Debug for Unary {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Not => write!(f, "not"),
-            Self::Rand => write!(f, "rand"),
-            Self::Empty => write!(f, ".empty"),
-            Self::Length => write!(f, ".length"),
-            Self::ToStr => write!(f, ".tostr"),
-            Self::ToEl => write!(f, ".toel"),
-            Self::Qualifier(q) => write!(f, ".{q:?}"),
+            | Self::Not => write!(f, "not"),
+            | Self::Rand => write!(f, "rand"),
+            | Self::Empty => write!(f, ".empty"),
+            | Self::Length => write!(f, ".length"),
+            | Self::ToStr => write!(f, ".tostr"),
+            | Self::ToEl => write!(f, ".toel"),
+            | Self::Qualifier(q) => write!(f, ".{q:?}"),
         }
     }
 }
@@ -147,13 +147,13 @@ impl fmt::Debug for Unary {
 impl fmt::Debug for QualifierRestricted {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Entities => write!(f, "Entities"),
-            Self::Context => write!(f, "Context"),
-            Self::Reactants => write!(f, "Reactants"),
-            Self::ReactantsAbsent => write!(f, "ReactantsAbsent"),
-            Self::Inhibitors => write!(f, "Inhibitors"),
-            Self::InhibitorsPresent => write!(f, "InhibitorsPresent"),
-            Self::Products => write!(f, "Products"),
+            | Self::Entities => write!(f, "Entities"),
+            | Self::Context => write!(f, "Context"),
+            | Self::Reactants => write!(f, "Reactants"),
+            | Self::ReactantsAbsent => write!(f, "ReactantsAbsent"),
+            | Self::Inhibitors => write!(f, "Inhibitors"),
+            | Self::InhibitorsPresent => write!(f, "InhibitorsPresent"),
+            | Self::Products => write!(f, "Products"),
         }
     }
 }
@@ -161,9 +161,9 @@ impl fmt::Debug for QualifierRestricted {
 impl fmt::Debug for QualifierLabel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::AvailableEntities => write!(f, "AvailableEntities"),
-            Self::AllReactants => write!(f, "AllReactants"),
-            Self::AllInhibitors => write!(f, "AllInhibitors"),
+            | Self::AvailableEntities => write!(f, "AvailableEntities"),
+            | Self::AllReactants => write!(f, "AllReactants"),
+            | Self::AllInhibitors => write!(f, "AllInhibitors"),
         }
     }
 }
@@ -171,8 +171,8 @@ impl fmt::Debug for QualifierLabel {
 impl fmt::Debug for QualifierSystem {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Context => write!(f, "context"),
-            Self::Entities => write!(f, "entities"),
+            | Self::Context => write!(f, "context"),
+            | Self::Entities => write!(f, "entities"),
         }
     }
 }
@@ -180,8 +180,8 @@ impl fmt::Debug for QualifierSystem {
 impl fmt::Debug for QualifierEdge {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Source => write!(f, "source"),
-            Self::Target => write!(f, "target"),
+            | Self::Source => write!(f, "source"),
+            | Self::Target => write!(f, "target"),
         }
     }
 }
@@ -189,8 +189,8 @@ impl fmt::Debug for QualifierEdge {
 impl fmt::Debug for QualifierNode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Neighbours => write!(f, "neighbours"),
-            Self::System => write!(f, "system"),
+            | Self::Neighbours => write!(f, "neighbours"),
+            | Self::System => write!(f, "system"),
         }
     }
 }
@@ -198,11 +198,11 @@ impl fmt::Debug for QualifierNode {
 impl fmt::Debug for Qualifier {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Label(q) => write!(f, "{q:?}"),
-            Self::Restricted(q) => write!(f, "{q:?}"),
-            Self::System(q) => write!(f, "{q:?}"),
-            Self::Edge(q) => write!(f, "{q:?}"),
-            Self::Node(q) => write!(f, "{q:?}"),
+            | Self::Label(q) => write!(f, "{q:?}"),
+            | Self::Restricted(q) => write!(f, "{q:?}"),
+            | Self::System(q) => write!(f, "{q:?}"),
+            | Self::Edge(q) => write!(f, "{q:?}"),
+            | Self::Node(q) => write!(f, "{q:?}"),
         }
     }
 }
@@ -210,26 +210,26 @@ impl fmt::Debug for Qualifier {
 impl fmt::Debug for Binary {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::And => write!(f, "&&"),
-            Self::Or => write!(f, "||"),
-            Self::Xor => write!(f, "^^"),
-            Self::Less => write!(f, "<"),
-            Self::LessEq => write!(f, "<="),
-            Self::More => write!(f, ">"),
-            Self::MoreEq => write!(f, ">="),
-            Self::Eq => write!(f, "=="),
-            Self::NotEq => write!(f, "!="),
-            Self::Plus => write!(f, "+"),
-            Self::Minus => write!(f, "-"),
-            Self::Times => write!(f, "*"),
-            Self::Exponential => write!(f, "^"),
-            Self::Quotient => write!(f, "/"),
-            Self::Reminder => write!(f, "%"),
-            Self::Concat => write!(f, "::"),
-            Self::SubStr => write!(f, "substr"),
-            Self::Min => write!(f, "min"),
-            Self::Max => write!(f, "max"),
-            Self::CommonSubStr => write!(f, "commonsubstr"),
+            | Self::And => write!(f, "&&"),
+            | Self::Or => write!(f, "||"),
+            | Self::Xor => write!(f, "^^"),
+            | Self::Less => write!(f, "<"),
+            | Self::LessEq => write!(f, "<="),
+            | Self::More => write!(f, ">"),
+            | Self::MoreEq => write!(f, ">="),
+            | Self::Eq => write!(f, "=="),
+            | Self::NotEq => write!(f, "!="),
+            | Self::Plus => write!(f, "+"),
+            | Self::Minus => write!(f, "-"),
+            | Self::Times => write!(f, "*"),
+            | Self::Exponential => write!(f, "^"),
+            | Self::Quotient => write!(f, "/"),
+            | Self::Reminder => write!(f, "%"),
+            | Self::Concat => write!(f, "::"),
+            | Self::SubStr => write!(f, "substr"),
+            | Self::Min => write!(f, "min"),
+            | Self::Max => write!(f, "max"),
+            | Self::CommonSubStr => write!(f, "commonsubstr"),
         }
     }
 }
@@ -237,19 +237,19 @@ impl fmt::Debug for Binary {
 impl fmt::Debug for AssertReturnValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Boolean(b) => write!(f, "{b:?}"),
-            Self::Integer(i) => write!(f, "{i:?}"),
-            Self::String(s) => write!(f, r#""{s:?}""#),
-            Self::Label(l) => write!(f, "{{debug: {l:?}}}"),
-            Self::Set(set) => write!(f, "{{debug: {set:?}}}"),
-            Self::Element(el) => write!(f, "{{debug: {el:?}}}"),
-            Self::Edge(edge) => write!(f, "{{debug: {edge:?}}}"),
-            Self::Node(node) => write!(f, "{{debug: {node:?}}}"),
-            Self::Neighbours(node) => {
+            | Self::Boolean(b) => write!(f, "{b:?}"),
+            | Self::Integer(i) => write!(f, "{i:?}"),
+            | Self::String(s) => write!(f, r#""{s:?}""#),
+            | Self::Label(l) => write!(f, "{{debug: {l:?}}}"),
+            | Self::Set(set) => write!(f, "{{debug: {set:?}}}"),
+            | Self::Element(el) => write!(f, "{{debug: {el:?}}}"),
+            | Self::Edge(edge) => write!(f, "{{debug: {edge:?}}}"),
+            | Self::Node(node) => write!(f, "{{debug: {node:?}}}"),
+            | Self::Neighbours(node) => {
                 write!(f, "{{debug: {node:?}}}.neighbours")
-            }
-            Self::System(sys) => write!(f, "{{debug: {sys:?}}}"),
-            Self::Context(ctx) => write!(f, "{{debug: {ctx:?}}}"),
+            },
+            | Self::System(sys) => write!(f, "{{debug: {sys:?}}}"),
+            | Self::Context(ctx) => write!(f, "{{debug: {ctx:?}}}"),
         }
     }
 }
@@ -257,20 +257,20 @@ impl fmt::Debug for AssertReturnValue {
 impl fmt::Debug for AssertionTypes {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Boolean => write!(f, "boolean"),
-            Self::Integer => write!(f, "integer"),
-            Self::String => write!(f, "string"),
-            Self::Label => write!(f, "label"),
-            Self::Set => write!(f, "set"),
-            Self::Element => write!(f, "element"),
-            Self::System => write!(f, "system"),
-            Self::Context => write!(f, "context"),
-            Self::NoType => write!(f, "no type"),
-            Self::RangeInteger => write!(f, "range of integers"),
-            Self::RangeSet => write!(f, "range of set"),
-            Self::RangeNeighbours => write!(f, "range of edges"),
-            Self::Edge => write!(f, "edge"),
-            Self::Node => write!(f, "node"),
+            | Self::Boolean => write!(f, "boolean"),
+            | Self::Integer => write!(f, "integer"),
+            | Self::String => write!(f, "string"),
+            | Self::Label => write!(f, "label"),
+            | Self::Set => write!(f, "set"),
+            | Self::Element => write!(f, "element"),
+            | Self::System => write!(f, "system"),
+            | Self::Context => write!(f, "context"),
+            | Self::NoType => write!(f, "no type"),
+            | Self::RangeInteger => write!(f, "range of integers"),
+            | Self::RangeSet => write!(f, "range of set"),
+            | Self::RangeNeighbours => write!(f, "range of edges"),
+            | Self::Edge => write!(f, "edge"),
+            | Self::Node => write!(f, "node"),
         }
     }
 }
@@ -304,19 +304,19 @@ where
         translator: &Translator,
     ) -> fmt::Result {
         match self {
-            Self::Concat(t1, t2) => write!(
+            | Self::Concat(t1, t2) => write!(
                 f,
                 "{};\n{}",
                 Formatter::from(translator, &**t1),
                 Formatter::from(translator, &**t2)
             ),
-            Self::If(exp, t) => write!(
+            | Self::If(exp, t) => write!(
                 f,
                 "if {} {{\n{}\n}}",
                 Formatter::from(translator, &**exp),
                 Formatter::from(translator, &**t)
             ),
-            Self::IfElse(exp, t1, t2) => {
+            | Self::IfElse(exp, t1, t2) => {
                 write!(
                     f,
                     "if {} {{\n{}\n}} else {{\n{}\n}}",
@@ -324,8 +324,8 @@ where
                     Formatter::from(translator, &**t1),
                     Formatter::from(translator, &**t2)
                 )
-            }
-            Self::Assignment(v, q, exp) => {
+            },
+            | Self::Assignment(v, q, exp) =>
                 if let Some(q) = q {
                     write!(
                         f,
@@ -341,12 +341,11 @@ where
                         Formatter::from(translator, v),
                         Formatter::from(translator, &**exp)
                     )
-                }
-            }
-            Self::Return(exp) => {
+                },
+            | Self::Return(exp) => {
                 write!(f, "return {}", Formatter::from(translator, &**exp))
-            }
-            Self::For(v, r, t) => {
+            },
+            | Self::For(v, r, t) => {
                 write!(
                     f,
                     "for {} in {} {{\n{}\n}}",
@@ -354,7 +353,7 @@ where
                     Formatter::from(translator, r),
                     Formatter::from(translator, &**t)
                 )
-            }
+            },
         }
     }
 }
@@ -369,8 +368,10 @@ where
         translator: &Translator,
     ) -> fmt::Result {
         match self {
-            Self::Special(s) => write!(f, "{}", Formatter::from(translator, s)),
-            Self::Id(s) => write!(f, "{s}"),
+            | Self::Special(s) => {
+                write!(f, "{}", Formatter::from(translator, s))
+            },
+            | Self::Id(s) => write!(f, "{s}"),
         }
     }
 }
@@ -385,19 +386,21 @@ where
         translator: &Translator,
     ) -> fmt::Result {
         match self {
-            Self::True => write!(f, "True"),
-            Self::False => write!(f, "False"),
-            Self::Integer(i) => write!(f, "{i}"),
-            Self::Label(l) => {
+            | Self::True => write!(f, "True"),
+            | Self::False => write!(f, "False"),
+            | Self::Integer(i) => write!(f, "{i}"),
+            | Self::Label(l) => {
                 write!(f, "{}", Formatter::from(translator, &**l))
-            }
-            Self::Set(set) => write!(f, "{}", Formatter::from(translator, set)),
-            Self::Element(el) => {
+            },
+            | Self::Set(set) => {
+                write!(f, "{}", Formatter::from(translator, set))
+            },
+            | Self::Element(el) => {
                 write!(f, "'{}'", Formatter::from(translator, el))
-            }
-            Self::String(s) => write!(f, r#""{s}""#),
-            Self::Var(v) => write!(f, "{}", Formatter::from(translator, v)),
-            Self::Unary(u, exp) => {
+            },
+            | Self::String(s) => write!(f, r#""{s}""#),
+            | Self::Var(v) => write!(f, "{}", Formatter::from(translator, v)),
+            | Self::Unary(u, exp) =>
                 if u.is_prefix() {
                     write!(
                         f,
@@ -414,9 +417,8 @@ where
                     )
                 } else {
                     unreachable!()
-                }
-            }
-            Self::Binary(b, exp1, exp2) => {
+                },
+            | Self::Binary(b, exp1, exp2) =>
                 if b.is_prefix() {
                     write!(
                         f,
@@ -443,8 +445,7 @@ where
                     )
                 } else {
                     unreachable!()
-                }
-            }
+                },
         }
     }
 }
@@ -459,10 +460,10 @@ where
         translator: &Translator,
     ) -> fmt::Result {
         match self {
-            Self::IterateOverSet(exp) => {
+            | Self::IterateOverSet(exp) => {
                 write!(f, "{}", Formatter::from(translator, &**exp))
-            }
-            Self::IterateInRange(exp1, exp2) => write!(
+            },
+            | Self::IterateInRange(exp1, exp2) => write!(
                 f,
                 "{}..{}",
                 Formatter::from(translator, &**exp1),
@@ -479,15 +480,15 @@ impl PrintableWithTranslator for Unary {
         translator: &Translator,
     ) -> fmt::Result {
         match self {
-            Self::Not => write!(f, "not"),
-            Self::Rand => write!(f, "rand"),
-            Self::Empty => write!(f, ".empty"),
-            Self::Length => write!(f, ".length"),
-            Self::ToStr => write!(f, ".tostr"),
-            Self::ToEl => write!(f, ".toel"),
-            Self::Qualifier(q) => {
+            | Self::Not => write!(f, "not"),
+            | Self::Rand => write!(f, "rand"),
+            | Self::Empty => write!(f, ".empty"),
+            | Self::Length => write!(f, ".length"),
+            | Self::ToStr => write!(f, ".tostr"),
+            | Self::ToEl => write!(f, ".toel"),
+            | Self::Qualifier(q) => {
                 write!(f, ".{}", Formatter::from(translator, q))
-            }
+            },
         }
     }
 }
@@ -549,13 +550,15 @@ impl PrintableWithTranslator for Qualifier {
         translator: &Translator,
     ) -> fmt::Result {
         match self {
-            Self::Label(q) => write!(f, "{}", Formatter::from(translator, q)),
-            Self::Restricted(q) => {
+            | Self::Label(q) => write!(f, "{}", Formatter::from(translator, q)),
+            | Self::Restricted(q) => {
                 write!(f, "{}", Formatter::from(translator, q))
-            }
-            Self::System(q) => write!(f, "{}", Formatter::from(translator, q)),
-            Self::Edge(q) => write!(f, "{}", Formatter::from(translator, q)),
-            Self::Node(q) => write!(f, "{}", Formatter::from(translator, q)),
+            },
+            | Self::System(q) => {
+                write!(f, "{}", Formatter::from(translator, q))
+            },
+            | Self::Edge(q) => write!(f, "{}", Formatter::from(translator, q)),
+            | Self::Node(q) => write!(f, "{}", Formatter::from(translator, q)),
         }
     }
 }
@@ -577,25 +580,27 @@ impl PrintableWithTranslator for AssertReturnValue {
         translator: &Translator,
     ) -> fmt::Result {
         match self {
-            Self::Boolean(b) => write!(f, "{b}"),
-            Self::Integer(i) => write!(f, "{i}"),
-            Self::String(s) => write!(f, r#""{s}""#),
-            Self::Label(l) => write!(f, "{}", Formatter::from(translator, l)),
-            Self::Set(set) => write!(f, "{}", Formatter::from(translator, set)),
-            Self::Element(el) => {
+            | Self::Boolean(b) => write!(f, "{b}"),
+            | Self::Integer(i) => write!(f, "{i}"),
+            | Self::String(s) => write!(f, r#""{s}""#),
+            | Self::Label(l) => write!(f, "{}", Formatter::from(translator, l)),
+            | Self::Set(set) => {
+                write!(f, "{}", Formatter::from(translator, set))
+            },
+            | Self::Element(el) => {
                 write!(f, "{}", Formatter::from(translator, el))
-            }
-            Self::Edge(edge) => write!(f, "{{edge: {edge:?}}}"),
-            Self::Node(node) => write!(f, "{{node: {node:?}}}"),
-            Self::Neighbours(node) => {
+            },
+            | Self::Edge(edge) => write!(f, "{{edge: {edge:?}}}"),
+            | Self::Node(node) => write!(f, "{{node: {node:?}}}"),
+            | Self::Neighbours(node) => {
                 write!(f, "{{node: {node:?}}}.neighbours")
-            }
-            Self::System(sys) => {
+            },
+            | Self::System(sys) => {
                 write!(f, "{}", Formatter::from(translator, sys))
-            }
-            Self::Context(ctx) => {
+            },
+            | Self::Context(ctx) => {
                 write!(f, "{}", Formatter::from(translator, ctx))
-            }
+            },
         }
     }
 }

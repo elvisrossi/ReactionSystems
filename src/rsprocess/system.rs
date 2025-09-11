@@ -1,12 +1,12 @@
-use petgraph::graph::DiGraph;
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::rc::Rc;
 
-use super::choices::Choices;
-use super::choices::{BasicChoices, PositiveChoices};
+use petgraph::graph::DiGraph;
+use serde::{Deserialize, Serialize};
+
+use super::choices::{BasicChoices, Choices, PositiveChoices};
 use super::element::IdState;
 use super::environment::{
     BasicEnvironment, Environment, ExtensionsEnvironment, LoopEnvironment,
@@ -780,7 +780,7 @@ impl From<System> for PositiveSystem {
                 for s in prohib_set {
                     res.push(PositiveReaction {
                         reactants: s,
-                        products: PositiveSet::from([(el, IdState::Negative)]),
+                        products:  PositiveSet::from([(el, IdState::Negative)]),
                     })
                 }
             }

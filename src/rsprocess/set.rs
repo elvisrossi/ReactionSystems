@@ -1,7 +1,8 @@
-use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::hash::Hash;
+
+use serde::{Deserialize, Serialize};
 
 use super::element::{IdState, IdType, PositiveType};
 use super::translator::{Formatter, PrintableWithTranslator, Translator};
@@ -316,11 +317,11 @@ impl Set {
                     .enumerate()
                     .rfind(|(_, (els, pos))| **pos < els.len() - 1);
                 match next {
-                    None => break,
-                    Some((pos, _)) => {
+                    | None => break,
+                    | Some((pos, _)) => {
                         state[pos] += 1;
                         state.iter_mut().skip(pos + 1).for_each(|el| *el = 0);
-                    }
+                    },
                 }
             }
             t
@@ -346,8 +347,8 @@ impl Set {
                 if !modified {
                     e = {
                         match tmp_t.next() {
-                            Some(a) => a,
-                            None => break,
+                            | Some(a) => a,
+                            | None => break,
                         }
                     };
                 }
@@ -508,19 +509,19 @@ impl PrintableWithTranslator for PositiveSet {
                 write!(
                     f,
                     "{}",
-                    Formatter::from(
-                        translator,
-                        &PositiveType { id: *id, state: *s }
-                    )
+                    Formatter::from(translator, &PositiveType {
+                        id:    *id,
+                        state: *s,
+                    })
                 )?;
             } else {
                 write!(
                     f,
                     "{}, ",
-                    Formatter::from(
-                        translator,
-                        &PositiveType { id: *id, state: *s }
-                    )
+                    Formatter::from(translator, &PositiveType {
+                        id:    *id,
+                        state: *s,
+                    })
                 )?;
             }
         }

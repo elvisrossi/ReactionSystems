@@ -1,6 +1,7 @@
-use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::hash::Hash;
+
+use serde::{Deserialize, Serialize};
 
 use super::set::{BasicSet, PositiveSet, Set};
 use super::translator::{Formatter, PrintableWithTranslator, Translator};

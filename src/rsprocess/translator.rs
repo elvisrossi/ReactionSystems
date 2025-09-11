@@ -1,8 +1,9 @@
 //! Module for translation and keeping track of strings.
 
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
+
+use serde::{Deserialize, Serialize};
 
 use super::element::IdType;
 
@@ -58,9 +59,9 @@ impl PartialEq for Translator {
     fn eq(&self, other: &Self) -> bool {
         for (s, id) in self.strings.iter() {
             match other.strings.get(s) {
-                None => return false,
-                Some(id2) if id != id2 => return false,
-                _ => {}
+                | None => return false,
+                | Some(id2) if id != id2 => return false,
+                | _ => {},
             }
         }
         true

@@ -13,17 +13,14 @@ fn prohibiting_set_1() {
         Set::prohibiting_set(&[r1r, r2r], &[r1i, r2i]).unwrap();
     prohibiting_set.sort();
 
-    assert_eq!(
-        prohibiting_set,
-        vec![
-            PositiveSet::from([(2, Negative)]),
-            PositiveSet::from([(3, Negative)]),
-            PositiveSet::from([(4, Negative), (11, Negative)]),
-            PositiveSet::from([(5, Positive)]),
-            PositiveSet::from([(6, Positive)]),
-            PositiveSet::from([(7, Positive)]),
-        ]
-    )
+    assert_eq!(prohibiting_set, vec![
+        PositiveSet::from([(2, Negative)]),
+        PositiveSet::from([(3, Negative)]),
+        PositiveSet::from([(4, Negative), (11, Negative)]),
+        PositiveSet::from([(5, Positive)]),
+        PositiveSet::from([(6, Positive)]),
+        PositiveSet::from([(7, Positive)]),
+    ])
 }
 
 #[test]
@@ -41,13 +38,10 @@ fn prohibiting_set_2() {
         Set::prohibiting_set(&[r1r, r2r], &[r1i, r2i]).unwrap();
     prohibiting_set.sort();
 
-    assert_eq!(
-        prohibiting_set,
-        vec![
-            PositiveSet::from([(1, Negative)]),
-            PositiveSet::from([(2, Positive), (3, Positive)]),
-        ]
-    )
+    assert_eq!(prohibiting_set, vec![
+        PositiveSet::from([(1, Negative)]),
+        PositiveSet::from([(2, Positive), (3, Positive)]),
+    ])
 }
 
 #[test]
@@ -65,14 +59,11 @@ fn prohibiting_set_3() {
         Set::prohibiting_set(&[r1r, r2r], &[r1i, r2i]).unwrap();
     prohibiting_set.sort();
 
-    assert_eq!(
-        prohibiting_set,
-        vec![
-            PositiveSet::from([(1, Positive), (2, Positive)]),
-            PositiveSet::from([(1, Negative), (3, Negative)]),
-            PositiveSet::from([(2, Positive), (3, Negative)]),
-        ]
-    )
+    assert_eq!(prohibiting_set, vec![
+        PositiveSet::from([(1, Positive), (2, Positive)]),
+        PositiveSet::from([(1, Negative), (3, Negative)]),
+        PositiveSet::from([(2, Positive), (3, Negative)]),
+    ])
 }
 
 #[test]
@@ -93,19 +84,16 @@ fn prohibiting_set_4() {
         Set::prohibiting_set(&[r1r, r2r, r3r], &[r1i, r2i, r3i]).unwrap();
     prohibiting_set.sort();
 
-    assert_eq!(
-        prohibiting_set,
-        vec![
-            PositiveSet::from([(1, Negative), (3, Negative), (5, Negative)]),
-            PositiveSet::from([(1, Negative), (3, Negative), (6, Positive)]),
-            PositiveSet::from([(1, Negative), (4, Positive), (5, Negative)]),
-            PositiveSet::from([(1, Negative), (4, Positive), (6, Positive)]),
-            PositiveSet::from([(2, Positive), (3, Negative), (5, Negative)]),
-            PositiveSet::from([(2, Positive), (3, Negative), (6, Positive)]),
-            PositiveSet::from([(2, Positive), (4, Positive), (5, Negative)]),
-            PositiveSet::from([(2, Positive), (4, Positive), (6, Positive)]),
-        ]
-    )
+    assert_eq!(prohibiting_set, vec![
+        PositiveSet::from([(1, Negative), (3, Negative), (5, Negative)]),
+        PositiveSet::from([(1, Negative), (3, Negative), (6, Positive)]),
+        PositiveSet::from([(1, Negative), (4, Positive), (5, Negative)]),
+        PositiveSet::from([(1, Negative), (4, Positive), (6, Positive)]),
+        PositiveSet::from([(2, Positive), (3, Negative), (5, Negative)]),
+        PositiveSet::from([(2, Positive), (3, Negative), (6, Positive)]),
+        PositiveSet::from([(2, Positive), (4, Positive), (5, Negative)]),
+        PositiveSet::from([(2, Positive), (4, Positive), (6, Positive)]),
+    ])
 }
 
 #[test]

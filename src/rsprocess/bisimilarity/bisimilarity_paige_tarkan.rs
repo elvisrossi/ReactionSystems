@@ -160,7 +160,7 @@ impl CompoundBlock {
 }
 
 struct BackEdgesGroup {
-    block: Rc<RefCell<SimpleBlock>>,
+    block:    Rc<RefCell<SimpleBlock>>,
     subblock: Block,
 }
 
@@ -334,15 +334,14 @@ fn group_by_backedges(
             let key = (*block).borrow().block.clone();
 
             match backedges_grouped.entry(key) {
-                Entry::Occupied(mut entry) => {
-                    entry.get_mut().subblock.push(*node)
-                }
-                Entry::Vacant(entry) => {
+                | Entry::Occupied(mut entry) =>
+                    entry.get_mut().subblock.push(*node),
+                | Entry::Vacant(entry) => {
                     entry.insert(BackEdgesGroup {
-                        block: Rc::clone(&block),
+                        block:    Rc::clone(&block),
                         subblock: Vec::from([*node]),
                     });
-                }
+                },
             }
         }
     }
@@ -430,8 +429,8 @@ where
     loop {
         let (smaller_component, simple_splitter_block) = {
             let splitter_block = match queue.pop() {
-                Some(coarse_block) => coarse_block,
-                None => break,
+                | Some(coarse_block) => coarse_block,
+                | None => break,
             };
             let mut simple_blocks_in_splitter_block = splitter_block
                 .simple_blocks_subsets_of_self
@@ -451,8 +450,8 @@ where
                     })
                     .map(|(index, _)| index)
                 {
-                    Some(v) => v,
-                    None => return (None, converter),
+                    | Some(v) => v,
+                    | None => return (None, converter),
                 }
             };
 
@@ -579,24 +578,24 @@ where
 
     for edge in graph.edge_references() {
         let source_id = match association_weight_id.get(&edge.source()) {
-            Some(id) => *id,
-            None => {
+            | Some(id) => *id,
+            | None => {
                 let id = new_graph_a.add_node(last_id);
                 original_nodes.insert(last_id);
                 last_id += 1;
                 association_weight_id.insert(edge.source(), id);
                 id
-            }
+            },
         };
         let target_id = match association_weight_id.get(&edge.target()) {
-            Some(id) => *id,
-            None => {
+            | Some(id) => *id,
+            | None => {
                 let id = new_graph_a.add_node(last_id);
                 original_nodes.insert(last_id);
                 last_id += 1;
                 association_weight_id.insert(edge.target(), id);
                 id
-            }
+            },
         };
         let weight = *converter_edges.get(edge.weight()).unwrap();
 
@@ -715,13 +714,12 @@ where
 
     let (result, _converter) =
         match maximum_bisimulation(&[&&new_graph_a, &&new_graph_b]) {
-            (None, _) => return false,
-            (Some(val), converter) => (
-                check_bisimilarity::<G>(
-                    val,
-                    &converter,
-                    [original_nodes_a, original_nodes_b],
-                ),
+            | (None, _) => return false,
+            | (Some(val), converter) => (
+                check_bisimilarity::<G>(val, &converter, [
+                    original_nodes_a,
+                    original_nodes_b,
+                ]),
                 converter,
             ),
         };
@@ -742,8 +740,8 @@ where
     }
 
     let (result, _converter) = match maximum_bisimulation(&[graph_a, graph_b]) {
-        (None, _) => return false,
-        (Some(val), converter) => (
+        | (None, _) => return false,
+        | (Some(val), converter) => (
             val.into_iter().find(|el| {
                 let mut keep_track = [false, false];
                 for e in el {

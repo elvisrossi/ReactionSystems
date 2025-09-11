@@ -4,12 +4,11 @@
 static PRINTNAMES: bool = false;
 
 use core::fmt::{self, Display, Write};
-use petgraph::{
-    data::DataMap,
-    visit::{
-        EdgeRef, GraphProp, IntoEdgeReferences, IntoNodeReferences,
-        NodeIndexable, NodeRef,
-    },
+
+use petgraph::data::DataMap;
+use petgraph::visit::{
+    EdgeRef, GraphProp, IntoEdgeReferences, IntoNodeReferences, NodeIndexable,
+    NodeRef,
 };
 
 pub struct Dot<'a, G>
@@ -190,10 +189,10 @@ where
 
         if let Some(rank_dir) = &self.config.RankDir {
             let value = match rank_dir {
-                RankDir::TB => "TB",
-                RankDir::BT => "BT",
-                RankDir::LR => "LR",
-                RankDir::RL => "RL",
+                | RankDir::TB => "TB",
+                | RankDir::BT => "BT",
+                | RankDir::LR => "LR",
+                | RankDir::RL => "RL",
             };
             writeln!(f, "{INDENT}rankdir=\"{value}\"\n")?;
         }
@@ -335,10 +334,10 @@ where
 
     fn write_char(&mut self, c: char) -> fmt::Result {
         match c {
-            '"' | '\\' => self.0.write_char('\\')?,
+            | '"' | '\\' => self.0.write_char('\\')?,
             // \l is for left justified linebreak
-            '\n' => return self.0.write_str("\\l"),
-            _ => {}
+            | '\n' => return self.0.write_str("\\l"),
+            | _ => {},
         }
         self.0.write_char(c)
     }

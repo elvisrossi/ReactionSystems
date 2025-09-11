@@ -43,10 +43,10 @@ impl BasicChoices for Choices {
             self.context_moves.is_empty(),
             choices.context_moves.is_empty(),
         ) {
-            (true, true) => {}
-            (true, false) => self.context_moves = choices.context_moves,
-            (false, true) => {}
-            (false, false) => {
+            | (true, true) => {},
+            | (true, false) => self.context_moves = choices.context_moves,
+            | (false, true) => {},
+            | (false, false) => {
                 let mut new_self = vec![];
                 for item_self in &self.context_moves {
                     for item_choices in &choices.context_moves {
@@ -57,7 +57,7 @@ impl BasicChoices for Choices {
                     }
                 }
                 self.context_moves = new_self;
-            }
+            },
         }
     }
 }
@@ -155,10 +155,10 @@ impl BasicChoices for PositiveChoices {
             self.context_moves.is_empty(),
             choices.context_moves.is_empty(),
         ) {
-            (true, true) => {}
-            (true, false) => self.context_moves = choices.context_moves,
-            (false, true) => {}
-            (false, false) => {
+            | (true, true) => {},
+            | (true, false) => self.context_moves = choices.context_moves,
+            | (false, true) => {},
+            | (false, false) => {
                 let mut new_self = vec![];
                 for item_self in &self.context_moves {
                     for item_choices in &choices.context_moves {
@@ -169,7 +169,7 @@ impl BasicChoices for PositiveChoices {
                     }
                 }
                 self.context_moves = new_self;
-            }
+            },
         }
     }
 }

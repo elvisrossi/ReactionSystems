@@ -1,8 +1,9 @@
 pub mod graph_map_nodes_ty_from {
+    use std::rc::Rc;
+
     use super::super::set::{BasicSet, Set};
     use super::super::system::System;
     use super::super::translator;
-    use std::rc::Rc;
 
     type GraphMapNodesFnTy =
         dyn Fn(petgraph::prelude::NodeIndex, &System) -> String;
@@ -70,10 +71,11 @@ pub mod graph_map_nodes_ty_from {
 }
 
 pub mod graph_map_edges_ty_from {
+    use std::rc::Rc;
+
     use super::super::label::Label;
     use super::super::set::{BasicSet, Set};
     use super::super::translator;
-    use std::rc::Rc;
 
     type GraphMapEdgesFnTy<'a> =
         dyn Fn(petgraph::prelude::EdgeIndex, &'a Label) -> String + 'a;
@@ -233,9 +235,10 @@ pub mod graph_map_edges_ty_from {
 }
 
 pub mod node_formatter {
+    use std::rc::Rc;
+
     use petgraph::visit::IntoNodeReferences;
     use petgraph::{Directed, Graph};
-    use std::rc::Rc;
 
     use super::super::element::IdType;
     use super::super::graph::{OperationType, SystemGraph};
@@ -272,15 +275,12 @@ pub mod node_formatter {
         Box::new(move |_, n| {
             let rssystem = original_graph.node_weight(n.0).unwrap();
             match (Some(s) == star, &rssystem.context_process) {
-                (true, Process::RecursiveIdentifier { identifier: _ }) => {
-                    Some(", fillcolor=".to_string() + &color)
-                }
-                (false, Process::RecursiveIdentifier { identifier: id })
+                | (true, Process::RecursiveIdentifier { identifier: _ }) =>
+                    Some(", fillcolor=".to_string() + &color),
+                | (false, Process::RecursiveIdentifier { identifier: id })
                     if id == &s =>
-                {
-                    Some(", fillcolor=".to_string() + &color)
-                }
-                _ => None,
+                    Some(", fillcolor=".to_string() + &color),
+                | _ => None,
             }
         })
     }
@@ -295,13 +295,12 @@ pub mod node_formatter {
         Box::new(move |_, n| {
             let rssystem = original_graph.node_weight(n.0).unwrap();
             match &rssystem.context_process {
-                Process::EntitySet {
+                | Process::EntitySet {
                     entities,
                     next_process: _,
-                } if ot.evaluate(entities, &set) => {
-                    Some(", fillcolor=".to_string() + &color)
-                }
-                _ => None,
+                } if ot.evaluate(entities, &set) =>
+                    Some(", fillcolor=".to_string() + &color),
+                | _ => None,
             }
         })
     }
@@ -378,9 +377,10 @@ pub mod node_formatter {
 }
 
 pub mod edge_formatter {
+    use std::rc::Rc;
+
     use petgraph::visit::{EdgeRef, IntoEdgeReferences};
     use petgraph::{Directed, Graph};
-    use std::rc::Rc;
 
     use super::super::graph::{OperationType, SystemGraph};
     use super::super::set::Set;

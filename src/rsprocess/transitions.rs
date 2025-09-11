@@ -22,11 +22,11 @@ pub struct TransitionsIterator<
 impl<'a> TransitionsIterator<'a, Set, System, Process> {
     pub fn from(system: &'a System) -> Result<Self, String> {
         match system.unfold() {
-            Ok(o) => Ok(TransitionsIterator {
+            | Ok(o) => Ok(TransitionsIterator {
                 choices_iterator: o.into_iter(),
                 system,
             }),
-            Err(e) => Err(e),
+            | Err(e) => Err(e),
         }
     }
 }
@@ -98,11 +98,11 @@ impl<'a> Iterator for TransitionsIterator<'a, Set, System, Process> {
 impl<'a> TransitionsIterator<'a, PositiveSet, PositiveSystem, PositiveProcess> {
     pub fn from(system: &'a PositiveSystem) -> Result<Self, String> {
         match system.unfold() {
-            Ok(o) => Ok(TransitionsIterator {
+            | Ok(o) => Ok(TransitionsIterator {
                 choices_iterator: o.into_iter(),
                 system,
             }),
-            Err(e) => Err(e),
+            | Err(e) => Err(e),
         }
     }
 }

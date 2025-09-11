@@ -1,8 +1,8 @@
-use crate::rsprocess::translator::PrintableWithTranslator;
+use std::collections::HashMap;
 
 use super::super::{graph, label, set, system, translator};
 use super::dsl::*;
-use std::collections::HashMap;
+use crate::rsprocess::translator::PrintableWithTranslator;
 
 // ----------------------------------------------------------------------------
 //                       Specific Assert Implementation
@@ -60,20 +60,18 @@ enum EdgeRelablerInputValues {
 impl SpecialVariables<EdgeRelablerInputValues> for EdgeRelablerInput {
     fn type_of(&self) -> AssertionTypes {
         match self {
-            Self::Edge => AssertionTypes::Edge,
-            Self::Label => AssertionTypes::Label,
+            | Self::Edge => AssertionTypes::Edge,
+            | Self::Label => AssertionTypes::Label,
         }
     }
 
     fn type_qualified(&self, q: &Qualifier) -> Result<AssertionTypes, String> {
         match (self, q) {
-            (Self::Label, Qualifier::Label(_))
-            | (Self::Label, Qualifier::Restricted(_)) => {
-                Ok(AssertionTypes::Set)
-            }
-            (s, q) => {
-                Err(format!("Wrong use of qualifier {q:?} on variable {s:?}."))
-            }
+            | (Self::Label, Qualifier::Label(_))
+            | (Self::Label, Qualifier::Restricted(_)) =>
+                Ok(AssertionTypes::Set),
+            | (s, q) =>
+                Err(format!("Wrong use of qualifier {q:?} on variable {s:?}.")),
         }
     }
 
@@ -83,21 +81,19 @@ impl SpecialVariables<EdgeRelablerInputValues> for EdgeRelablerInput {
         input
             .iter()
             .map(|(key, value)| match value {
-                EdgeRelablerInputValues::Edge(e) => {
-                    (*key, AssertReturnValue::Edge(*e))
-                }
-                EdgeRelablerInputValues::Label(l) => {
-                    (*key, AssertReturnValue::Label(l.clone()))
-                }
+                | EdgeRelablerInputValues::Edge(e) =>
+                    (*key, AssertReturnValue::Edge(*e)),
+                | EdgeRelablerInputValues::Label(l) =>
+                    (*key, AssertReturnValue::Label(l.clone())),
             })
             .collect::<HashMap<Self, AssertReturnValue>>()
     }
 
     fn correct_type(&self, other: &AssertReturnValue) -> bool {
         match (self, other) {
-            (Self::Edge, AssertReturnValue::Edge(_))
+            | (Self::Edge, AssertReturnValue::Edge(_))
             | (Self::Label, AssertReturnValue::Label(_)) => true,
-            (_, _) => false,
+            | (_, _) => false,
         }
     }
 }
@@ -105,8 +101,8 @@ impl SpecialVariables<EdgeRelablerInputValues> for EdgeRelablerInput {
 impl std::fmt::Debug for EdgeRelablerInput {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Label => write!(f, "label"),
-            Self::Edge => write!(f, "edge"),
+            | Self::Label => write!(f, "label"),
+            | Self::Edge => write!(f, "edge"),
         }
     }
 }
@@ -126,7 +122,7 @@ impl Assert<EdgeRelablerInput> {
         let mut context = TypeContext::new();
         let ty = typecheck(&self.tree, &mut context)?;
         match ty {
-            AssertionTypes::Boolean
+            | AssertionTypes::Boolean
             | AssertionTypes::Integer
             | AssertionTypes::String
             | AssertionTypes::Label
@@ -136,15 +132,13 @@ impl Assert<EdgeRelablerInput> {
             | AssertionTypes::Node
             | AssertionTypes::System
             | AssertionTypes::Context => Ok(()),
-            AssertionTypes::NoType => {
+            | AssertionTypes::NoType =>
                 Err("No return type, at least one return statement required."
-                    .into())
-            }
-            AssertionTypes::RangeInteger
+                    .into()),
+            | AssertionTypes::RangeInteger
             | AssertionTypes::RangeSet
-            | AssertionTypes::RangeNeighbours => {
-                Err(format!("Returned type {ty:?} is not a valid return type."))
-            }
+            | AssertionTypes::RangeNeighbours =>
+                Err(format!("Returned type {ty:?} is not a valid return type.")),
         }
     }
 
@@ -231,22 +225,19 @@ enum NodeRelablerInputValues {
 impl SpecialVariables<NodeRelablerInputValues> for NodeRelablerInput {
     fn type_of(&self) -> AssertionTypes {
         match self {
-            Self::Entities => AssertionTypes::Set,
-            Self::Node => AssertionTypes::Node,
+            | Self::Entities => AssertionTypes::Set,
+            | Self::Node => AssertionTypes::Node,
         }
     }
 
     fn type_qualified(&self, q: &Qualifier) -> Result<AssertionTypes, String> {
         match (self, q) {
-            (Self::Node, Qualifier::Node(QualifierNode::System)) => {
-                Ok(AssertionTypes::System)
-            }
-            (Self::Node, Qualifier::Node(QualifierNode::Neighbours)) => {
-                Ok(AssertionTypes::RangeNeighbours)
-            }
-            (s, q) => {
-                Err(format!("Wrong use of qualifier {q:?} on variable {s:?}."))
-            }
+            | (Self::Node, Qualifier::Node(QualifierNode::System)) =>
+                Ok(AssertionTypes::System),
+            | (Self::Node, Qualifier::Node(QualifierNode::Neighbours)) =>
+                Ok(AssertionTypes::RangeNeighbours),
+            | (s, q) =>
+                Err(format!("Wrong use of qualifier {q:?} on variable {s:?}.")),
         }
     }
 
@@ -256,21 +247,19 @@ impl SpecialVariables<NodeRelablerInputValues> for NodeRelablerInput {
         input
             .iter()
             .map(|(key, value)| match value {
-                NodeRelablerInputValues::Entities(e) => {
-                    (*key, AssertReturnValue::Set(e.clone()))
-                }
-                NodeRelablerInputValues::Node(n) => {
-                    (*key, AssertReturnValue::Node(*n))
-                }
+                | NodeRelablerInputValues::Entities(e) =>
+                    (*key, AssertReturnValue::Set(e.clone())),
+                | NodeRelablerInputValues::Node(n) =>
+                    (*key, AssertReturnValue::Node(*n)),
             })
             .collect::<HashMap<Self, AssertReturnValue>>()
     }
 
     fn correct_type(&self, other: &AssertReturnValue) -> bool {
         match (self, other) {
-            (Self::Entities, AssertReturnValue::Set(_))
+            | (Self::Entities, AssertReturnValue::Set(_))
             | (Self::Node, AssertReturnValue::Node(_)) => true,
-            (_, _) => false,
+            | (_, _) => false,
         }
     }
 }
@@ -278,8 +267,8 @@ impl SpecialVariables<NodeRelablerInputValues> for NodeRelablerInput {
 impl std::fmt::Debug for NodeRelablerInput {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Entities => write!(f, "entities"),
-            Self::Node => write!(f, "node"),
+            | Self::Entities => write!(f, "entities"),
+            | Self::Node => write!(f, "node"),
         }
     }
 }
@@ -299,7 +288,7 @@ impl Assert<NodeRelablerInput> {
         let mut context = TypeContext::new();
         let ty = typecheck(&self.tree, &mut context)?;
         match ty {
-            AssertionTypes::Boolean
+            | AssertionTypes::Boolean
             | AssertionTypes::Integer
             | AssertionTypes::String
             | AssertionTypes::Label
@@ -309,15 +298,13 @@ impl Assert<NodeRelablerInput> {
             | AssertionTypes::Node
             | AssertionTypes::System
             | AssertionTypes::Context => Ok(()),
-            AssertionTypes::NoType => {
+            | AssertionTypes::NoType =>
                 Err("No return type, at least one return statement required."
-                    .into())
-            }
-            AssertionTypes::RangeInteger
+                    .into()),
+            | AssertionTypes::RangeInteger
             | AssertionTypes::RangeSet
-            | AssertionTypes::RangeNeighbours => {
-                Err(format!("Returned type {ty:?} is not a valid return type."))
-            }
+            | AssertionTypes::RangeNeighbours =>
+                Err(format!("Returned type {ty:?} is not a valid return type.")),
         }
     }
 

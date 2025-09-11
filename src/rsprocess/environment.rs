@@ -1,8 +1,9 @@
-use serde::{Deserialize, Serialize};
 use std::cmp;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::rc::Rc;
+
+use serde::{Deserialize, Serialize};
 
 use super::choices::{BasicChoices, Choices, PositiveChoices};
 use super::element::IdType;
@@ -289,26 +290,26 @@ impl BasicEnvironment for Environment {
         current_entities: &Set,
     ) -> Result<Choices, String> {
         match context_process {
-            Process::Nill => Ok(Choices::default()),
-            Process::RecursiveIdentifier { identifier } => {
+            | Process::Nill => Ok(Choices::default()),
+            | Process::RecursiveIdentifier { identifier } => {
                 let newprocess = self.get(*identifier);
                 if let Some(newprocess) = newprocess {
                     self.unfold(newprocess, current_entities)
                 } else {
                     Err(format!("Missing symbol in context: {identifier}"))
                 }
-            }
-            Process::EntitySet {
+            },
+            | Process::EntitySet {
                 entities,
                 next_process,
             } => Ok(Choices::from([(
                 Rc::new(entities.clone()),
                 Rc::clone(next_process),
             )])),
-            Process::Guarded {
+            | Process::Guarded {
                 reaction,
                 next_process,
-            } => {
+            } =>
                 if reaction.enabled(current_entities) {
                     Ok(Choices::from([(
                         Rc::new(reaction.products.clone()),
@@ -316,14 +317,13 @@ impl BasicEnvironment for Environment {
                     )]))
                 } else {
                     Ok(Choices::default())
-                }
-            }
-            Process::WaitEntity {
+                },
+            | Process::WaitEntity {
                 repeat,
                 repeated_process: _,
                 next_process,
             } if *repeat <= 0 => self.unfold(next_process, current_entities),
-            Process::WaitEntity {
+            | Process::WaitEntity {
                 repeat,
                 repeated_process,
                 next_process,
@@ -332,8 +332,8 @@ impl BasicEnvironment for Environment {
                     self.unfold(repeated_process, current_entities)?;
                 choices1.replace(Rc::clone(next_process));
                 Ok(choices1)
-            }
-            Process::WaitEntity {
+            },
+            | Process::WaitEntity {
                 repeat,
                 repeated_process,
                 next_process,
@@ -346,20 +346,20 @@ impl BasicEnvironment for Environment {
                     next_process: Rc::clone(next_process),
                 }));
                 Ok(choices1)
-            }
-            Process::Summation { children } => {
+            },
+            | Process::Summation { children } => {
                 // short-circuits with try_fold.
                 children.iter().try_fold(Choices::default(), |mut acc, x| {
                     match self.unfold(x, current_entities) {
-                        Ok(mut choices) => {
+                        | Ok(mut choices) => {
                             acc.append(&mut choices);
                             Ok(acc)
-                        }
-                        Err(e) => Err(e),
+                        },
+                        | Err(e) => Err(e),
                     }
                 })
-            }
-            Process::NondeterministicChoice { children } => {
+            },
+            | Process::NondeterministicChoice { children } => {
                 // short-circuits with try_fold.
                 if children.is_empty() {
                     Ok(Choices::from(vec![(
@@ -375,7 +375,7 @@ impl BasicEnvironment for Environment {
                         },
                     )
                 }
-            }
+            },
         }
     }
 }
@@ -458,9 +458,9 @@ impl From<Vec<(IdType, Process)>> for Environment {
 impl Environment {
     /// Two set of entities E1 and E2 are confluent w.r.t. the perpetual context
     /// delta iff they reach the same loop.
-    /// confluent checks if all the sets of entities in ```entities``` are confluent
-    /// and if so returns the maximal length of prefixes traversed to reached the
-    /// loop, its dimension (length) and the loop.
+    /// confluent checks if all the sets of entities in ```entities``` are
+    /// confluent and if so returns the maximal length of prefixes traversed
+    /// to reached the loop, its dimension (length) and the loop.
     /// see confluent, confluents
     pub fn confluent(
         &self,
@@ -491,12 +491,12 @@ impl Environment {
         Some((max_distance, dimension, hoop))
     }
 
-    /// Two set of entities E1 and E2 are confluent w.r.t. the perpetual context Q
-    /// iff they reach the same loop.
-    /// The predicate confluent(Rs,Q,Es,Loop,Distance,Dimension) checks if all the
-    /// sets of entities in Es are confluent and if so returns the Loop, the maximal
-    /// length of prefixes traversed to reached the loop and its dimension (length).
-    /// see confluent, confluents
+    /// Two set of entities E1 and E2 are confluent w.r.t. the perpetual context
+    /// Q iff they reach the same loop.
+    /// The predicate confluent(Rs,Q,Es,Loop,Distance,Dimension) checks if all
+    /// the sets of entities in Es are confluent and if so returns the Loop,
+    /// the maximal length of prefixes traversed to reached the loop and its
+    /// dimension (length). see confluent, confluents
     pub fn confluent_named(
         &self,
         reaction_rules: &[Reaction],
@@ -531,8 +531,8 @@ impl Environment {
     }
 
     /// invariant_named checks if all the sets of entities in ```entities``` are
-    /// confluent and if so returns the set of all traversed states, together with
-    /// the loop.
+    /// confluent and if so returns the set of all traversed states, together
+    /// with the loop.
     /// see invariant
     pub fn invariant_named(
         &self,
@@ -575,15 +575,15 @@ impl Environment {
 
     /// Suppose the context has the form
     /// Q1. ... Q1.Q2. ... Q2. ... Qn. ... Qn. ...
-    /// and that each context Q1, Q2, ... , Q(n-1) is provided for a large number
-    /// of times, enough to stabilize the system in a loop (while Qn is provided
-    /// infinitely many times).  Then it can be the case that when the context
-    /// switches from Qi to Q(i+1), no matter what is the current state of the loop
-    /// for Qi at the moment of the switching, the system will stabilize in the same
-    /// loop for Q(i+1): if this is the case the system is called "loop confluent".
-    /// loop_confluent_named checks this property over the list of contexts
-    /// [Q1,Q2,...,Qn] and returns the lists of Loops, Distances and Dimensions for
-    /// all Qi's.
+    /// and that each context Q1, Q2, ... , Q(n-1) is provided for a large
+    /// number of times, enough to stabilize the system in a loop (while Qn
+    /// is provided infinitely many times).  Then it can be the case that
+    /// when the context switches from Qi to Q(i+1), no matter what is the
+    /// current state of the loop for Qi at the moment of the switching, the
+    /// system will stabilize in the same loop for Q(i+1): if this is the
+    /// case the system is called "loop confluent". loop_confluent_named
+    /// checks this property over the list of contexts [Q1,Q2,...,Qn] and
+    /// returns the lists of Loops, Distances and Dimensions for all Qi's.
     /// see loop_confluent
     pub fn loop_confluent_named(
         deltas: &[Self],
@@ -600,8 +600,8 @@ impl Environment {
     /// "strong confluence" requires loop confluence and additionally check
     /// that even if the context is switched BEFORE REACHING THE LOOP for Qi
     /// the traversed states are still confluent for Q(i+1)
-    /// IMPORTANT: this notion of confluence assumes each context can be executed 0
-    /// or more times
+    /// IMPORTANT: this notion of confluence assumes each context can be
+    /// executed 0 or more times
     /// see strong_confluent
     #[allow(clippy::type_complexity)]
     pub fn strong_confluent_named(
@@ -656,26 +656,26 @@ impl BasicEnvironment for PositiveEnvironment {
         entities: &Self::Set,
     ) -> Result<Self::Choices, String> {
         match context {
-            PositiveProcess::Nill => Ok(Self::Choices::default()),
-            PositiveProcess::RecursiveIdentifier { identifier } => {
+            | PositiveProcess::Nill => Ok(Self::Choices::default()),
+            | PositiveProcess::RecursiveIdentifier { identifier } => {
                 let newprocess = self.get(*identifier);
                 if let Some(newprocess) = newprocess {
                     self.unfold(newprocess, entities)
                 } else {
                     Err(format!("Missing symbol in context: {identifier}"))
                 }
-            }
-            PositiveProcess::EntitySet {
+            },
+            | PositiveProcess::EntitySet {
                 entities,
                 next_process,
             } => Ok(Self::Choices::from([(
                 Rc::new(entities.clone()),
                 Rc::clone(next_process),
             )])),
-            PositiveProcess::Guarded {
+            | PositiveProcess::Guarded {
                 reaction,
                 next_process,
-            } => {
+            } =>
                 if reaction.enabled(entities) {
                     Ok(Self::Choices::from([(
                         Rc::new(reaction.products.clone()),
@@ -683,14 +683,13 @@ impl BasicEnvironment for PositiveEnvironment {
                     )]))
                 } else {
                     Ok(Self::Choices::default())
-                }
-            }
-            PositiveProcess::WaitEntity {
+                },
+            | PositiveProcess::WaitEntity {
                 repeat,
                 repeated_process: _,
                 next_process,
             } if *repeat <= 0 => self.unfold(next_process, entities),
-            PositiveProcess::WaitEntity {
+            | PositiveProcess::WaitEntity {
                 repeat,
                 repeated_process,
                 next_process,
@@ -698,8 +697,8 @@ impl BasicEnvironment for PositiveEnvironment {
                 let mut choices1 = self.unfold(repeated_process, entities)?;
                 choices1.replace(Rc::clone(next_process));
                 Ok(choices1)
-            }
-            PositiveProcess::WaitEntity {
+            },
+            | PositiveProcess::WaitEntity {
                 repeat,
                 repeated_process,
                 next_process,
@@ -711,21 +710,21 @@ impl BasicEnvironment for PositiveEnvironment {
                     next_process: Rc::clone(next_process),
                 }));
                 Ok(choices1)
-            }
-            PositiveProcess::Summation { children } => {
+            },
+            | PositiveProcess::Summation { children } => {
                 // short-circuits with try_fold.
                 children.iter().try_fold(
                     Self::Choices::default(),
                     |mut acc, x| match self.unfold(x, entities) {
-                        Ok(mut choices) => {
+                        | Ok(mut choices) => {
                             acc.append(&mut choices);
                             Ok(acc)
-                        }
-                        Err(e) => Err(e),
+                        },
+                        | Err(e) => Err(e),
                     },
                 )
-            }
-            PositiveProcess::NondeterministicChoice { children } => {
+            },
+            | PositiveProcess::NondeterministicChoice { children } => {
                 // short-circuits with try_fold.
                 if children.is_empty() {
                     Ok(Self::Choices::from(vec![(
@@ -741,7 +740,7 @@ impl BasicEnvironment for PositiveEnvironment {
                         },
                     )
                 }
-            }
+            },
         }
     }
 }

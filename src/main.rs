@@ -8,8 +8,8 @@ fn main() {
     let now = std::time::Instant::now();
 
     match presets::run(input) {
-        Ok(()) => {}
-        Err(e) => println!("{e}"),
+        | Ok(()) => {},
+        | Err(e) => println!("{e}"),
     }
 
     println!("{} milliseconds elapsed", now.elapsed().as_millis());

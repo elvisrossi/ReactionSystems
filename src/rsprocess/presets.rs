@@ -1,22 +1,20 @@
 //! Module that holds useful presets for interacting with other modules.
 
-use lalrpop_util::ParseError;
-use petgraph::Graph;
 use std::collections::HashMap;
-use std::env;
 use std::fmt::Display;
-use std::fs;
-use std::io;
 use std::io::prelude::*;
 use std::rc::Rc;
+use std::{env, fs, io};
 
+use lalrpop_util::ParseError;
+use petgraph::Graph;
+
+use super::super::grammar;
 use super::graph::MapEdges;
 use super::set::Set;
 use super::system::ExtensionsSystem;
 use super::translator::Translator;
 use super::*;
-
-use super::super::grammar;
 
 // -----------------------------------------------------------------------------
 //                                 Structures
@@ -25,29 +23,29 @@ use super::super::grammar;
 /// Describes how the result of some computation has to be saved.
 pub struct SaveOptions {
     pub print: bool,
-    pub save: Option<Vec<String>>,
+    pub save:  Option<Vec<String>>,
 }
 
 impl SaveOptions {
     pub fn combine(&mut self, other: &mut Self) {
         self.print = self.print || other.print;
         match (self.save.is_some(), other.save.is_some()) {
-            (false, false) | (true, false) => {}
-            (false, true) => {
+            | (false, false) | (true, false) => {},
+            | (false, true) => {
                 self.save = other.save.to_owned();
-            }
-            (true, true) => {
+            },
+            | (true, true) => {
                 self.save
                     .as_mut()
                     .unwrap()
                     .append(other.save.as_mut().unwrap());
-            }
+            },
         }
     }
     pub fn new() -> Self {
         SaveOptions {
             print: false,
-            save: None,
+            save:  None,
         }
     }
 }
@@ -90,7 +88,7 @@ pub enum Instruction {
     },
     Loop {
         symbol: String,
-        so: SaveOptions,
+        so:     SaveOptions,
     },
     Frequency {
         so: SaveOptions,
@@ -105,7 +103,7 @@ pub enum Instruction {
     },
     Digraph {
         group: Option<Box<assert::grouping::Assert>>,
-        gso: Vec<GraphSaveOptions>,
+        gso:   Vec<GraphSaveOptions>,
     },
     Bisimilarity {
         system_b: String,
@@ -128,14 +126,14 @@ impl System {
         translator: Translator,
     ) -> Result<EvaluatedSystem, String> {
         match self {
-            Self::System { sys } => Ok(EvaluatedSystem::System {
+            | Self::System { sys } => Ok(EvaluatedSystem::System {
                 sys: sys.to_owned(),
                 translator,
             }),
-            Self::Deserialize { path } => {
+            | Self::Deserialize { path } => {
                 let (graph, translator) = deserialize(path.into())?;
                 Ok(EvaluatedSystem::Graph { graph, translator })
-            }
+            },
         }
     }
 }
@@ -143,7 +141,7 @@ impl System {
 #[derive(Clone)]
 pub enum EvaluatedSystem {
     Graph {
-        graph: graph::SystemGraph,
+        graph:      graph::SystemGraph,
         translator: Translator,
     },
     System {
@@ -155,11 +153,11 @@ pub enum EvaluatedSystem {
 impl EvaluatedSystem {
     pub fn get_translator(&mut self) -> &mut Translator {
         match self {
-            EvaluatedSystem::Graph {
+            | EvaluatedSystem::Graph {
                 graph: _,
                 translator,
             } => translator,
-            EvaluatedSystem::System { sys: _, translator } => translator,
+            | EvaluatedSystem::System { sys: _, translator } => translator,
         }
     }
 }
@@ -184,21 +182,23 @@ where
 {
     // relative path
     let mut path = match env::current_dir() {
-        Ok(p) => p,
-        Err(e) => return Err(format!("Error getting current directory: {e}")),
+        | Ok(p) => p,
+        | Err(e) => {
+            return Err(format!("Error getting current directory: {e}"));
+        },
     };
     path = path.join(path_string);
 
     // we read the file with a buffer
     let f = match fs::File::open(path) {
-        Ok(f) => f,
-        Err(e) => return Err(format!("Error opening file: {e}.")),
+        | Ok(f) => f,
+        | Err(e) => return Err(format!("Error opening file: {e}.")),
     };
     let mut buf_reader = io::BufReader::new(f);
     let mut contents = String::new();
     match buf_reader.read_to_string(&mut contents) {
-        Ok(_) => {}
-        Err(e) => return Err(format!("Error reading file: {e}")),
+        | Ok(_) => {},
+        | Err(e) => return Err(format!("Error reading file: {e}")),
     }
 
     // parse
@@ -215,18 +215,17 @@ where
     T: Display,
 {
     match e {
-        ParseError::ExtraToken { token: (l, t, r) } => Err(format!(
+        | ParseError::ExtraToken { token: (l, t, r) } => Err(format!(
             "Unexpected token \"{t}\" \
          between positions {l} and {r}."
         )),
-        ParseError::UnrecognizedEof {
+        | ParseError::UnrecognizedEof {
             location: _,
             expected: _,
         } => Err("End of file encountered while parsing.".into()),
-        ParseError::InvalidToken { location } => {
-            Err(format!("Invalid token at position {location}."))
-        }
-        ParseError::UnrecognizedToken {
+        | ParseError::InvalidToken { location } =>
+            Err(format!("Invalid token at position {location}.")),
+        | ParseError::UnrecognizedToken {
             token: (l, t, r),
             expected,
         } => {
@@ -289,8 +288,8 @@ where
             }
 
             Err(err)
-        }
-        ParseError::User { error } => Err(error.to_string()),
+        },
+        | ParseError::User { error } => Err(error.to_string()),
     }
 }
 
@@ -299,8 +298,8 @@ fn parser_experiment(
     contents: String,
 ) -> Result<(Vec<u32>, Vec<Set>), String> {
     match grammar::ExperimentParser::new().parse(translator, &contents) {
-        Ok(sys) => Ok(sys),
-        Err(e) => reformat_error(e, &contents),
+        | Ok(sys) => Ok(sys),
+        | Err(e) => reformat_error(e, &contents),
     }
 }
 
@@ -309,31 +308,31 @@ fn parser_instructions(
     contents: String,
 ) -> Result<Instructions, String> {
     match grammar::RunParser::new().parse(translator, &contents) {
-        Ok(sys) => Ok(sys),
-        Err(e) => reformat_error(e, &contents),
+        | Ok(sys) => Ok(sys),
+        | Err(e) => reformat_error(e, &contents),
     }
 }
 
 fn save_file(contents: &String, path_string: String) -> Result<(), String> {
     // relative path
     let mut path = match env::current_dir() {
-        Ok(p) => p,
-        Err(_) => return Err("Error getting current directory.".into()),
+        | Ok(p) => p,
+        | Err(_) => return Err("Error getting current directory.".into()),
     };
     path = path.join(path_string);
 
     let mut f = match fs::File::create(&path) {
-        Ok(f) => f,
-        Err(_) => {
+        | Ok(f) => f,
+        | Err(_) => {
             return Err(format!(
                 "Error creating file {}.",
                 path.to_str().unwrap()
             ));
-        }
+        },
     };
     match write!(f, "{contents}") {
-        Ok(_) => {}
-        Err(_) => return Err("Error writing to file.".into()),
+        | Ok(_) => {},
+        | Err(_) => return Err("Error writing to file.".into()),
     }
     Ok(())
 }
@@ -346,15 +345,14 @@ fn save_file(contents: &String, path_string: String) -> Result<(), String> {
 /// Equivalent main_do(stat) or main_do(stat, MissingE)
 pub fn stats(system: &EvaluatedSystem) -> Result<String, String> {
     match system {
-        EvaluatedSystem::System { sys, translator } => {
-            Ok(sys.statistics(translator))
-        }
-        EvaluatedSystem::Graph { graph, translator } => {
+        | EvaluatedSystem::System { sys, translator } =>
+            Ok(sys.statistics(translator)),
+        | EvaluatedSystem::Graph { graph, translator } => {
             let Some(sys) = graph.node_weights().next() else {
                 return Err("No node found in graph.".into());
             };
             Ok(sys.statistics(translator))
-        }
+        },
     }
 }
 
@@ -363,15 +361,14 @@ pub fn stats(system: &EvaluatedSystem) -> Result<String, String> {
 /// Equivalent to main_do(target, E)
 pub fn target(system: &EvaluatedSystem) -> Result<String, String> {
     let (res, translator) = match system {
-        EvaluatedSystem::System { sys, translator } => {
-            (sys.target()?, translator)
-        }
-        EvaluatedSystem::Graph { graph, translator } => {
+        | EvaluatedSystem::System { sys, translator } =>
+            (sys.target()?, translator),
+        | EvaluatedSystem::Graph { graph, translator } => {
             let Some(sys) = graph.node_weights().next() else {
                 return Err("No node found in graph.".into());
             };
             (sys.target()?, translator)
-        }
+        },
     };
     Ok(format!(
         "After {} steps we arrive at state:\n{}",
@@ -386,15 +383,14 @@ pub fn target(system: &EvaluatedSystem) -> Result<String, String> {
 /// equivalent to main_do(run,Es)
 pub fn traversed(system: &EvaluatedSystem) -> Result<String, String> {
     let (res, translator) = match system {
-        EvaluatedSystem::System { sys, translator } => {
-            (sys.run_separated()?, translator)
-        }
-        EvaluatedSystem::Graph { graph, translator } => {
+        | EvaluatedSystem::System { sys, translator } =>
+            (sys.run_separated()?, translator),
+        | EvaluatedSystem::Graph { graph, translator } => {
             let Some(sys) = graph.node_weights().next() else {
                 return Err("No node found in graph.".into());
             };
             (sys.run_separated()?, translator)
-        }
+        },
     };
 
     let mut output = String::new();
@@ -420,23 +416,23 @@ pub fn hoop(
     use system::LoopSystem;
 
     let (res, translator) = match system {
-        EvaluatedSystem::System { sys, translator } => (sys, translator),
-        EvaluatedSystem::Graph { graph, translator } => {
+        | EvaluatedSystem::System { sys, translator } => (sys, translator),
+        | EvaluatedSystem::Graph { graph, translator } => {
             let Some(sys) = graph.node_weights().next() else {
                 return Err("No node found in graph.".into());
             };
             (sys, translator)
-        }
+        },
     };
     // we retrieve the id for "x" and use it to find the corresponding loop
     let Some(id) = translator.encode_not_mut(&symbol) else {
         return Err(format!("Symbol {symbol} not found."));
     };
     let res = match res.lollipops_only_loop_named(id) {
-        Some(o) => o,
-        None => {
+        | Some(o) => o,
+        | None => {
             return Err("No loop found.".into());
-        }
+        },
     };
 
     let mut output = String::new();
@@ -459,13 +455,13 @@ pub fn freq(system: &EvaluatedSystem) -> Result<String, String> {
     use frequency::BasicFrequency;
 
     let (sys, translator) = match system {
-        EvaluatedSystem::System { sys, translator } => (sys, translator),
-        EvaluatedSystem::Graph { graph, translator } => {
+        | EvaluatedSystem::System { sys, translator } => (sys, translator),
+        | EvaluatedSystem::Graph { graph, translator } => {
             let Some(sys) = graph.node_weights().next() else {
                 return Err("No node found in graph.".into());
             };
             (sys, translator)
-        }
+        },
     };
 
     let res = frequency::Frequency::naive_frequency(sys)?;
@@ -486,13 +482,13 @@ pub fn limit_freq(
     use frequency::BasicFrequency;
 
     let (sys, translator): (&system::System, &mut Translator) = match system {
-        EvaluatedSystem::System { sys, translator } => (sys, translator),
-        EvaluatedSystem::Graph { graph, translator } => {
+        | EvaluatedSystem::System { sys, translator } => (sys, translator),
+        | EvaluatedSystem::Graph { graph, translator } => {
             let Some(sys) = graph.node_weights().next() else {
                 return Err("No node found in graph.".into());
             };
             (sys, translator)
-        }
+        },
     };
 
     let (_, sets) = read_file(translator, experiment, parser_experiment)?;
@@ -502,10 +498,10 @@ pub fn limit_freq(
         &sys.reaction_rules,
         &sys.available_entities,
     ) {
-        Some(e) => e,
-        None => {
+        | Some(e) => e,
+        | None => {
             return Err("Error calculating frequency.".into());
-        }
+        },
     };
 
     Ok(format!(
@@ -526,13 +522,13 @@ pub fn fast_freq(
     use frequency::BasicFrequency;
 
     let (sys, translator): (&system::System, &mut Translator) = match system {
-        EvaluatedSystem::System { sys, translator } => (sys, translator),
-        EvaluatedSystem::Graph { graph, translator } => {
+        | EvaluatedSystem::System { sys, translator } => (sys, translator),
+        | EvaluatedSystem::Graph { graph, translator } => {
             let Some(sys) = graph.node_weights().next() else {
                 return Err("No node found in graph".into());
             };
             (sys, translator)
-        }
+        },
     };
 
     let (weights, sets) = read_file(translator, experiment, parser_experiment)?;
@@ -543,10 +539,10 @@ pub fn fast_freq(
         &sys.available_entities,
         &weights,
     ) {
-        Some(e) => e,
-        None => {
+        | Some(e) => e,
+        | None => {
             return Err("Error calculating frequency.".into());
-        }
+        },
     };
 
     Ok(format!(
@@ -560,7 +556,7 @@ pub fn fast_freq(
 pub fn digraph(system: &mut EvaluatedSystem) -> Result<(), String> {
     if let EvaluatedSystem::System { sys, translator } = system {
         *system = EvaluatedSystem::Graph {
-            graph: sys.digraph()?,
+            graph:      sys.digraph()?,
             translator: translator.to_owned(),
         };
     }
@@ -638,10 +634,9 @@ pub fn bisimilar(
         .system
         .compute(system_a.get_translator().clone())?
     {
-        EvaluatedSystem::System { sys, translator } => {
-            EvaluatedSystem::System { sys, translator }
-        }
-        EvaluatedSystem::Graph { graph, translator } => {
+        | EvaluatedSystem::System { sys, translator } =>
+            EvaluatedSystem::System { sys, translator },
+        | EvaluatedSystem::Graph { graph, translator } => {
             if translator != *system_a.get_translator() {
                 return Err("Bisimilarity not implemented for systems with \
                 different encodings. Serialize the systems \
@@ -649,7 +644,7 @@ pub fn bisimilar(
                     .into());
             }
             EvaluatedSystem::Graph { graph, translator }
-        }
+        },
     };
 
     digraph(system_a)?;
@@ -657,7 +652,7 @@ pub fn bisimilar(
 
     // since we ran digraph on both they have to be graphs
     match (system_a, &mut system_b) {
-        (
+        | (
             EvaluatedSystem::Graph {
                 graph: a,
                 translator: _,
@@ -673,14 +668,15 @@ pub fn bisimilar(
                 b.map_edges(edge_relabeler, translator_b)?;
             Ok(format!(
                 "{}",
-                // bisimilarity::bisimilarity_kanellakis_smolka::bisimilarity(&&a, &&b)
+                // bisimilarity::bisimilarity_kanellakis_smolka::bisimilarity(&
+                // &a, &&b)
                 // bisimilarity::bisimilarity_paige_tarjan::bisimilarity_ignore_labels(&&a, &&b)
                 bisimilarity::bisimilarity_paige_tarkan::bisimilarity(&&a, &&b)
             ))
-        }
-        _ => {
+        },
+        | _ => {
             unreachable!()
-        }
+        },
     }
 }
 
@@ -697,11 +693,11 @@ pub fn dot(
     edge_color: graph::EdgeColor,
 ) -> Result<String, String> {
     match system {
-        EvaluatedSystem::System {
+        | EvaluatedSystem::System {
             sys: _,
             translator: _,
         } => Err("Supplied system is not a graph".into()),
-        EvaluatedSystem::Graph { graph, translator } => {
+        | EvaluatedSystem::Graph { graph, translator } => {
             let rc_translator = Rc::new(translator.clone());
             let modified_graph = graph.map(
                 node_display.generate(Rc::clone(&rc_translator), graph),
@@ -722,7 +718,7 @@ pub fn dot(
             );
 
             Ok(format!("{dot}"))
-        }
+        },
     }
 }
 
@@ -733,11 +729,11 @@ pub fn graphml(
     edge_display: graph::EdgeDisplay,
 ) -> Result<String, String> {
     match system {
-        EvaluatedSystem::System {
+        | EvaluatedSystem::System {
             sys: _,
             translator: _,
         } => Err("Supplied system is not a graph".into()),
-        EvaluatedSystem::Graph { graph, translator } => {
+        | EvaluatedSystem::Graph { graph, translator } => {
             let rc_translator = Rc::new(translator.to_owned());
 
             // map each value to the corresponding value we want to display
@@ -753,7 +749,7 @@ pub fn graphml(
                 .export_edge_weights_display();
 
             Ok(format!("{graphml}"))
-        }
+        },
     }
 }
 
@@ -762,30 +758,30 @@ pub fn graphml(
 /// deserialization.
 pub fn serialize(system: &EvaluatedSystem, path: String) -> Result<(), String> {
     match system {
-        EvaluatedSystem::System {
+        | EvaluatedSystem::System {
             sys: _,
             translator: _,
         } => Err("Supplied system is not a graph".into()),
-        EvaluatedSystem::Graph { graph, translator } => {
+        | EvaluatedSystem::Graph { graph, translator } => {
             // relative path
             let mut path = std::path::PathBuf::from(path);
             path.set_extension("cbor");
 
             let f = match fs::File::create(&path) {
-                Ok(f) => f,
-                Err(_) => {
+                | Ok(f) => f,
+                | Err(_) => {
                     return Err(format!(
                         "Error creating file {}.",
                         path.to_str().unwrap()
                     ));
-                }
+                },
             };
 
             match serialize::ser(f, graph, translator) {
-                Ok(_) => Ok(()),
-                Err(_) => Err("Error during serialization.".into()),
+                | Ok(_) => Ok(()),
+                | Err(_) => Err("Error during serialization.".into()),
             }
-        }
+        },
     }
 }
 
@@ -797,25 +793,25 @@ pub fn deserialize(
 ) -> Result<(graph::SystemGraph, Translator), String> {
     // relative path
     let mut path = match env::current_dir() {
-        Ok(p) => p,
-        Err(_) => return Err("Error getting current directory.".into()),
+        | Ok(p) => p,
+        | Err(_) => return Err("Error getting current directory.".into()),
     };
     path = path.join(input_path);
     path.set_extension("cbor");
 
     let f = match fs::File::open(&path) {
-        Ok(f) => f,
-        Err(_) => {
+        | Ok(f) => f,
+        | Err(_) => {
             return Err(format!(
                 "Error opening file {}.",
                 path.to_str().unwrap()
             ));
-        }
+        },
     };
 
     match serialize::de(f) {
-        Ok(a) => Ok(a),
-        Err(_) => Err("Error during deserialization.".into()),
+        | Ok(a) => Ok(a),
+        | Err(_) => Err("Error during deserialization.".into()),
     }
 }
 
@@ -843,28 +839,28 @@ fn execute(
     system: &mut EvaluatedSystem,
 ) -> Result<(), String> {
     match instruction {
-        Instruction::Stats { so } => {
+        | Instruction::Stats { so } => {
             save_options!(stats(system)?, so);
-        }
-        Instruction::Target { so } => {
+        },
+        | Instruction::Target { so } => {
             save_options!(target(system)?, so);
-        }
-        Instruction::Run { so } => {
+        },
+        | Instruction::Run { so } => {
             save_options!(traversed(system)?, so);
-        }
-        Instruction::Loop { symbol, so } => {
+        },
+        | Instruction::Loop { symbol, so } => {
             save_options!(hoop(system, symbol)?, so);
-        }
-        Instruction::Frequency { so } => {
+        },
+        | Instruction::Frequency { so } => {
             save_options!(freq(system)?, so);
-        }
-        Instruction::LimitFrequency { experiment, so } => {
+        },
+        | Instruction::LimitFrequency { experiment, so } => {
             save_options!(limit_freq(system, experiment)?, so);
-        }
-        Instruction::FastFrequency { experiment, so } => {
+        },
+        | Instruction::FastFrequency { experiment, so } => {
             save_options!(fast_freq(system, experiment)?, so);
-        }
-        Instruction::Digraph { group, gso } => {
+        },
+        | Instruction::Digraph { group, gso } => {
             let mut graph = system.clone();
             digraph(&mut graph)?;
             if let Some(group) = group {
@@ -873,7 +869,7 @@ fn execute(
             }
             for save in gso {
                 match save {
-                    GraphSaveOptions::Dot {
+                    | GraphSaveOptions::Dot {
                         node_display: nd,
                         edge_display: ed,
                         node_color: nc,
@@ -881,28 +877,28 @@ fn execute(
                         so,
                     } => {
                         save_options!(dot(&graph, nd, ed, nc, ec)?, so);
-                    }
-                    GraphSaveOptions::GraphML {
+                    },
+                    | GraphSaveOptions::GraphML {
                         node_display: nd,
                         edge_display: ed,
                         so,
                     } => {
                         save_options!(graphml(&graph, nd, ed)?, so);
-                    }
-                    GraphSaveOptions::Serialize { path } => {
+                    },
+                    | GraphSaveOptions::Serialize { path } => {
                         serialize(&graph, path)?;
-                    }
+                    },
                 }
             }
-        }
-        Instruction::Bisimilarity {
+        },
+        | Instruction::Bisimilarity {
             system_b,
             edge_relabeler,
             so,
         } => {
             edge_relabeler.typecheck()?;
             save_options!(bisimilar(system, &edge_relabeler, system_b)?, so);
-        }
+        },
     }
     Ok(())
 }
