@@ -342,7 +342,7 @@ AssertExpression: relabel::Expression = {
     <unp: AssertUnaryPrefix> "(" <e: AssertExpression> ")" =>
         relabel::Expression::Unary(unp, Box::new(e)),
 
-    #[precedence(level="100")]
+    #[precedence(level="50")]
     <e: AssertExpression> "." <uns: AssertUnarySuffix> =>
         relabel::Expression::Unary(uns, Box::new(e)),
 
@@ -354,9 +354,6 @@ AssertExpression: relabel::Expression = {
     <b: AssertBinaryPrefix>
     "(" <e1: AssertExpression> "," <e2: AssertExpression> ")" =>
         relabel::Expression::Binary(b, Box::new(e1), Box::new(e2)),
-
-    #[precedence(level="50")]
-    "(" <e: AssertExpression> ")" => e,
 
     #[precedence(level="0")]
     <t: AssertTerm> => t,
@@ -381,8 +378,12 @@ AssertTerm: relabel::Expression = {
     PATH => relabel::Expression::String(<>.trim_end_matches("\"")
                                         .trim_start_matches("\"")
                                         .to_string()),
+
+    // allow arbitrary parenthesis
+    "(" <e: AssertExpression> ")" => e,
 }
 
+#[inline]
 AssertRange: relabel::Range = {
     "{" <e: AssertExpression> "}" =>
         relabel::Range::IterateOverSet(Box::new(e)),
@@ -390,11 +391,13 @@ AssertRange: relabel::Range = {
         relabel::Range::IterateInRange(Box::new(e1), Box::new(e2)),
 }
 
+#[inline]
 AssertUnaryPrefix: relabel::Unary = {
     "not" => relabel::Unary::Not,
     "rand" => relabel::Unary::Rand,
 }
 
+#[inline]
 AssertUnarySuffix: relabel::Unary = {
     #[precedence(level="0")]
     "empty" => relabel::Unary::Empty,
@@ -406,6 +409,7 @@ AssertUnarySuffix: relabel::Unary = {
     <q: AssertQualifier> => relabel::Unary::Qualifier(q),
 }
 
+#[inline]
 AssertQualifierRestricted: relabel::QualifierRestricted = {
     "Entities" => relabel::QualifierRestricted::Entities,
     "Context" => relabel::QualifierRestricted::Context,
@@ -416,27 +420,32 @@ AssertQualifierRestricted: relabel::QualifierRestricted = {
     "Products" => relabel::QualifierRestricted::Products,
 }
 
+#[inline]
 AssertQualifierLabel: relabel::QualifierLabel = {
     "AvailableEntities" => relabel::QualifierLabel::AvailableEntities,
     "AllReactants" => relabel::QualifierLabel::AllReactants,
     "AllInhibitors" => relabel::QualifierLabel::AllInhibitors,
 }
 
+#[inline]
 AssertQualifierSystem: relabel::QualifierSystem = {
     "SystemEntities" => relabel::QualifierSystem::Entities,
     "SystemContext" => relabel::QualifierSystem::Context,
 }
 
+#[inline]
 AssertQualifierEdge: relabel::QualifierEdge = {
     "source" => relabel::QualifierEdge::Source,
     "target" => relabel::QualifierEdge::Target,
 }
 
+#[inline]
 AssertQualifierNode: relabel::QualifierNode = {
     "neighbours" => relabel::QualifierNode::Neighbours,
     "system" => relabel::QualifierNode::System,
 }
 
+#[inline]
 AssertQualifier: relabel::Qualifier = {
     <q: AssertQualifierSystem> => relabel::Qualifier::System(q),
     <q: AssertQualifierLabel> => relabel::Qualifier::Label(q),
@@ -445,6 +454,7 @@ AssertQualifier: relabel::Qualifier = {
     <q: AssertQualifierNode> => relabel::Qualifier::Node(q),
 }
 
+#[inline]
 AssertBinary: relabel::Binary = {
     "&&" => relabel::Binary::And,
     "||" => relabel::Binary::Or,
@@ -464,6 +474,7 @@ AssertBinary: relabel::Binary = {
     "::" => relabel::Binary::Concat,
 }
 
+#[inline]
 AssertBinaryPrefix: relabel::Binary = {
     "substr" => relabel::Binary::SubStr,
     "min" => relabel::Binary::Min,
