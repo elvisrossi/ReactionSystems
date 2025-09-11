@@ -16,3 +16,6 @@ petgraph = { version = "*", features = ["serde-1"] }
 petgraph-graphml = { version = "5" }
 serde = { version = "1", features = ["derive", "rc"] }
 serde_cbor_2 = { version = "*" }
+
+[profile.dev]
+split-debuginfo = "unpacked"

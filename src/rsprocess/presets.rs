@@ -861,8 +861,9 @@ fn execute(
             save_options!(fast_freq(system, experiment)?, so);
         },
         | Instruction::Digraph { group, gso } => {
+            digraph(system)?;
             let mut graph = system.clone();
-            digraph(&mut graph)?;
+
             if let Some(group) = group {
                 group.typecheck()?;
                 grouping(&mut graph, &group)?;
