@@ -279,15 +279,15 @@ impl Unary {
         type_exp: &AssertionTypes,
     ) -> Result<AssertionTypes, String> {
         match (self, type_exp) {
-            (Self::Not, AssertionTypes::Boolean) =>
-                Ok(AssertionTypes::Boolean),
-            (Self::Rand, AssertionTypes::Integer) =>
-                Ok(AssertionTypes::Integer),
-            (Self::Empty, AssertionTypes::Set) =>
-                Ok(AssertionTypes::Boolean),
-            (Self::Length, AssertionTypes::Set) |
-            (Self::Length, AssertionTypes::String) =>
-                Ok(AssertionTypes::Integer),
+            (Self::Not, AssertionTypes::Boolean) => Ok(AssertionTypes::Boolean),
+            (Self::Rand, AssertionTypes::Integer) => {
+                Ok(AssertionTypes::Integer)
+            }
+            (Self::Empty, AssertionTypes::Set) => Ok(AssertionTypes::Boolean),
+            (Self::Length, AssertionTypes::Set)
+            | (Self::Length, AssertionTypes::String) => {
+                Ok(AssertionTypes::Integer)
+            }
             (Self::ToStr, AssertionTypes::Boolean)
             | (Self::ToStr, AssertionTypes::Element)
             | (Self::ToStr, AssertionTypes::Integer) => {
@@ -863,30 +863,20 @@ impl AssertReturnValue {
             (Binary::Less, Set(s1), Set(s2)) => {
                 Boolean(s1.is_subset(&s2) && !s2.is_subset(&s1))
             }
-            (Binary::LessEq, Integer(i1), Integer(i2)) =>
-                Boolean(i1 <= i2),
-            (Binary::LessEq, Set(s1), Set(s2)) =>
-                Boolean(s1.is_subset(&s2)),
-            (Binary::More, Integer(i1), Integer(i2)) =>
-                Boolean(i1 > i2),
-            (Binary::More, Set(s1), Set(s2)) =>
-                Boolean(s2.is_subset(&s1) && !s1.is_subset(&s2)),
-            (Binary::MoreEq, Integer(i1), Integer(i2)) =>
-                Boolean(i1 >= i2),
-            (Binary::MoreEq, Set(s1), Set(s2)) =>
-                Boolean(s2.is_subset(&s1)),
-            (Binary::Eq, Integer(i1), Integer(i2)) =>
-                Boolean(i1 == i2),
-            (Binary::Eq, Boolean(b1), Boolean(b2)) =>
-                Boolean(b1 == b2),
-            (Binary::Eq, Element(el1), Element(el2)) =>
-                Boolean(el1 == el2),
-            (Binary::Eq, Label(l1), Label(l2)) =>
-                Boolean(l1 == l2),
-            (Binary::Eq, String(s1), String(s2)) =>
-                Boolean(s1 == s2),
-            (Binary::Eq, Set(set1), Set(set2)) =>
-                Boolean(set1 == set2),
+            (Binary::LessEq, Integer(i1), Integer(i2)) => Boolean(i1 <= i2),
+            (Binary::LessEq, Set(s1), Set(s2)) => Boolean(s1.is_subset(&s2)),
+            (Binary::More, Integer(i1), Integer(i2)) => Boolean(i1 > i2),
+            (Binary::More, Set(s1), Set(s2)) => {
+                Boolean(s2.is_subset(&s1) && !s1.is_subset(&s2))
+            }
+            (Binary::MoreEq, Integer(i1), Integer(i2)) => Boolean(i1 >= i2),
+            (Binary::MoreEq, Set(s1), Set(s2)) => Boolean(s2.is_subset(&s1)),
+            (Binary::Eq, Integer(i1), Integer(i2)) => Boolean(i1 == i2),
+            (Binary::Eq, Boolean(b1), Boolean(b2)) => Boolean(b1 == b2),
+            (Binary::Eq, Element(el1), Element(el2)) => Boolean(el1 == el2),
+            (Binary::Eq, Label(l1), Label(l2)) => Boolean(l1 == l2),
+            (Binary::Eq, String(s1), String(s2)) => Boolean(s1 == s2),
+            (Binary::Eq, Set(set1), Set(set2)) => Boolean(set1 == set2),
             (Binary::NotEq, Integer(i1), Integer(i2)) => Boolean(i1 != i2),
             (Binary::NotEq, Boolean(b1), Boolean(b2)) => Boolean(b1 != b2),
             (Binary::NotEq, Element(el1), Element(el2)) => Boolean(el1 != el2),
@@ -917,8 +907,9 @@ impl AssertReturnValue {
                 Integer(i1.rem_euclid(i2))
             }
             (Binary::Concat, String(s1), String(s2)) => String(s1 + &s2),
-            (Binary::Concat, Set(s), Element(e)) =>
-                Set(s.union(&set::Set::from([e]))),
+            (Binary::Concat, Set(s), Element(e)) => {
+                Set(s.union(&set::Set::from([e])))
+            }
             (Binary::SubStr, String(s1), String(s2)) => {
                 let mut len = s1.len() as i64;
                 for (p, c) in s1.chars().enumerate() {
