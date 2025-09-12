@@ -1,0 +1,11 @@
+[package]
+name = "analysis"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+rsprocess = { path = "../rsprocess/" }
+execution = { path = "../execution/" }
+grammar = { path = "../grammar/" }
+colored = { version = "*" }
+lalrpop-util = { version = "*", features = ["lexer", "unicode"] }

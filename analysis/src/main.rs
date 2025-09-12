@@ -1,5 +1,7 @@
+mod helper;
+
 fn main() {
-    use reactionsystems::rsprocess::presets;
+    use execution::presets;
 
     let mut input = String::new();
     std::io::stdin().read_line(&mut input).unwrap();
@@ -7,7 +9,7 @@ fn main() {
 
     let now = std::time::Instant::now();
 
-    match presets::run(input) {
+    match presets::run::<helper::Parsers>(input) {
         | Ok(()) => {},
         | Err(e) => println!("{e}"),
     }

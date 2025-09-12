@@ -3,7 +3,7 @@
 // -----------------------------------------------------------------------------
 use std::fmt;
 
-use super::super::translator::{
+use rsprocess::translator::{
     Formatter, PrintableWithTranslator, Translator,
 };
 use super::dsl::*;

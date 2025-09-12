@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
-use super::super::{graph, label, set, system, translator};
 use super::dsl::*;
-use crate::rsprocess::translator::PrintableWithTranslator;
+use rsprocess::{graph, label, set, system, translator};
+use rsprocess::translator::PrintableWithTranslator;
 
 // ----------------------------------------------------------------------------
 //                       Specific Assert Implementation

@@ -1,20 +1,30 @@
 //! Module that holds useful presets for interacting with other modules.
-
 use std::collections::HashMap;
-use std::fmt::Display;
 use std::io::prelude::*;
 use std::rc::Rc;
 use std::{env, fs, io};
 
-use lalrpop_util::ParseError;
 use petgraph::Graph;
 
-use super::super::grammar;
-use super::graph::MapEdges;
-use super::set::Set;
-use super::system::ExtensionsSystem;
-use super::translator::Translator;
-use super::*;
+use crate::data::MapEdges;
+use rsprocess::set::Set;
+use rsprocess::system::ExtensionsSystem;
+use rsprocess::translator::Translator;
+use rsprocess::*;
+
+// -----------------------------------------------------------------------------
+
+pub trait FileParsers {
+    fn parse_experiment(
+        translator: &mut Translator,
+        contents: String,
+    ) -> Result<(Vec<u32>, Vec<Set>), String>;
+
+    fn parse_instructions(
+        translator: &mut Translator,
+        contents: String,
+    ) -> Result<Instructions, String>;
+}
 
 // -----------------------------------------------------------------------------
 //                                 Structures
@@ -207,112 +217,6 @@ where
     Ok(result)
 }
 
-fn reformat_error<T, S>(
-    e: ParseError<usize, T, &'static str>,
-    input_str: &str,
-) -> Result<S, String>
-where
-    T: Display,
-{
-    match e {
-        | ParseError::ExtraToken { token: (l, t, r) } => Err(format!(
-            "Unexpected token \"{t}\" \
-         between positions {l} and {r}."
-        )),
-        | ParseError::UnrecognizedEof {
-            location: _,
-            expected: _,
-        } => Err("End of file encountered while parsing.".into()),
-        | ParseError::InvalidToken { location } =>
-            Err(format!("Invalid token at position {location}.")),
-        | ParseError::UnrecognizedToken {
-            token: (l, t, r),
-            expected,
-        } => {
-            use colored::Colorize;
-
-            let mut err = format!(
-                "Unrecognized token {}{}{} \
-                 between positions {l} and {r}.",
-                "\"".red(),
-                t.to_string().red(),
-                "\"".red(),
-            );
-
-            // Temporary debug.
-            err.push_str("\nExpected: ");
-            let mut it = expected.iter().peekable();
-            while let Some(s) = it.next() {
-                err.push('(');
-                err.push_str(&format!("{}", s.green()));
-                err.push(')');
-                if it.peek().is_some() {
-                    err.push(',');
-                    err.push(' ');
-                }
-            }
-            let right_new_line = input_str[l..]
-                .find("\n")
-                .map(|pos| pos + l)
-                .unwrap_or(input_str.len());
-            let left_new_line = input_str[..r]
-                .rfind("\n")
-                .map(|pos| pos + 1)
-                .unwrap_or_default();
-
-            let line_number = input_str[..l].match_indices('\n').count() + 1;
-            let pre_no_color = format!("{line_number} |");
-            let pre = format!("{}", pre_no_color.blue());
-
-            let line_pos_l = l - left_new_line;
-            let line_pos_r = r - left_new_line;
-
-            err.push_str(&format!(
-                "\nLine {} position {} to {}:\n{}{}{}{}",
-                line_number,
-                line_pos_l,
-                line_pos_r,
-                &pre,
-                &input_str[left_new_line..l].green(),
-                &input_str[l..r].red(),
-                &input_str[r..right_new_line],
-            ));
-            err.push('\n');
-            err.push_str(&" ".repeat(pre_no_color.len() - 1));
-            err.push_str(&format!("{}", "|".blue()));
-            err.push_str(&" ".repeat(l - left_new_line));
-            err.push_str(&format!("{}", &"↑".red()));
-            if r - l > 2 {
-                err.push_str(&" ".repeat(r - l - 2));
-                err.push_str(&format!("{}", &"↑".red()));
-            }
-
-            Err(err)
-        },
-        | ParseError::User { error } => Err(error.to_string()),
-    }
-}
-
-fn parser_experiment(
-    translator: &mut Translator,
-    contents: String,
-) -> Result<(Vec<u32>, Vec<Set>), String> {
-    match grammar::ExperimentParser::new().parse(translator, &contents) {
-        | Ok(sys) => Ok(sys),
-        | Err(e) => reformat_error(e, &contents),
-    }
-}
-
-fn parser_instructions(
-    translator: &mut Translator,
-    contents: String,
-) -> Result<Instructions, String> {
-    match grammar::RunParser::new().parse(translator, &contents) {
-        | Ok(sys) => Ok(sys),
-        | Err(e) => reformat_error(e, &contents),
-    }
-}
-
 fn save_file(contents: &String, path_string: String) -> Result<(), String> {
     // relative path
     let mut path = match env::current_dir() {
@@ -475,10 +379,14 @@ pub fn freq(system: &EvaluatedSystem) -> Result<String, String> {
 /// Finds the frequency of each entity in the limit loop of a nonterminating
 /// Reaction System whose context has the form Q1 ... Q1.Q2 ... Q2 ... Qn ...
 /// equivalent to main_do(limitfreq, PairList)
-pub fn limit_freq(
+pub fn limit_freq<F>(
     system: &mut EvaluatedSystem,
     experiment: String,
-) -> Result<String, String> {
+    parser_experiment: F,
+) -> Result<String, String>
+where
+    F: Fn(&mut Translator, String) -> Result<(Vec<u32>, Vec<Set>), String>
+{
     use frequency::BasicFrequency;
 
     let (sys, translator): (&system::System, &mut Translator) = match system {
@@ -515,10 +423,14 @@ pub fn limit_freq(
 /// Q1 ... Q1.Q2 ... Q2 ... Qn ... Qn.nil and each Qi is repeated Wi times
 /// read from a corresponding file.
 /// equivalent to main_do(fastfreq, PairList)
-pub fn fast_freq(
+pub fn fast_freq<F>(
     system: &mut EvaluatedSystem,
     experiment: String,
-) -> Result<String, String> {
+    parser_experiment: F,
+) -> Result<String, String>
+where
+    F: Fn(&mut Translator, String) -> Result<(Vec<u32>, Vec<Set>), String>
+{
     use frequency::BasicFrequency;
 
     let (sys, translator): (&system::System, &mut Translator) = match system {
@@ -618,11 +530,15 @@ pub fn grouping(
 }
 
 /// Computes bisimularity of two provided systems
-pub fn bisimilar(
+pub fn bisimilar<F>(
     system_a: &mut EvaluatedSystem,
     edge_relabeler: &assert::relabel::Assert,
     system_b: String,
-) -> Result<String, String> {
+    parser_instructions: F
+) -> Result<String, String>
+where
+    F: Fn(&mut Translator, String) -> Result<Instructions, String>
+{
     use assert::relabel::AssertReturnValue;
 
     let system_b = read_file(
@@ -834,7 +750,7 @@ macro_rules! save_options {
     };
 }
 
-fn execute(
+fn execute<P: FileParsers>(
     instruction: Instruction,
     system: &mut EvaluatedSystem,
 ) -> Result<(), String> {
@@ -855,10 +771,10 @@ fn execute(
             save_options!(freq(system)?, so);
         },
         | Instruction::LimitFrequency { experiment, so } => {
-            save_options!(limit_freq(system, experiment)?, so);
+            save_options!(limit_freq(system, experiment, P::parse_experiment)?, so);
         },
         | Instruction::FastFrequency { experiment, so } => {
-            save_options!(fast_freq(system, experiment)?, so);
+            save_options!(fast_freq(system, experiment, P::parse_experiment)?, so);
         },
         | Instruction::Digraph { group, gso } => {
             digraph(system)?;
@@ -898,7 +814,7 @@ fn execute(
             so,
         } => {
             edge_relabeler.typecheck()?;
-            save_options!(bisimilar(system, &edge_relabeler, system_b)?, so);
+            save_options!(bisimilar(system, &edge_relabeler, system_b, P::parse_instructions)?, so);
         },
     }
     Ok(())
@@ -906,18 +822,22 @@ fn execute(
 
 /// Interprets file at supplied path, then executes the code specified as
 /// instructions inside the file.
-pub fn run(path: String) -> Result<(), String> {
+pub fn run<P: FileParsers>(
+    path: String,
+) -> Result<(), String> {
     let mut translator = Translator::new();
 
     let Instructions {
         system,
         instructions,
-    } = read_file(&mut translator, path, parser_instructions)?;
+    } = read_file(&mut translator,
+                  path,
+                  P::parse_instructions)?;
 
     let mut system = system.compute(translator)?;
 
     for instr in instructions {
-        execute(instr, &mut system)?;
+        execute::<P>(instr, &mut system)?;
     }
 
     Ok(())

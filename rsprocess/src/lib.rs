@@ -12,12 +12,9 @@ pub mod reaction;
 pub mod set;
 pub mod system;
 
-pub mod assert;
-pub mod bisimilarity;
 pub mod dot;
 pub mod frequency;
 pub mod graph;
-pub mod presets;
 pub mod serialize;
 pub mod transitions;
 

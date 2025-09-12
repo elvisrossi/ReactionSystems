@@ -1,12 +1,13 @@
 use std::rc::Rc;
 use std::str::FromStr;
 use lalrpop_util::ParseError;
-use crate::rsprocess::{set, reaction, process, environment, system, label};
-use crate::rsprocess::element::IdType;
-use crate::rsprocess::translator::Translator;
-use crate::rsprocess::presets;
-use crate::rsprocess::assert::{relabel, grouping};
-use crate::rsprocess::graph;
+
+use assert::{relabel, grouping};
+use rsprocess::{set, reaction, process, environment, system, label};
+use rsprocess::element::IdType;
+use rsprocess::translator::Translator;
+use execution::presets;
+use rsprocess::graph;
 
 grammar(translator: &mut Translator);
 

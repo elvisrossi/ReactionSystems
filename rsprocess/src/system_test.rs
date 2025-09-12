@@ -1,5 +1,5 @@
-use crate::rsprocess::set::PositiveSet;
-use crate::rsprocess::system::BasicSystem;
+use super::set::PositiveSet;
+use super::system::BasicSystem;
 
 #[test]
 fn one_transition() {

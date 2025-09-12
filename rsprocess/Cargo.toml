@@ -1,0 +1,10 @@
+[package]
+name = "rsprocess"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+petgraph = { version = "*", features = ["serde-1"] }
+petgraph-graphml = { version = "*" }
+serde = { version = "*", features = ["derive", "rc"] }
+serde_cbor_2 = { version = "*" }

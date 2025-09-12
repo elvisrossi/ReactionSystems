@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
-use super::super::set::BasicSet;
-use super::super::{element, graph, label, process, set, system, translator};
+use rsprocess::set::BasicSet;
+use rsprocess::{element, graph, label, process, set, system, translator};
 
 /// If changing IntegerType in assert.rs, also change from Num to another
 /// similar parser with different return type in grammar.lalrpop in

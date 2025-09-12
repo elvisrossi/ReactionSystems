@@ -1,0 +1,14 @@
+[package]
+name = "grammar"
+version = "0.1.0"
+edition = "2024"
+
+[build-dependencies]
+lalrpop = "*"
+
+[dependencies]
+rsprocess = { path = "../rsprocess/" }
+assert = { path = "../assert/" }
+execution = { path = "../execution/" }
+regex = { version = "*", features = ["unicode-bool"] }
+lalrpop-util = { version = "*", features = ["lexer", "unicode"] }
