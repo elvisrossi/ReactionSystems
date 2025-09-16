@@ -94,7 +94,6 @@ common_label!(
         .intersection(&acc)
 );
 
-
 // Nodes -----------------------------------------------------------------------
 
 /// Helper structure that specifies what information to display for nodes.

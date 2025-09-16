@@ -5,6 +5,7 @@ pub mod user_error {
 }
 
 lalrpop_util::lalrpop_mod!(
-    #[allow(clippy::uninlined_format_args)] pub grammar, // name of module
+    #[allow(clippy::uninlined_format_args)]
+    #[allow(clippy::type_complexity)] pub grammar, // name of module
     "/grammar.rs" // location of parser
 );

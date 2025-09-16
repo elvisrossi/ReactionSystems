@@ -1,8 +1,8 @@
-use rsprocess::translator;
-use rsprocess::system::System;
-use rsprocess::label::Label;
+use petgraph::{Directed, Graph};
 use rsprocess::graph::SystemGraph;
-use petgraph::{Graph, Directed};
+use rsprocess::label::Label;
+use rsprocess::system::System;
+use rsprocess::translator;
 
 // -----------------------------------------------------------------------------
 //                              helper functions
@@ -19,10 +19,7 @@ where
         &self,
         edge_map: &assert::relabel::Assert,
         translator: &mut translator::Translator,
-    ) -> Result<
-        Graph<System, assert::relabel::AssertReturnValue, Ty, Ix>,
-        String,
-    >;
+    ) -> Result<Graph<System, assert::relabel::AssertReturnValue, Ty, Ix>, String>;
 }
 
 impl<'a> MapEdges<'a, System, Label, Directed, u32> for SystemGraph {

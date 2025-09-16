@@ -1,8 +1,9 @@
-use execution::presets;
-use lalrpop_util::ParseError;
 use std::fmt::Display;
-use grammar::grammar;
+
 use ::grammar::user_error::{UserError, UserErrorTypes};
+use execution::presets;
+use grammar::grammar;
+use lalrpop_util::ParseError;
 
 pub struct Parsers {}
 
@@ -124,9 +125,10 @@ where
     T: Display,
 {
     match e {
-        | ParseError::ExtraToken { token: (l, t, r) } =>
-            Err(format!("Unexpected extra token \"{t}\" between positions {l} \
-                         and {r}.")),
+        | ParseError::ExtraToken { token: (l, t, r) } => Err(format!(
+            "Unexpected extra token \"{t}\" between positions {l} \
+                         and {r}."
+        )),
         | ParseError::UnrecognizedEof {
             location: _,
             expected: _,
@@ -136,13 +138,13 @@ where
         | ParseError::UnrecognizedToken {
             token: (l, t, r),
             expected,
-        } => {
-            create_error(input_str, l, t, r, Some(expected), None)
-        },
+        } => create_error(input_str, l, t, r, Some(expected), None),
         | ParseError::User {
-            error: UserError { token: (l, t, r), error }
-        } => {
-            create_error(input_str, l, t, r, None, Some(error))
-        },
+            error:
+                UserError {
+                    token: (l, t, r),
+                    error,
+                },
+        } => create_error(input_str, l, t, r, None, Some(error)),
     }
 }

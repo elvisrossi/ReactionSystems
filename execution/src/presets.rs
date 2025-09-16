@@ -5,12 +5,12 @@ use std::rc::Rc;
 use std::{env, fs, io};
 
 use petgraph::Graph;
-
-use crate::data::MapEdges;
 use rsprocess::set::Set;
 use rsprocess::system::ExtensionsSystem;
 use rsprocess::translator::Translator;
 use rsprocess::*;
+
+use crate::data::MapEdges;
 
 // -----------------------------------------------------------------------------
 
@@ -91,11 +91,11 @@ pub enum Instruction {
         so: SaveOptions,
     },
     Target {
-        so: SaveOptions,
+        so:    SaveOptions,
         limit: Option<usize>,
     },
     Run {
-        so: SaveOptions,
+        so:    SaveOptions,
         limit: Option<usize>,
     },
     Loop {
@@ -150,9 +150,9 @@ impl System {
 
 #[derive(Clone)]
 pub struct EvaluatedSystem {
-    sys:        Option<system::System>,
-    graph:      Option<graph::SystemGraph>,
-    positive:   Option<system::PositiveSystem>,
+    sys: Option<system::System>,
+    graph: Option<graph::SystemGraph>,
+    positive: Option<system::PositiveSystem>,
     translator: Translator,
 }
 
@@ -163,16 +163,23 @@ impl EvaluatedSystem {
 
     pub fn from_graph(
         graph: graph::SystemGraph,
-        translator: Translator
-    ) -> Self {
-        Self { sys: None, graph: Some(graph), positive: None, translator }
-    }
-
-    pub fn from_sys(
-        sys: system::System,
         translator: Translator,
     ) -> Self {
-        Self { sys: Some(sys), graph: None, positive: None, translator }
+        Self {
+            sys: None,
+            graph: Some(graph),
+            positive: None,
+            translator,
+        }
+    }
+
+    pub fn from_sys(sys: system::System, translator: Translator) -> Self {
+        Self {
+            sys: Some(sys),
+            graph: None,
+            positive: None,
+            translator,
+        }
     }
 }
 
@@ -269,7 +276,7 @@ pub fn stats(system: &EvaluatedSystem) -> Result<String, String> {
 /// Equivalent to main_do(target, E)
 pub fn target(
     system: &EvaluatedSystem,
-    limit: Option<usize>
+    limit: Option<usize>,
 ) -> Result<String, String> {
     if let Some(sys) = &system.sys {
         let res = if let Some(limit) = limit {
@@ -318,7 +325,7 @@ pub fn target(
 /// equivalent to main_do(run,Es)
 pub fn traversed(
     system: &EvaluatedSystem,
-    limit: Option<usize>
+    limit: Option<usize>,
 ) -> Result<String, String> {
     let mut output = String::new();
 
@@ -492,7 +499,7 @@ pub fn limit_freq<F>(
     parser_experiment: F,
 ) -> Result<String, String>
 where
-    F: Fn(&mut Translator, String) -> Result<(Vec<u32>, Vec<Set>), String>
+    F: Fn(&mut Translator, String) -> Result<(Vec<u32>, Vec<Set>), String>,
 {
     use frequency::BasicFrequency;
 
@@ -568,7 +575,7 @@ pub fn fast_freq<F>(
     parser_experiment: F,
 ) -> Result<String, String>
 where
-    F: Fn(&mut Translator, String) -> Result<(Vec<u32>, Vec<Set>), String>
+    F: Fn(&mut Translator, String) -> Result<(Vec<u32>, Vec<Set>), String>,
 {
     use frequency::BasicFrequency;
 
@@ -623,10 +630,14 @@ where
 /// Computes the LTS.
 /// equivalent to main_do(digraph, Arcs) or to main_do(advdigraph, Arcs)
 pub fn digraph(system: &mut EvaluatedSystem) -> Result<(), String> {
-    if let Some(sys) = &system.sys && system.graph.is_none() {
+    if let Some(sys) = &system.sys
+        && system.graph.is_none()
+    {
         let graph = sys.digraph()?;
         system.graph = Some(graph);
-    } else if let Some(positive) = &system.positive && system.graph.is_none() {
+    } else if let Some(positive) = &system.positive
+        && system.graph.is_none()
+    {
         let _graph = positive.digraph()?;
         todo!()
     }
@@ -694,25 +705,26 @@ pub fn bisimilar<F>(
     system_a: &mut EvaluatedSystem,
     edge_relabeler: &assert::relabel::Assert,
     system_b: String,
-    parser_instructions: F
+    parser_instructions: F,
 ) -> Result<String, String>
 where
-    F: Fn(&mut Translator, String) -> Result<Instructions, String>
+    F: Fn(&mut Translator, String) -> Result<Instructions, String>,
 {
     use assert::relabel::AssertReturnValue;
 
-    let system_b = read_file(&mut system_a.translator,
-                             system_b.to_string(),
-                             parser_instructions)?;
+    let system_b = read_file(
+        &mut system_a.translator,
+        system_b.to_string(),
+        parser_instructions,
+    )?;
 
-    let mut system_b = system_b
-        .system
-        .compute(system_a.get_translator().clone())?;
+    let mut system_b =
+        system_b.system.compute(system_a.get_translator().clone())?;
 
     if system_b.translator != system_a.translator {
         return Err("Bisimilarity not implemented for systems with different \
                     encodings. Serialize the systems with the same translator."
-                   .into());
+            .into());
     }
 
     digraph(system_a)?;
@@ -720,11 +732,16 @@ where
 
     // since we ran digraph on both they have to have valid graphs
 
-    let a: Graph<system::System, AssertReturnValue> =
-        system_a.graph.as_ref().unwrap()
+    let a: Graph<system::System, AssertReturnValue> = system_a
+        .graph
+        .as_ref()
+        .unwrap()
         .map_edges(edge_relabeler, &mut system_a.translator)?;
     let b: Graph<system::System, AssertReturnValue> =
-        system_b.graph.unwrap().map_edges(edge_relabeler, &mut system_b.translator)?;
+        system_b
+            .graph
+            .unwrap()
+            .map_edges(edge_relabeler, &mut system_b.translator)?;
     Ok(format!(
         "{}",
         // bisimilarity::bisimilarity_kanellakis_smolka::bisimilarity(&
@@ -897,10 +914,16 @@ fn execute<P: FileParsers>(
             save_options!(freq(system)?, so);
         },
         | Instruction::LimitFrequency { experiment, so } => {
-            save_options!(limit_freq(system, experiment, P::parse_experiment)?, so);
+            save_options!(
+                limit_freq(system, experiment, P::parse_experiment)?,
+                so
+            );
         },
         | Instruction::FastFrequency { experiment, so } => {
-            save_options!(fast_freq(system, experiment, P::parse_experiment)?, so);
+            save_options!(
+                fast_freq(system, experiment, P::parse_experiment)?,
+                so
+            );
         },
         | Instruction::Digraph { group, gso } => {
             digraph(system)?;
@@ -940,7 +963,15 @@ fn execute<P: FileParsers>(
             so,
         } => {
             edge_relabeler.typecheck()?;
-            save_options!(bisimilar(system, &edge_relabeler, system_b, P::parse_instructions)?, so);
+            save_options!(
+                bisimilar(
+                    system,
+                    &edge_relabeler,
+                    system_b,
+                    P::parse_instructions
+                )?,
+                so
+            );
         },
     }
     Ok(())
@@ -948,17 +979,13 @@ fn execute<P: FileParsers>(
 
 /// Interprets file at supplied path, then executes the code specified as
 /// instructions inside the file.
-pub fn run<P: FileParsers>(
-    path: String,
-) -> Result<(), String> {
+pub fn run<P: FileParsers>(path: String) -> Result<(), String> {
     let mut translator = Translator::new();
 
     let Instructions {
         system,
         instructions,
-    } = read_file(&mut translator,
-                  path,
-                  P::parse_instructions)?;
+    } = read_file(&mut translator, path, P::parse_instructions)?;
 
     let mut system = system.compute(translator)?;
 

@@ -3,9 +3,8 @@
 // -----------------------------------------------------------------------------
 use std::fmt;
 
-use rsprocess::translator::{
-    Formatter, PrintableWithTranslator, Translator,
-};
+use rsprocess::translator::{Formatter, PrintableWithTranslator, Translator};
+
 use super::dsl::*;
 
 impl<S> fmt::Debug for Assert<S>
