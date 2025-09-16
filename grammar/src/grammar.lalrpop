@@ -8,8 +8,13 @@ use rsprocess::element::IdType;
 use rsprocess::translator::Translator;
 use execution::presets;
 use rsprocess::graph;
+use crate::custom_error;
 
 grammar(translator: &mut Translator);
+
+extern {
+    type Error = custom_error::UserError;
+}
 
 // -----------------------------------------------------------------------------
 //                                  Helpers
@@ -31,7 +36,7 @@ match {
     "Print", "Save",
     "Dot", "GraphML", "Serialize",
     "Stats", "Target", "Run", "Loop", "Frequency", "LimitFrequency",
-    "FastFrequency", "Digraph", "Bisimilarity",
+    "FastFrequency", "Digraph", "Bisimilarity", "Limit",
     "Deserialize",
     "?",
     "Hide",
@@ -160,10 +165,38 @@ LiteralProcess: String = {
     "relabel" => <>.into(),
 };
 
-// all numbers are i64
 Num: i64 = {
-    NUMBER =>? i64::from_str(<>)
-               .map_err(|_| ParseError::User { error: "Number is too big" })
+    <sign: "-"?> <start: @L> <n: NUMBER> <end: @R> =>? {
+        if sign.is_some() {
+            i64::from_str(n)
+                  .map(|n| -n)
+                  .map_err(|_| ParseError::User {
+                      error: custom_error::UserError {
+                          token: (start, n.into(), end),
+                          error: custom_error::UserErrorTypes::NumberTooBigi64
+                      }
+                  })
+        } else {
+            i64::from_str(n)
+                  .map_err(|_| ParseError::User {
+                      error: custom_error::UserError {
+                          token: (start, n.into(), end),
+                          error: custom_error::UserErrorTypes::NumberTooBigi64
+                      }
+                  })
+        }
+
+    }
+};
+
+NumUsize: usize = {
+    <start: @L> <n: NUMBER> <end: @R> =>? usize::from_str(n)
+               .map_err(|_| ParseError::User {
+                   error: custom_error::UserError {
+                       token: (start, n.into(), end),
+                       error: custom_error::UserErrorTypes::NumberTooBigUsize
+                   }
+               })
 };
 
 Path: String = {
@@ -1037,12 +1070,12 @@ Instruction: presets::Instruction = {
     "Stats"
       ">" <so: SaveOptions> =>
         presets::Instruction::Stats { so },
-    "Target"
+    "Target" <limit: ("(" "Limit" ":" NumUsize ")")?>
       ">" <so: SaveOptions> =>
-        presets::Instruction::Target { so },
-    "Run"
+        presets::Instruction::Target { so, limit: limit.map(|l| l.3) },
+    "Run" <limit: ("(" "Limit" ":" NumUsize ")")?>
       ">" <so: SaveOptions> =>
-        presets::Instruction::Run { so },
+        presets::Instruction::Run { so, limit: limit.map(|l| l.3) },
     "Loop" "(" <symbol: Literal> ")"
       ">" <so: SaveOptions> =>
         presets::Instruction::Loop { symbol,  so },

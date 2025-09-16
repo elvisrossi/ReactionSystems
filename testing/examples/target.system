@@ -3,4 +3,10 @@ Initial Entities: {a, b}
 Context: [({a,b}.{a}.{a,c}.x + {a,b}.{a}.{a}.nill)]
 Reactions: ([{a,b}, {c}, {b}])
 
-Target > Print
+Target > Print,
+
+Target (Limit: 7) > Print,
+
+Target (Limit: 6) > Print,
+
+Target (Limit: 5) > Print

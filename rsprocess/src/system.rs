@@ -73,9 +73,17 @@ pub trait ExtensionsSystem: BasicSystem {
 
     fn target(&self) -> Result<(i64, Self::Set), String>;
 
+    fn target_limit(&self, limit: usize) -> Result<(i64, Self::Set), String>;
+
     #[allow(clippy::type_complexity)]
     fn run_separated(
         &self,
+    ) -> Result<Vec<(Self::Set, Self::Set, Self::Set)>, String>;
+
+    #[allow(clippy::type_complexity)]
+    fn run_separated_limit(
+        &self,
+        limit: usize
     ) -> Result<Vec<(Self::Set, Self::Set, Self::Set)>, String>;
 
     fn traces(self, n: usize) -> Result<Vec<Trace<Self::Label, Self>>, String>;
@@ -162,6 +170,20 @@ impl<T: BasicSystem> ExtensionsSystem for T {
         Ok((n, current.available_entities().clone()))
     }
 
+    fn target_limit(&self, limit: usize) -> Result<(i64, Self::Set), String> {
+        let current = self.one_transition()?;
+        if current.is_none() {
+            return Ok((0, self.available_entities().clone()));
+        }
+        let mut n = 1;
+        let mut current = current.unwrap().1;
+        while let Some((_, next)) = current.one_transition()? && n < limit {
+            current = next;
+            n += 1;
+        }
+        Ok((n as i64, current.available_entities().clone()))
+    }
+
     /// see smartOneRunECT, smartRunECT
     fn run_separated(
         &self,
@@ -176,6 +198,30 @@ impl<T: BasicSystem> ExtensionsSystem for T {
         res.push((available_entities.clone(), context.clone(), t.clone()));
         let mut current = current.1;
         while let Some((label, next)) = current.one_transition()? {
+            current = next;
+            let (available_entities, context, t) = label.get_context();
+            res.push((available_entities.clone(), context.clone(), t.clone()));
+        }
+        Ok(res)
+    }
+
+    /// see smartOneRunECT, smartRunECT
+    fn run_separated_limit(
+        &self,
+        limit: usize
+    ) -> Result<Vec<(Self::Set, Self::Set, Self::Set)>, String> {
+        let mut limit = limit;
+        let mut res = vec![];
+        let current = self.one_transition()?;
+        if current.is_none() {
+            return Ok(res);
+        }
+        let current = current.unwrap();
+        let (available_entities, context, t) = current.0.get_context();
+        res.push((available_entities.clone(), context.clone(), t.clone()));
+        let mut current = current.1;
+        while let Some((label, next)) = current.one_transition()? && limit > 1 {
+            limit -= 1;
             current = next;
             let (available_entities, context, t) = label.get_context();
             res.push((available_entities.clone(), context.clone(), t.clone()));

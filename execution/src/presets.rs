@@ -92,9 +92,11 @@ pub enum Instruction {
     },
     Target {
         so: SaveOptions,
+        limit: Option<usize>,
     },
     Run {
         so: SaveOptions,
+        limit: Option<usize>,
     },
     Loop {
         symbol: String,
@@ -132,43 +134,45 @@ pub enum System {
 impl System {
     /// Deserialize the graph if applicable.
     pub fn compute(
-        &self,
+        self,
         translator: Translator,
     ) -> Result<EvaluatedSystem, String> {
         match self {
-            | Self::System { sys } => Ok(EvaluatedSystem::System {
-                sys: sys.to_owned(),
-                translator,
-            }),
+            | Self::System { sys } =>
+                Ok(EvaluatedSystem::from_sys(sys, translator)),
             | Self::Deserialize { path } => {
-                let (graph, translator) = deserialize(path.into())?;
-                Ok(EvaluatedSystem::Graph { graph, translator })
+                let (graph, translator) = deserialize(path)?;
+                Ok(EvaluatedSystem::from_graph(graph, translator))
             },
         }
     }
 }
 
 #[derive(Clone)]
-pub enum EvaluatedSystem {
-    Graph {
-        graph:      graph::SystemGraph,
-        translator: Translator,
-    },
-    System {
-        sys: system::System,
-        translator: Translator,
-    },
+pub struct EvaluatedSystem {
+    sys:        Option<system::System>,
+    graph:      Option<graph::SystemGraph>,
+    positive:   Option<system::PositiveSystem>,
+    translator: Translator,
 }
 
 impl EvaluatedSystem {
     pub fn get_translator(&mut self) -> &mut Translator {
-        match self {
-            | EvaluatedSystem::Graph {
-                graph: _,
-                translator,
-            } => translator,
-            | EvaluatedSystem::System { sys: _, translator } => translator,
-        }
+        &mut self.translator
+    }
+
+    pub fn from_graph(
+        graph: graph::SystemGraph,
+        translator: Translator
+    ) -> Self {
+        Self { sys: None, graph: Some(graph), positive: None, translator }
+    }
+
+    pub fn from_sys(
+        sys: system::System,
+        translator: Translator,
+    ) -> Self {
+        Self { sys: Some(sys), graph: None, positive: None, translator }
     }
 }
 
@@ -248,65 +252,127 @@ fn save_file(contents: &String, path_string: String) -> Result<(), String> {
 /// Prints statistics of the system.
 /// Equivalent main_do(stat) or main_do(stat, MissingE)
 pub fn stats(system: &EvaluatedSystem) -> Result<String, String> {
-    match system {
-        | EvaluatedSystem::System { sys, translator } =>
-            Ok(sys.statistics(translator)),
-        | EvaluatedSystem::Graph { graph, translator } => {
-            let Some(sys) = graph.node_weights().next() else {
-                return Err("No node found in graph.".into());
-            };
-            Ok(sys.statistics(translator))
-        },
+    if let Some(sys) = &system.sys {
+        Ok(sys.statistics(&system.translator))
+    } else if let Some(graph) = &system.graph {
+        let Some(sys) = graph.node_weights().next() else {
+            return Err("No node found in graph.".into());
+        };
+        Ok(sys.statistics(&system.translator))
+    } else {
+        Err("Statistics not available for supplied system.".into())
     }
 }
 
 /// Prints a final set of entities in a terminating Reaction System.
 /// The system needs to terminate to return.
 /// Equivalent to main_do(target, E)
-pub fn target(system: &EvaluatedSystem) -> Result<String, String> {
-    let (res, translator) = match system {
-        | EvaluatedSystem::System { sys, translator } =>
-            (sys.target()?, translator),
-        | EvaluatedSystem::Graph { graph, translator } => {
-            let Some(sys) = graph.node_weights().next() else {
-                return Err("No node found in graph.".into());
-            };
-            (sys.target()?, translator)
-        },
-    };
-    Ok(format!(
-        "After {} steps we arrive at state:\n{}",
-        res.0,
-        translator::Formatter::from(translator, &res.1)
-    ))
+pub fn target(
+    system: &EvaluatedSystem,
+    limit: Option<usize>
+) -> Result<String, String> {
+    if let Some(sys) = &system.sys {
+        let res = if let Some(limit) = limit {
+            sys.target_limit(limit)?
+        } else {
+            sys.target()?
+        };
+        Ok(format!(
+            "After {} steps we arrive at state:\n{}",
+            res.0,
+            translator::Formatter::from(&system.translator, &res.1)
+        ))
+    } else if let Some(graph) = &system.graph {
+        let Some(sys) = graph.node_weights().next() else {
+            return Err("No node found in graph.".into());
+        };
+        let res = if let Some(limit) = limit {
+            sys.target_limit(limit)?
+        } else {
+            sys.target()?
+        };
+        Ok(format!(
+            "After {} steps we arrive at state:\n{}",
+            res.0,
+            translator::Formatter::from(&system.translator, &res.1)
+        ))
+    } else if let Some(positive) = &system.positive {
+        let res = if let Some(limit) = limit {
+            positive.target_limit(limit)?
+        } else {
+            positive.target()?
+        };
+        Ok(format!(
+            "After {} steps we arrive at state:\n{}",
+            res.0,
+            translator::Formatter::from(&system.translator, &res.1)
+        ))
+    } else {
+        Err("Target not available for supplied system.".into())
+    }
 }
 
 /// Finds the list of traversed states in a (deterministic) terminating
 /// reaction.
 /// The system needs to terminate to return.
 /// equivalent to main_do(run,Es)
-pub fn traversed(system: &EvaluatedSystem) -> Result<String, String> {
-    let (res, translator) = match system {
-        | EvaluatedSystem::System { sys, translator } =>
-            (sys.run_separated()?, translator),
-        | EvaluatedSystem::Graph { graph, translator } => {
-            let Some(sys) = graph.node_weights().next() else {
-                return Err("No node found in graph.".into());
-            };
-            (sys.run_separated()?, translator)
-        },
-    };
-
+pub fn traversed(
+    system: &EvaluatedSystem,
+    limit: Option<usize>
+) -> Result<String, String> {
     let mut output = String::new();
 
-    output.push_str("The trace is composed by the set of entities: ");
-    for (e, _c, _t) in res {
-        output.push_str(&format!(
-            "{}",
-            translator::Formatter::from(translator, &e)
-        ));
+    if let Some(sys) = &system.sys {
+        let res = if let Some(limit) = limit {
+            sys.run_separated_limit(limit)?
+        } else {
+            sys.run_separated()?
+        };
+
+        output.push_str("The trace is composed by the set of entities: ");
+        for (e, _c, _t) in res {
+            output.push_str(&format!(
+                "{}",
+                translator::Formatter::from(&system.translator, &e)
+            ));
+        }
+        Ok(output)
+    } else if let Some(graph) = &system.graph {
+        let Some(sys) = graph.node_weights().next() else {
+            return Err("No node found in graph.".into());
+        };
+        let res = if let Some(limit) = limit {
+            sys.run_separated_limit(limit)?
+        } else {
+            sys.run_separated()?
+        };
+
+        output.push_str("The trace is composed by the set of entities: ");
+        for (e, _c, _t) in res {
+            output.push_str(&format!(
+                "{}",
+                translator::Formatter::from(&system.translator, &e)
+            ));
+        }
+        Ok(output)
+    } else if let Some(positive) = &system.positive {
+        let res = if let Some(limit) = limit {
+            positive.run_separated_limit(limit)?
+        } else {
+            positive.run_separated()?
+        };
+
+        output.push_str("The trace is composed by the set of entities: ");
+        for (e, _c, _t) in res {
+            output.push_str(&format!(
+                "{}",
+                translator::Formatter::from(&system.translator, &e)
+            ));
+        }
+        Ok(output)
+    } else {
+        Err("Run not available for supplied system.".into())
     }
-    Ok(output)
 }
 
 /// Finds the looping list of states in a reaction system with a perpetual
@@ -318,38 +384,68 @@ pub fn hoop(
     symbol: String,
 ) -> Result<String, String> {
     use system::LoopSystem;
-
-    let (res, translator) = match system {
-        | EvaluatedSystem::System { sys, translator } => (sys, translator),
-        | EvaluatedSystem::Graph { graph, translator } => {
-            let Some(sys) = graph.node_weights().next() else {
-                return Err("No node found in graph.".into());
-            };
-            (sys, translator)
-        },
-    };
-    // we retrieve the id for "x" and use it to find the corresponding loop
-    let Some(id) = translator.encode_not_mut(&symbol) else {
+    // we retrieve the id for the input symbol, error if not found.
+    let Some(id) = system.translator.encode_not_mut(&symbol) else {
         return Err(format!("Symbol {symbol} not found."));
     };
-    let res = match res.lollipops_only_loop_named(id) {
-        | Some(o) => o,
-        | None => {
-            return Err("No loop found.".into());
-        },
-    };
-
     let mut output = String::new();
 
-    output.push_str("The loop is composed by the sets: ");
-    for e in res {
-        output.push_str(&format!(
-            "{}",
-            translator::Formatter::from(translator, &e)
-        ));
-    }
+    if let Some(sys) = &system.sys {
+        let res = match sys.lollipops_only_loop_named(id) {
+            | Some(o) => o,
+            | None => {
+                return Err("No loop found.".into());
+            },
+        };
+        output.push_str("The loop is composed by the sets: ");
+        for e in res {
+            output.push_str(&format!(
+                "{}",
+                translator::Formatter::from(&system.translator, &e)
+            ));
+        }
 
-    Ok(output)
+        Ok(output)
+    } else if let Some(graph) = &system.graph {
+        let Some(sys) = graph.node_weights().next() else {
+            return Err("No node found in graph.".into());
+        };
+        let res = match sys.lollipops_only_loop_named(id) {
+            | Some(o) => o,
+            | None => {
+                return Err("No loop found.".into());
+            },
+        };
+
+        output.push_str("The loop is composed by the sets: ");
+        for e in res {
+            output.push_str(&format!(
+                "{}",
+                translator::Formatter::from(&system.translator, &e)
+            ));
+        }
+
+        Ok(output)
+    } else if let Some(positive) = &system.positive {
+        let res = match positive.lollipops_only_loop_named(id) {
+            | Some(o) => o,
+            | None => {
+                return Err("No loop found.".into());
+            },
+        };
+
+        output.push_str("The loop is composed by the sets: ");
+        for e in res {
+            output.push_str(&format!(
+                "{}",
+                translator::Formatter::from(&system.translator, &e)
+            ));
+        }
+
+        Ok(output)
+    } else {
+        Err("Loop not available for supplied system.".into())
+    }
 }
 
 /// Finds the frequency of each entity in the traversed states for a
@@ -358,22 +454,33 @@ pub fn hoop(
 pub fn freq(system: &EvaluatedSystem) -> Result<String, String> {
     use frequency::BasicFrequency;
 
-    let (sys, translator) = match system {
-        | EvaluatedSystem::System { sys, translator } => (sys, translator),
-        | EvaluatedSystem::Graph { graph, translator } => {
-            let Some(sys) = graph.node_weights().next() else {
-                return Err("No node found in graph.".into());
-            };
-            (sys, translator)
-        },
-    };
+    if let Some(sys) = &system.sys {
+        let res = frequency::Frequency::naive_frequency(sys)?;
 
-    let res = frequency::Frequency::naive_frequency(sys)?;
+        Ok(format!(
+            "Frequency of encountered symbols:\n{}",
+            translator::Formatter::from(&system.translator, &res)
+        ))
+    } else if let Some(graph) = &system.graph {
+        let Some(sys) = graph.node_weights().next() else {
+            return Err("No node found in graph.".into());
+        };
+        let res = frequency::Frequency::naive_frequency(sys)?;
 
-    Ok(format!(
-        "Frequency of encountered symbols:\n{}",
-        translator::Formatter::from(translator, &res)
-    ))
+        Ok(format!(
+            "Frequency of encountered symbols:\n{}",
+            translator::Formatter::from(&system.translator, &res)
+        ))
+    } else if let Some(positive) = &system.positive {
+        let res = frequency::PositiveFrequency::naive_frequency(positive)?;
+
+        Ok(format!(
+            "Frequency of encountered symbols:\n{}",
+            translator::Formatter::from(&system.translator, &res)
+        ))
+    } else {
+        Err("Frequency not available for supplied system.".into())
+    }
 }
 
 /// Finds the frequency of each entity in the limit loop of a nonterminating
@@ -389,33 +496,65 @@ where
 {
     use frequency::BasicFrequency;
 
-    let (sys, translator): (&system::System, &mut Translator) = match system {
-        | EvaluatedSystem::System { sys, translator } => (sys, translator),
-        | EvaluatedSystem::Graph { graph, translator } => {
-            let Some(sys) = graph.node_weights().next() else {
-                return Err("No node found in graph.".into());
-            };
-            (sys, translator)
-        },
-    };
+    let (_, sets) =
+        read_file(&mut system.translator, experiment, parser_experiment)?;
 
-    let (_, sets) = read_file(translator, experiment, parser_experiment)?;
+    if let Some(sys) = &system.sys {
+        let res = match frequency::Frequency::limit_frequency(
+            &sets,
+            &sys.reaction_rules,
+            &sys.available_entities,
+        ) {
+            | Some(e) => e,
+            | None => {
+                return Err("Error calculating frequency.".into());
+            },
+        };
 
-    let res = match frequency::Frequency::limit_frequency(
-        &sets,
-        &sys.reaction_rules,
-        &sys.available_entities,
-    ) {
-        | Some(e) => e,
-        | None => {
-            return Err("Error calculating frequency.".into());
-        },
-    };
+        Ok(format!(
+            "Frequency of encountered symbols:\n{}",
+            translator::Formatter::from(&system.translator, &res)
+        ))
+    } else if let Some(graph) = &system.graph {
+        let Some(sys) = graph.node_weights().next() else {
+            return Err("No node found in graph.".into());
+        };
 
-    Ok(format!(
-        "Frequency of encountered symbols:\n{}",
-        translator::Formatter::from(translator, &res)
-    ))
+        let res = match frequency::Frequency::limit_frequency(
+            &sets,
+            &sys.reaction_rules,
+            &sys.available_entities,
+        ) {
+            | Some(e) => e,
+            | None => {
+                return Err("Error calculating frequency.".into());
+            },
+        };
+
+        Ok(format!(
+            "Frequency of encountered symbols:\n{}",
+            translator::Formatter::from(&system.translator, &res)
+        ))
+    } else if let Some(_positive) = &system.positive {
+        todo!()
+        // let res = match frequency::PositiveFrequency::limit_frequency(
+        //     &sets,
+        //     &positive.reaction_rules,
+        //     &positive.available_entities,
+        // ) {
+        //     | Some(e) => e,
+        //     | None => {
+        //         return Err("Error calculating frequency.".into());
+        //     },
+        // };
+
+        // Ok(format!(
+        //     "Frequency of encountered symbols:\n{}",
+        //     translator::Formatter::from(&system.translator, &res)
+        // ))
+    } else {
+        Err("LimitFrequency not available for supplied system.".into())
+    }
 }
 
 /// Finds the frequency of each entity in the traversed loops of a terminating
@@ -433,48 +572,69 @@ where
 {
     use frequency::BasicFrequency;
 
-    let (sys, translator): (&system::System, &mut Translator) = match system {
-        | EvaluatedSystem::System { sys, translator } => (sys, translator),
-        | EvaluatedSystem::Graph { graph, translator } => {
-            let Some(sys) = graph.node_weights().next() else {
-                return Err("No node found in graph".into());
-            };
-            (sys, translator)
-        },
-    };
+    let (weights, sets) =
+        read_file(&mut system.translator, experiment, parser_experiment)?;
 
-    let (weights, sets) = read_file(translator, experiment, parser_experiment)?;
+    if let Some(sys) = &system.sys {
+        let res = match frequency::Frequency::fast_frequency(
+            &sets,
+            &sys.reaction_rules,
+            &sys.available_entities,
+            &weights,
+        ) {
+            | Some(e) => e,
+            | None => {
+                return Err("Error calculating frequency.".into());
+            },
+        };
 
-    let res = match frequency::Frequency::fast_frequency(
-        &sets,
-        &sys.reaction_rules,
-        &sys.available_entities,
-        &weights,
-    ) {
-        | Some(e) => e,
-        | None => {
-            return Err("Error calculating frequency.".into());
-        },
-    };
+        Ok(format!(
+            "Frequency of encountered symbols:\n{}",
+            translator::Formatter::from(&system.translator, &res)
+        ))
+    } else if let Some(graph) = &system.graph {
+        let Some(sys) = graph.node_weights().next() else {
+            return Err("No node found in graph".into());
+        };
 
-    Ok(format!(
-        "Frequency of encountered symbols:\n{}",
-        translator::Formatter::from(translator, &res)
-    ))
+        let res = match frequency::Frequency::fast_frequency(
+            &sets,
+            &sys.reaction_rules,
+            &sys.available_entities,
+            &weights,
+        ) {
+            | Some(e) => e,
+            | None => {
+                return Err("Error calculating frequency.".into());
+            },
+        };
+
+        Ok(format!(
+            "Frequency of encountered symbols:\n{}",
+            translator::Formatter::from(&system.translator, &res)
+        ))
+    } else if let Some(_positive) = &system.positive {
+        todo!()
+    } else {
+        Err("FastFrequency not available for supplied system.".into())
+    }
 }
 
 /// Computes the LTS.
 /// equivalent to main_do(digraph, Arcs) or to main_do(advdigraph, Arcs)
 pub fn digraph(system: &mut EvaluatedSystem) -> Result<(), String> {
-    if let EvaluatedSystem::System { sys, translator } = system {
-        *system = EvaluatedSystem::Graph {
-            graph:      sys.digraph()?,
-            translator: translator.to_owned(),
-        };
+    if let Some(sys) = &system.sys && system.graph.is_none() {
+        let graph = sys.digraph()?;
+        system.graph = Some(graph);
+    } else if let Some(positive) = &system.positive && system.graph.is_none() {
+        let _graph = positive.digraph()?;
+        todo!()
     }
     Ok(())
 }
 
+/// Given a graph and a function that identifies nodes of the graph, merges
+/// nodes with the same identifier.
 pub fn grouping(
     system: &mut EvaluatedSystem,
     group: &assert::grouping::Assert,
@@ -482,9 +642,9 @@ pub fn grouping(
     let mut buckets = HashMap::new();
     let mut leader: HashMap<petgraph::prelude::NodeIndex, _> = HashMap::new();
 
-    if let EvaluatedSystem::Graph { graph, translator } = system {
+    if let Some(graph) = &mut system.graph {
         for node in graph.node_indices() {
-            let val = group.execute(graph, &node, translator)?;
+            let val = group.execute(graph, &node, &mut system.translator)?;
             println!("node: {node:?} -> val: {val:?}");
             buckets.entry(val.clone()).or_insert(vec![]).push(node);
             let l = buckets.get(&val).unwrap().first().unwrap();
@@ -541,59 +701,37 @@ where
 {
     use assert::relabel::AssertReturnValue;
 
-    let system_b = read_file(
-        system_a.get_translator(),
-        system_b.to_string(),
-        parser_instructions,
-    )?;
-    let mut system_b = match system_b
+    let system_b = read_file(&mut system_a.translator,
+                             system_b.to_string(),
+                             parser_instructions)?;
+
+    let mut system_b = system_b
         .system
-        .compute(system_a.get_translator().clone())?
-    {
-        | EvaluatedSystem::System { sys, translator } =>
-            EvaluatedSystem::System { sys, translator },
-        | EvaluatedSystem::Graph { graph, translator } => {
-            if translator != *system_a.get_translator() {
-                return Err("Bisimilarity not implemented for systems with \
-                different encodings. Serialize the systems \
-                with the same translator."
-                    .into());
-            }
-            EvaluatedSystem::Graph { graph, translator }
-        },
-    };
+        .compute(system_a.get_translator().clone())?;
+
+    if system_b.translator != system_a.translator {
+        return Err("Bisimilarity not implemented for systems with different \
+                    encodings. Serialize the systems with the same translator."
+                   .into());
+    }
 
     digraph(system_a)?;
     digraph(&mut system_b)?;
 
-    // since we ran digraph on both they have to be graphs
-    match (system_a, &mut system_b) {
-        | (
-            EvaluatedSystem::Graph {
-                graph: a,
-                translator: _,
-            },
-            EvaluatedSystem::Graph {
-                graph: b,
-                translator: translator_b,
-            },
-        ) => {
-            let a: Graph<system::System, AssertReturnValue> =
-                a.map_edges(edge_relabeler, translator_b)?;
-            let b: Graph<system::System, AssertReturnValue> =
-                b.map_edges(edge_relabeler, translator_b)?;
-            Ok(format!(
-                "{}",
-                // bisimilarity::bisimilarity_kanellakis_smolka::bisimilarity(&
-                // &a, &&b)
-                // bisimilarity::bisimilarity_paige_tarjan::bisimilarity_ignore_labels(&&a, &&b)
-                bisimilarity::bisimilarity_paige_tarkan::bisimilarity(&&a, &&b)
-            ))
-        },
-        | _ => {
-            unreachable!()
-        },
-    }
+    // since we ran digraph on both they have to have valid graphs
+
+    let a: Graph<system::System, AssertReturnValue> =
+        system_a.graph.as_ref().unwrap()
+        .map_edges(edge_relabeler, &mut system_a.translator)?;
+    let b: Graph<system::System, AssertReturnValue> =
+        system_b.graph.unwrap().map_edges(edge_relabeler, &mut system_b.translator)?;
+    Ok(format!(
+        "{}",
+        // bisimilarity::bisimilarity_kanellakis_smolka::bisimilarity(&
+        // &a, &&b)
+        // bisimilarity::bisimilarity_paige_tarjan::bisimilarity_ignore_labels(&&a, &&b)
+        bisimilarity::bisimilarity_paige_tarkan::bisimilarity(&&a, &&b)
+    ))
 }
 
 // -----------------------------------------------------------------------------
@@ -608,33 +746,29 @@ pub fn dot(
     node_color: graph::NodeColor,
     edge_color: graph::EdgeColor,
 ) -> Result<String, String> {
-    match system {
-        | EvaluatedSystem::System {
-            sys: _,
-            translator: _,
-        } => Err("Supplied system is not a graph".into()),
-        | EvaluatedSystem::Graph { graph, translator } => {
-            let rc_translator = Rc::new(translator.clone());
-            let modified_graph = graph.map(
-                node_display.generate(Rc::clone(&rc_translator), graph),
-                edge_display.generate(Rc::clone(&rc_translator), graph),
-            );
+    if let Some(graph) = &system.graph {
+        let rc_translator = Rc::new(system.translator.clone());
+        let modified_graph = graph.map(
+            node_display.generate(Rc::clone(&rc_translator), graph),
+            edge_display.generate(Rc::clone(&rc_translator), graph),
+        );
 
-            let graph = Rc::new(graph.to_owned());
+        let graph = Rc::new(graph.to_owned());
 
-            let node_formatter = node_color
-                .generate(Rc::clone(&graph), translator.encode_not_mut("*"));
-            let edge_formatter = edge_color.generate(Rc::clone(&graph));
+        let node_formatter = node_color
+            .generate(Rc::clone(&graph), system.translator.encode_not_mut("*"));
+        let edge_formatter = edge_color.generate(Rc::clone(&graph));
 
-            let dot = dot::Dot::with_attr_getters(
-                &modified_graph,
-                &[],
-                &edge_formatter,
-                &node_formatter,
-            );
+        let dot = dot::Dot::with_attr_getters(
+            &modified_graph,
+            &[],
+            &edge_formatter,
+            &node_formatter,
+        );
 
-            Ok(format!("{dot}"))
-        },
+        Ok(format!("{dot}"))
+    } else {
+        Err("Supplied system is not a graph".into())
     }
 }
 
@@ -644,60 +778,52 @@ pub fn graphml(
     node_display: graph::NodeDisplay,
     edge_display: graph::EdgeDisplay,
 ) -> Result<String, String> {
-    match system {
-        | EvaluatedSystem::System {
-            sys: _,
-            translator: _,
-        } => Err("Supplied system is not a graph".into()),
-        | EvaluatedSystem::Graph { graph, translator } => {
-            let rc_translator = Rc::new(translator.to_owned());
+    if let Some(graph) = &system.graph {
+        let rc_translator = Rc::new(system.translator.to_owned());
 
-            // map each value to the corresponding value we want to display
-            let modified_graph = graph.map(
-                node_display.generate(Rc::clone(&rc_translator), graph),
-                edge_display.generate(rc_translator, graph),
-            );
+        // map each value to the corresponding value we want to display
+        let modified_graph = graph.map(
+            node_display.generate(Rc::clone(&rc_translator), graph),
+            edge_display.generate(rc_translator, graph),
+        );
 
-            use petgraph_graphml::GraphMl;
-            let graphml = GraphMl::new(&modified_graph)
-                .pretty_print(true)
-                .export_node_weights_display()
-                .export_edge_weights_display();
+        use petgraph_graphml::GraphMl;
+        let graphml = GraphMl::new(&modified_graph)
+            .pretty_print(true)
+            .export_node_weights_display()
+            .export_edge_weights_display();
 
-            Ok(format!("{graphml}"))
-        },
+        Ok(format!("{graphml}"))
+    } else {
+        Err("Supplied system is not a graph".into())
     }
 }
 
-/// Writes the specified graph, translator tuple to file.
+/// Writes the specified graph and translator to file.
 /// N.B. graph size in memory might be much larger after serialization and
 /// deserialization.
 pub fn serialize(system: &EvaluatedSystem, path: String) -> Result<(), String> {
-    match system {
-        | EvaluatedSystem::System {
-            sys: _,
-            translator: _,
-        } => Err("Supplied system is not a graph".into()),
-        | EvaluatedSystem::Graph { graph, translator } => {
-            // relative path
-            let mut path = std::path::PathBuf::from(path);
-            path.set_extension("cbor");
+    if let Some(graph) = &system.graph {
+        // relative path
+        let mut path = std::path::PathBuf::from(path);
+        path.set_extension("cbor");
 
-            let f = match fs::File::create(&path) {
-                | Ok(f) => f,
-                | Err(_) => {
-                    return Err(format!(
-                        "Error creating file {}.",
-                        path.to_str().unwrap()
-                    ));
-                },
-            };
+        let f = match fs::File::create(&path) {
+            | Ok(f) => f,
+            | Err(_) => {
+                return Err(format!(
+                    "Error creating file {}.",
+                    path.to_str().unwrap()
+                ));
+            },
+        };
 
-            match serialize::ser(f, graph, translator) {
-                | Ok(_) => Ok(()),
-                | Err(_) => Err("Error during serialization.".into()),
-            }
-        },
+        match serialize::ser(f, graph, &system.translator) {
+            | Ok(_) => Ok(()),
+            | Err(_) => Err("Error during serialization.".into()),
+        }
+    } else {
+        Err("Supplied system is not a graph".into())
     }
 }
 
@@ -758,11 +884,11 @@ fn execute<P: FileParsers>(
         | Instruction::Stats { so } => {
             save_options!(stats(system)?, so);
         },
-        | Instruction::Target { so } => {
-            save_options!(target(system)?, so);
+        | Instruction::Target { so, limit } => {
+            save_options!(target(system, limit)?, so);
         },
-        | Instruction::Run { so } => {
-            save_options!(traversed(system)?, so);
+        | Instruction::Run { so, limit } => {
+            save_options!(traversed(system, limit)?, so);
         },
         | Instruction::Loop { symbol, so } => {
             save_options!(hoop(system, symbol)?, so);
