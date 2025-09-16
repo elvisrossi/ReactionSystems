@@ -141,10 +141,10 @@ impl BasicProcess for Process {
             next_process,
         } = self
         {
-            if let Self::RecursiveIdentifier { identifier } = &**next_process
-                && identifier == id
-            {
-                return Some(entities);
+            if let Self::RecursiveIdentifier { identifier } = &**next_process {
+                if identifier == id {
+                    return Some(entities);
+                }
             }
         }
 
@@ -355,10 +355,10 @@ impl BasicProcess for PositiveProcess {
             next_process,
         } = self
         {
-            if let Self::RecursiveIdentifier { identifier } = &**next_process
-                && identifier == id
-            {
-                return Some(entities);
+            if let Self::RecursiveIdentifier { identifier } = &**next_process {
+                if identifier == id {
+                    return Some(entities);
+                }
             }
         }
         None

@@ -444,10 +444,8 @@ impl BasicSet for PositiveSet {
             .identifiers
             .iter()
             .filter(|(id, s)| {
-                if let Some(s1) = self.identifiers.get(id)
-                    && s1 == *s
-                {
-                    true
+                if let Some(s1) = self.identifiers.get(id) {
+                    s1 == *s
                 } else {
                     false
                 }
