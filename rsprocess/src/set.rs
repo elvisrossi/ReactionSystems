@@ -464,12 +464,10 @@ impl BasicSet for PositiveSet {
             .identifiers
             .iter()
             .filter(|(id, s)| {
-                if let Some(s1) = other.identifiers.get(id)
-                    && s1 == *s
-                {
-                    false
+                if let Some(s1) = other.identifiers.get(id) {
+                    s1 == *s
                 } else {
-                    true
+                    false
                 }
             })
             .map(|(id, s)| (*id, *s))
@@ -486,10 +484,8 @@ impl BasicSet for PositiveSet {
     }
 
     fn contains(&self, el: &Self::Element) -> bool {
-        if let Some(e) = self.identifiers.get(&el.id)
-            && *e == el.state
-        {
-            true
+        if let Some(e) = self.identifiers.get(&el.id) {
+            *e == el.state
         } else {
             false
         }
@@ -632,10 +628,11 @@ impl PositiveSet {
     pub fn opposite_intersection(&self, other: &Self) -> Vec<IdType> {
         let mut ret = vec![];
         for (el, state) in self {
-            if let Some(state2) = other.identifiers.get(el)
-                && *state == !*state2
-            {
-                ret.push(*el);
+            #[allow(clippy::collapsible_if)]
+            if let Some(state2) = other.identifiers.get(el) {
+                if *state == !*state2 {
+                    ret.push(*el);
+                }
             }
         }
         ret

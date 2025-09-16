@@ -177,9 +177,10 @@ impl<T: BasicSystem> ExtensionsSystem for T {
         }
         let mut n = 1;
         let mut current = current.unwrap().1;
-        while let Some((_, next)) = current.one_transition()?
-            && n < limit
-        {
+        while let Some((_, next)) = current.one_transition()? {
+            if n >= limit {
+                break;
+            }
             current = next;
             n += 1;
         }
@@ -222,9 +223,10 @@ impl<T: BasicSystem> ExtensionsSystem for T {
         let (available_entities, context, t) = current.0.get_context();
         res.push((available_entities.clone(), context.clone(), t.clone()));
         let mut current = current.1;
-        while let Some((label, next)) = current.one_transition()?
-            && limit > 1
-        {
+        while let Some((label, next)) = current.one_transition()? {
+            if limit <= 1 {
+                break;
+            }
             limit -= 1;
             current = next;
             let (available_entities, context, t) = label.get_context();

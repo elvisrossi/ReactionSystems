@@ -135,14 +135,17 @@ impl BasicProcess for Process {
     /// Finds only the rules X = pre(Q, rec(X)), but not only x = pre(Q, rec(x))
     /// to use in filter_map.
     fn filter_delta<'a>(&'a self, id: &Self::Id) -> Option<&'a Self::Set> {
+        #[allow(clippy::collapsible_if)]
         if let Self::EntitySet {
             entities,
             next_process,
         } = self
-            && let Self::RecursiveIdentifier { identifier } = &**next_process
-            && identifier == id
         {
-            return Some(entities);
+            if let Self::RecursiveIdentifier { identifier } = &**next_process
+                && identifier == id
+            {
+                return Some(entities);
+            }
         }
 
         None
@@ -346,16 +349,18 @@ impl BasicProcess for PositiveProcess {
     /// Finds only the rules X = pre(Q, rec(X)), but not only x = pre(Q, rec(x))
     /// to use in filter_map.
     fn filter_delta(&self, id: &Self::Id) -> Option<&Self::Set> {
+        #[allow(clippy::collapsible_if)]
         if let Self::EntitySet {
             entities,
             next_process,
         } = self
-            && let Self::RecursiveIdentifier { identifier } = &**next_process
-            && identifier == id
         {
-            return Some(entities);
+            if let Self::RecursiveIdentifier { identifier } = &**next_process
+                && identifier == id
+            {
+                return Some(entities);
+            }
         }
-
         None
     }
 }
