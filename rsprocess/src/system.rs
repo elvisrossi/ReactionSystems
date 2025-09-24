@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::collections::{HashMap, VecDeque};
 use std::fmt::Debug;
 use std::hash::Hash;
@@ -53,8 +54,8 @@ where
     fn context(&self) -> &Self::Process;
     fn reactions(&self) -> &Vec<Self::Reaction>;
 
-    fn context_elements(&self) -> &Self::Set;
-    fn products_elements(&self) -> &Self::Set;
+    fn context_elements(&self) -> Self::Set;
+    fn products_elements(&self) -> Self::Set;
 }
 
 pub trait ExtensionsSystem: BasicSystem {
@@ -414,8 +415,8 @@ pub struct System {
     pub context_process: Process,
     pub reaction_rules: Rc<Vec<Reaction>>,
 
-    context_elements:  Rc<Set>,
-    products_elements: Rc<Set>,
+    context_elements:  Rc<RefCell<Option<Set>>>,
+    products_elements: Rc<RefCell<Option<Set>>>,
 }
 
 impl BasicSystem for System {
@@ -448,12 +449,34 @@ impl BasicSystem for System {
         &self.reaction_rules
     }
 
-    fn context_elements(&self) -> &Self::Set {
-        &self.context_elements
+    fn context_elements(&self) -> Self::Set {
+        let mut c = self.context_elements.borrow_mut();
+        if c.is_some() {
+            c.as_ref().unwrap().clone()
+        } else {
+            let all_elements_context = self.delta
+                .all_elements()
+                .union(&self.context_process.all_elements())
+                .subtraction(&self.products_elements());
+
+            *c = Some(all_elements_context.clone());
+            all_elements_context
+        }
     }
 
-    fn products_elements(&self) -> &Self::Set {
-        &self.products_elements
+    fn products_elements(&self) -> Self::Set {
+        let mut p = self.products_elements.borrow_mut();
+        if p.is_some() {
+            p.as_ref().unwrap().clone()
+        } else {
+            let products_elements = self.reaction_rules
+                .iter()
+                .fold(Self::Set::default(), |acc: Self::Set, r|
+                      acc.union(&r.products));
+
+            *p = Some(products_elements.clone());
+            products_elements
+        }
     }
 }
 
@@ -489,8 +512,8 @@ impl Default for System {
             context_process: Process::Nill,
             reaction_rules: Rc::new(Vec::default()),
 
-            context_elements:  Rc::new(Set::default()),
-            products_elements: Rc::new(Set::default()),
+            context_elements:  Rc::new(RefCell::new(None)),
+            products_elements: Rc::new(RefCell::new(None)),
         }
     }
 }
@@ -528,22 +551,14 @@ impl System {
         context_process: Process,
         reaction_rules: Rc<Vec<Reaction>>,
     ) -> System {
-        let products_elements = reaction_rules
-            .iter()
-            .fold(Set::default(), |acc: Set, r| acc.union(&r.products));
-        let all_elements_context = delta
-            .all_elements()
-            .union(&context_process.all_elements())
-            .subtraction(&products_elements);
-
         System {
             delta: Rc::clone(&delta),
             available_entities,
             context_process,
             reaction_rules: Rc::clone(&reaction_rules),
 
-            context_elements: Rc::new(all_elements_context),
-            products_elements: Rc::new(products_elements),
+            context_elements: Rc::new(RefCell::new(None)),
+            products_elements: Rc::new(RefCell::new(None)),
         }
     }
 }
@@ -696,8 +711,8 @@ pub struct PositiveSystem {
     pub context_process: PositiveProcess,
     pub reaction_rules: Rc<Vec<PositiveReaction>>,
 
-    context_elements:  Rc<PositiveSet>,
-    products_elements: Rc<PositiveSet>,
+    context_elements:  Rc<RefCell<Option<PositiveSet>>>,
+    products_elements: Rc<RefCell<Option<PositiveSet>>>,
 }
 
 impl BasicSystem for PositiveSystem {
@@ -730,12 +745,34 @@ impl BasicSystem for PositiveSystem {
         &self.reaction_rules
     }
 
-    fn context_elements(&self) -> &Self::Set {
-        &self.context_elements
+    fn context_elements(&self) -> Self::Set {
+        let mut c = self.context_elements.borrow_mut();
+        if c.is_some() {
+            c.as_ref().unwrap().clone()
+        } else {
+            let all_elements_context = self.delta
+                .all_elements()
+                .union(&self.context_process.all_elements())
+                .subtraction(&self.products_elements());
+
+            *c = Some(all_elements_context.clone());
+            all_elements_context
+        }
     }
 
-    fn products_elements(&self) -> &Self::Set {
-        &self.products_elements
+    fn products_elements(&self) -> Self::Set {
+        let mut p = self.products_elements.borrow_mut();
+        if p.is_some() {
+            p.as_ref().unwrap().clone()
+        } else {
+            let products_elements = self.reaction_rules
+                .iter()
+                .fold(Self::Set::default(), |acc: Self::Set, r|
+                      acc.union(&r.products));
+
+            *p = Some(products_elements.clone());
+            products_elements
+        }
     }
 }
 
@@ -771,8 +808,8 @@ impl Default for PositiveSystem {
             context_process: PositiveProcess::default(),
             reaction_rules: Rc::new(Vec::default()),
 
-            context_elements:  Rc::new(PositiveSet::default()),
-            products_elements: Rc::new(PositiveSet::default()),
+            context_elements:  Rc::new(RefCell::new(None)),
+            products_elements: Rc::new(RefCell::new(None)),
         }
     }
 }
@@ -891,24 +928,14 @@ impl PositiveSystem {
         context_process: PositiveProcess,
         reaction_rules: Rc<Vec<PositiveReaction>>,
     ) -> Self {
-        let products_elements = reaction_rules
-            .iter()
-            .fold(PositiveSet::default(), |acc: PositiveSet, r| {
-                acc.union(&r.products)
-            });
-        let all_elements_context = delta
-            .all_elements()
-            .union(&context_process.all_elements())
-            .subtraction(&products_elements);
-
         Self {
             delta: Rc::clone(&delta),
             available_entities,
             context_process,
             reaction_rules: Rc::clone(&reaction_rules),
 
-            context_elements: Rc::new(all_elements_context),
-            products_elements: Rc::new(products_elements),
+            context_elements: Rc::new(RefCell::new(None)),
+            products_elements: Rc::new(RefCell::new(None)),
         }
     }
 }
