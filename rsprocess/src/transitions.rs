@@ -1,5 +1,6 @@
 //! Module for helper structure for simulation
 
+use std::fmt::Debug;
 use std::rc::Rc;
 
 use super::label::{Label, PositiveLabel};
@@ -7,6 +8,12 @@ use super::process::{BasicProcess, PositiveProcess, Process};
 use super::reaction::BasicReaction;
 use super::set::{BasicSet, PositiveSet, Set};
 use super::system::{BasicSystem, ExtensionsSystem, PositiveSystem, System};
+
+pub trait BasicTransition
+where
+    Self: Clone + Debug + Iterator,
+{
+}
 
 #[derive(Clone, Debug)]
 pub struct TransitionsIterator<
@@ -19,12 +26,16 @@ pub struct TransitionsIterator<
     system: &'a Sys,
 }
 
-impl<'a> TransitionsIterator<'a, Set, System, Process> {
-    pub fn from(system: &'a System) -> Result<Self, String> {
-        match system.unfold() {
-            | Ok(o) => Ok(TransitionsIterator {
+impl<'a> BasicTransition for TransitionsIterator<'a, Set, System, Process> {}
+
+impl<'a> TryFrom<&'a System> for TransitionsIterator<'a, Set, System, Process> {
+    type Error = String;
+
+    fn try_from(value: &'a System) -> Result<Self, Self::Error> {
+        match value.unfold() {
+            | Ok(o) => Ok(Self {
                 choices_iterator: o.into_iter(),
-                system,
+                system: value,
             }),
             | Err(e) => Err(e),
         }
@@ -35,7 +46,7 @@ impl<'a> Iterator for TransitionsIterator<'a, Set, System, Process> {
     type Item = (Label, System);
 
     /// Creates the next arc from the current system.
-    fn next(&mut self) -> Option<(Label, System)> {
+    fn next(&mut self) -> Option<Self::Item> {
         let (c, k) = self.choices_iterator.next()?;
         let t = self.system.available_entities.union(c.as_ref());
         let (
@@ -44,7 +55,7 @@ impl<'a> Iterator for TransitionsIterator<'a, Set, System, Process> {
             inhibitors,
             inhibitors_present,
             products,
-        ) = self.system.reaction_rules.iter().fold(
+        ) = self.system.reactions().iter().fold(
             (
                 Set::default(), // reactants
                 Set::default(), // reactants_absent
@@ -95,12 +106,21 @@ impl<'a> Iterator for TransitionsIterator<'a, Set, System, Process> {
 
 // -----------------------------------------------------------------------------
 
-impl<'a> TransitionsIterator<'a, PositiveSet, PositiveSystem, PositiveProcess> {
-    pub fn from(system: &'a PositiveSystem) -> Result<Self, String> {
-        match system.unfold() {
-            | Ok(o) => Ok(TransitionsIterator {
+impl<'a> BasicTransition
+    for TransitionsIterator<'a, PositiveSet, PositiveSystem, PositiveProcess>
+{
+}
+
+impl<'a> TryFrom<&'a PositiveSystem>
+    for TransitionsIterator<'a, PositiveSet, PositiveSystem, PositiveProcess>
+{
+    type Error = String;
+
+    fn try_from(value: &'a PositiveSystem) -> Result<Self, Self::Error> {
+        match value.unfold() {
+            | Ok(o) => Ok(Self {
                 choices_iterator: o.into_iter(),
-                system,
+                system: value,
             }),
             | Err(e) => Err(e),
         }
@@ -172,5 +192,73 @@ impl<'a> Iterator
             Rc::clone(&self.system.reaction_rules),
         );
         Some((label, new_system))
+    }
+}
+
+// -----------------------------------------------------------------------------
+
+pub struct TraceIterator<
+    'a,
+    S: BasicSet,
+    Sys: BasicSystem<Set = S, Process = Proc>,
+    Proc: BasicProcess<Set = S>,
+> {
+    choices_iterator:
+        <<Sys as BasicSystem>::Choices as std::iter::IntoIterator>::IntoIter,
+    system: &'a Sys,
+}
+
+impl<'a> TryFrom<&'a PositiveSystem>
+    for TraceIterator<'a, PositiveSet, PositiveSystem, PositiveProcess>
+{
+    type Error = String;
+
+    fn try_from(value: &'a PositiveSystem) -> Result<Self, Self::Error> {
+        match value.unfold() {
+            | Ok(o) => Ok(Self {
+                choices_iterator: o.into_iter(),
+                system: value,
+            }),
+            | Err(e) => Err(e),
+        }
+    }
+}
+
+impl<'a> Iterator
+    for TraceIterator<'a, PositiveSet, PositiveSystem, PositiveProcess>
+{
+    type Item = (PositiveSet, PositiveSet, Vec<usize>, PositiveSystem);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let (context, k) = self.choices_iterator.next()?;
+        let total_entities =
+            self.system.available_entities().union(context.as_ref());
+
+        let (enabled_reaction_positions, all_products) =
+            self.system.reactions().iter().enumerate().fold(
+                (vec![], PositiveSet::default()),
+                |mut acc, (pos, reaction)| {
+                    if reaction.enabled(&total_entities) {
+                        acc.0.push(pos);
+                        (acc.0, acc.1.union(&reaction.products))
+                    } else {
+                        acc
+                    }
+                },
+            );
+
+        let new_system = PositiveSystem::from(
+            Rc::clone(&self.system.delta),
+            all_products,
+            (*k).clone(),
+            Rc::clone(&self.system.reaction_rules),
+        );
+
+        Some((
+            context.as_ref().clone(),
+            self.system.available_entities().clone(),
+            enabled_reaction_positions,
+            new_system,
+        ))
     }
 }

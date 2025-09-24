@@ -14,5 +14,10 @@ fn main() {
         | Err(e) => println!("{e}"),
     }
 
-    println!("{} milliseconds elapsed", now.elapsed().as_millis());
+    let now = now.elapsed();
+    println!(
+        "{}.{:0>3} milliseconds elapsed",
+        now.as_millis(),
+        now.as_micros() - now.as_millis() * 1000
+    );
 }

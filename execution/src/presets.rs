@@ -630,8 +630,7 @@ where
 /// Computes the LTS.
 /// equivalent to main_do(digraph, Arcs) or to main_do(advdigraph, Arcs)
 pub fn digraph(system: &mut EvaluatedSystem) -> Result<(), String> {
-    if let (Some(sys), true) = (&system.sys, system.graph.is_none())
-    {
+    if let (Some(sys), true) = (&system.sys, system.graph.is_none()) {
         let graph = sys.digraph()?;
         system.graph = Some(graph);
     } else if let (Some(positive), true) =

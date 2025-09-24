@@ -156,8 +156,8 @@ fn traces_1() {
     use super::set::Set;
     use super::system::{ExtensionsSystem, System};
 
-    let system = System {
-        delta: Rc::new(Environment::from([
+    let system = System::from(
+        Rc::new(Environment::from([
             (100, Process::WaitEntity {
                 repeat: 2,
                 repeated_process: Rc::new(Process::EntitySet {
@@ -205,14 +205,14 @@ fn traces_1() {
                 ],
             }),
         ])),
-        available_entities: Set::from([1, 2]),
-        context_process: Process::RecursiveIdentifier { identifier: 101 },
-        reaction_rules: Rc::new(vec![
+        Set::from([1, 2]),
+        Process::RecursiveIdentifier { identifier: 101 },
+        Rc::new(vec![
             Reaction::from(Set::from([1]), Set::from([3]), Set::from([3])),
             Reaction::from(Set::from([3]), Set::from([1]), Set::from([1])),
             Reaction::from(Set::from([2]), Set::default(), Set::from([4])),
         ]),
-    };
+    );
 
     let res = system.clone().traces(1).unwrap();
     assert_eq!(res.len(), 1);
@@ -244,10 +244,10 @@ fn traces_empty_env() {
     use super::set::Set;
     use super::system::{ExtensionsSystem, System};
 
-    let system = System {
-        delta: Rc::new(Environment::from([])),
-        available_entities: Set::from([1, 2]),
-        context_process: Process::WaitEntity {
+    let system = System::from(
+        Rc::new(Environment::from([])),
+        Set::from([1, 2]),
+        Process::WaitEntity {
             repeat: 10,
             repeated_process: Rc::new(Process::EntitySet {
                 entities:     Set::from([1, 2]),
@@ -255,12 +255,12 @@ fn traces_empty_env() {
             }),
             next_process: Rc::new(Process::Nill),
         },
-        reaction_rules: Rc::new(vec![
+        Rc::new(vec![
             Reaction::from(Set::from([1]), Set::from([3]), Set::from([3])),
             Reaction::from(Set::from([3]), Set::from([1]), Set::from([1])),
             Reaction::from(Set::from([2]), Set::default(), Set::from([4])),
         ]),
-    };
+    );
 
     let res = system.clone().traces(10).unwrap();
     assert_eq!(res.len(), 1);
@@ -278,15 +278,15 @@ fn conversion_reactions() {
     use super::set::Set;
     use super::system::{PositiveSystem, System};
 
-    let system = System {
-        delta: Rc::new(Environment::from([])),
-        available_entities: Set::from([1, 2]),
-        context_process: Process::Nill,
-        reaction_rules: Rc::new(vec![
+    let system = System::from(
+        Rc::new(Environment::from([])),
+        Set::from([1, 2]),
+        Process::Nill,
+        Rc::new(vec![
             Reaction::from(Set::from([2]), Set::from([1, 3]), Set::from([5])),
             Reaction::from(Set::from([1, 2]), Set::from([3]), Set::from([5])),
         ]),
-    };
+    );
     let converted_system: PositiveSystem = system.into();
     let mut reactions = converted_system.reactions().clone();
     reactions.sort_by(|a, b| {
@@ -322,15 +322,15 @@ fn conversion_entities() {
     use super::set::Set;
     use super::system::{PositiveSystem, System};
 
-    let system = System {
-        delta: Rc::new(Environment::from([])),
-        available_entities: Set::from([1, 2]),
-        context_process: Process::Nill,
-        reaction_rules: Rc::new(vec![
+    let system = System::from(
+        Rc::new(Environment::from([])),
+        Set::from([1, 2]),
+        Process::Nill,
+        Rc::new(vec![
             Reaction::from(Set::from([2]), Set::from([1, 3]), Set::from([5])),
             Reaction::from(Set::from([1, 2]), Set::from([3]), Set::from([5])),
         ]),
-    };
+    );
     let converted_system: PositiveSystem = system.into();
     let entities = converted_system.available_entities().clone();
 

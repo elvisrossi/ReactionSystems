@@ -11,6 +11,7 @@ pub mod process;
 pub mod reaction;
 pub mod set;
 pub mod system;
+pub mod trace;
 
 pub mod dot;
 pub mod frequency;
@@ -23,3 +24,6 @@ mod system_test;
 
 #[cfg(test)]
 mod set_test;
+
+#[cfg(test)]
+mod trace_test;

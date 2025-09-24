@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::rc::Rc;
@@ -18,6 +18,7 @@ use super::reaction::{
     BasicReaction, ExtensionReaction, PositiveReaction, Reaction,
 };
 use super::set::{BasicSet, PositiveSet, Set};
+use super::trace::Trace;
 use super::transitions::TransitionsIterator;
 use super::translator::{Formatter, PrintableWithTranslator, Translator};
 
@@ -51,9 +52,10 @@ where
     fn available_entities(&self) -> &Self::Set;
     fn context(&self) -> &Self::Process;
     fn reactions(&self) -> &Vec<Self::Reaction>;
-}
 
-type Trace<L, S> = Vec<(Option<Rc<L>>, Rc<S>)>;
+    fn context_elements(&self) -> &Self::Set;
+    fn products_elements(&self) -> &Self::Set;
+}
 
 pub trait ExtensionsSystem: BasicSystem {
     fn unfold(&self) -> Result<Self::Choices, String>;
@@ -134,9 +136,10 @@ impl<T: BasicSystem> ExtensionsSystem for T {
         let mut association = HashMap::new();
         association.insert(self.clone(), node);
 
-        let mut stack = vec![self.clone()];
+        let mut stack = VecDeque::new();
+        stack.push_back(self.clone());
 
-        while let Some(current) = stack.pop() {
+        while let Some(current) = stack.pop_front() {
             // depth first
             let current_node = *association.get(&current).unwrap();
 
@@ -144,7 +147,7 @@ impl<T: BasicSystem> ExtensionsSystem for T {
                 // if not already visited
                 let next_node =
                     association.entry(next.clone()).or_insert_with(|| {
-                        stack.push(next.clone());
+                        stack.push_back(next.clone());
                         graph.add_node(next)
                     });
                 graph.add_edge(current_node, *next_node, label);
@@ -244,8 +247,8 @@ impl<T: BasicSystem> ExtensionsSystem for T {
         }
         let mut n = n;
         let mut res: Vec<Trace<Self::Label, Self>> = vec![];
-        let mut current_trace: Trace<Self::Label, Self> =
-            vec![(None, Rc::new(self))];
+        let mut current_trace: Trace<Self::Label, Self> = Trace::default();
+        current_trace.push((None, Rc::new(self)));
         let mut branch = vec![0];
         let mut depth = 0;
         let mut new_branch = true;
@@ -272,18 +275,16 @@ impl<T: BasicSystem> ExtensionsSystem for T {
                 // at the bottom of a trace, we save to res, then backtrack
                 // until we find another possible path.
                 if new_branch {
-                    res.push(current_trace[0..depth].to_vec());
+                    res.push(Trace::from(current_trace[0..depth].to_vec()));
                     new_branch = false;
                     n -= 1;
                 }
                 if n == 0 {
                     break;
                 }
-
                 if depth == 0 {
                     break;
                 }
-
                 depth -= 1;
                 branch[depth] += 1;
             }
@@ -412,6 +413,9 @@ pub struct System {
     pub available_entities: Set,
     pub context_process: Process,
     pub reaction_rules: Rc<Vec<Reaction>>,
+
+    context_elements:  Rc<Set>,
+    products_elements: Rc<Set>,
 }
 
 impl BasicSystem for System {
@@ -425,7 +429,7 @@ impl BasicSystem for System {
     fn to_transitions_iterator(
         &self,
     ) -> Result<impl Iterator<Item = (Self::Label, Self)>, String> {
-        TransitionsIterator::<Self::Set, Self, Self::Process>::from(self)
+        TransitionsIterator::<Self::Set, Self, Self::Process>::try_from(self)
     }
 
     fn environment(&self) -> &Self::Environment {
@@ -442,6 +446,14 @@ impl BasicSystem for System {
 
     fn reactions(&self) -> &Vec<Self::Reaction> {
         &self.reaction_rules
+    }
+
+    fn context_elements(&self) -> &Self::Set {
+        &self.context_elements
+    }
+
+    fn products_elements(&self) -> &Self::Set {
+        &self.products_elements
     }
 }
 
@@ -476,6 +488,9 @@ impl Default for System {
             available_entities: Set::default(),
             context_process: Process::Nill,
             reaction_rules: Rc::new(Vec::default()),
+
+            context_elements:  Rc::new(Set::default()),
+            products_elements: Rc::new(Set::default()),
         }
     }
 }
@@ -489,7 +504,7 @@ impl PrintableWithTranslator for System {
         write!(
             f,
             "[delta: {}, available_entities: {}, context_process: {}, \
-	     reaction_rules: [",
+             reaction_rules: [",
             Formatter::from(translator, &*self.delta),
             Formatter::from(translator, &self.available_entities),
             Formatter::from(translator, &self.context_process)
@@ -513,11 +528,22 @@ impl System {
         context_process: Process,
         reaction_rules: Rc<Vec<Reaction>>,
     ) -> System {
+        let products_elements = reaction_rules
+            .iter()
+            .fold(Set::default(), |acc: Set, r| acc.union(&r.products));
+        let all_elements_context = delta
+            .all_elements()
+            .union(&context_process.all_elements())
+            .subtraction(&products_elements);
+
         System {
             delta: Rc::clone(&delta),
             available_entities,
             context_process,
             reaction_rules: Rc::clone(&reaction_rules),
+
+            context_elements: Rc::new(all_elements_context),
+            products_elements: Rc::new(products_elements),
         }
     }
 }
@@ -621,7 +647,7 @@ impl System {
         let entities_not_needed = entities_context.subtraction(&total);
         result.push_str(&format!(
             "The context can provide {} entities that will never be used:\
-	     \n{}\n",
+             \n{}\n",
             entities_not_needed.len(),
             Formatter::from(translator, &entities_not_needed)
         ));
@@ -669,6 +695,9 @@ pub struct PositiveSystem {
     pub available_entities: PositiveSet,
     pub context_process: PositiveProcess,
     pub reaction_rules: Rc<Vec<PositiveReaction>>,
+
+    context_elements:  Rc<PositiveSet>,
+    products_elements: Rc<PositiveSet>,
 }
 
 impl BasicSystem for PositiveSystem {
@@ -682,7 +711,7 @@ impl BasicSystem for PositiveSystem {
     fn to_transitions_iterator(
         &self,
     ) -> Result<impl Iterator<Item = (Self::Label, Self)>, String> {
-        TransitionsIterator::<Self::Set, Self, Self::Process>::from(self)
+        TransitionsIterator::<Self::Set, Self, Self::Process>::try_from(self)
     }
 
     fn environment(&self) -> &Self::Environment {
@@ -699,6 +728,14 @@ impl BasicSystem for PositiveSystem {
 
     fn reactions(&self) -> &Vec<Self::Reaction> {
         &self.reaction_rules
+    }
+
+    fn context_elements(&self) -> &Self::Set {
+        &self.context_elements
+    }
+
+    fn products_elements(&self) -> &Self::Set {
+        &self.products_elements
     }
 }
 
@@ -733,6 +770,9 @@ impl Default for PositiveSystem {
             available_entities: PositiveSet::default(),
             context_process: PositiveProcess::default(),
             reaction_rules: Rc::new(Vec::default()),
+
+            context_elements:  Rc::new(PositiveSet::default()),
+            products_elements: Rc::new(PositiveSet::default()),
         }
     }
 }
@@ -746,7 +786,7 @@ impl PrintableWithTranslator for PositiveSystem {
         write!(
             f,
             "[delta: {}, available_entities: {}, context_process: {}, \
-	     reaction_rules: [",
+             reaction_rules: [",
             Formatter::from(translator, &*self.delta),
             Formatter::from(translator, &self.available_entities),
             Formatter::from(translator, &self.context_process)
@@ -840,12 +880,7 @@ impl From<System> for PositiveSystem {
             Rc::new(res)
         };
 
-        Self {
-            delta: new_env,
-            available_entities: new_available_entities,
-            context_process: new_context,
-            reaction_rules: new_reactions,
-        }
+        Self::from(new_env, new_available_entities, new_context, new_reactions)
     }
 }
 
@@ -856,11 +891,24 @@ impl PositiveSystem {
         context_process: PositiveProcess,
         reaction_rules: Rc<Vec<PositiveReaction>>,
     ) -> Self {
+        let products_elements = reaction_rules
+            .iter()
+            .fold(PositiveSet::default(), |acc: PositiveSet, r| {
+                acc.union(&r.products)
+            });
+        let all_elements_context = delta
+            .all_elements()
+            .union(&context_process.all_elements())
+            .subtraction(&products_elements);
+
         Self {
             delta: Rc::clone(&delta),
             available_entities,
             context_process,
             reaction_rules: Rc::clone(&reaction_rules),
+
+            context_elements: Rc::new(all_elements_context),
+            products_elements: Rc::new(products_elements),
         }
     }
 }

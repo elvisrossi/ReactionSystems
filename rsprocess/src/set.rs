@@ -636,6 +636,13 @@ impl PositiveSet {
         ret
     }
 
+    /// Returns all elements that are present in self and are positive in other.
+    pub fn mask(&self, other: &Self) -> Self {
+        Self::from_iter(self.iter().filter(|el| {
+            other.contains(&PositiveType::from((*el.0, IdState::Positive)))
+        }).map(|el| (*el.0, *el.1)))
+    }
+
     fn remove_elements(&mut self, other: Vec<IdType>) {
         for element in other {
             self.identifiers.remove(&element);

@@ -19,6 +19,9 @@ where
     type Set: BasicSet;
     fn enabled(&self, state: &Self::Set) -> bool;
     fn compute_step(&self, state: &Self::Set) -> Option<&Self::Set>;
+
+    fn reactants(&self) -> &Self::Set;
+    fn products(&self) -> &Self::Set;
 }
 
 pub trait ExtensionReaction: Sized {
@@ -167,6 +170,14 @@ impl BasicReaction for Reaction {
             None
         }
     }
+
+    fn reactants(&self) -> &Self::Set {
+        &self.reactants
+    }
+
+    fn products(&self) -> &Self::Set {
+        &self.products
+    }
 }
 
 impl PrintableWithTranslator for Reaction {
@@ -236,6 +247,14 @@ impl BasicReaction for PositiveReaction {
         } else {
             None
         }
+    }
+
+    fn reactants(&self) -> &Self::Set {
+        &self.reactants
+    }
+
+    fn products(&self) -> &Self::Set {
+        &self.products
     }
 }
 
