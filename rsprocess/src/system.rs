@@ -18,10 +18,12 @@ use super::process::{BasicProcess, PositiveProcess, Process};
 use super::reaction::{
     BasicReaction, ExtensionReaction, PositiveReaction, Reaction,
 };
-use super::set::{BasicSet, PositiveSet, Set};
+use super::set::{BasicSet, ExtensionsSet, PositiveSet, Set};
 use super::trace::Trace;
 use super::transitions::TransitionsIterator;
 use super::translator::{Formatter, PrintableWithTranslator, Translator};
+use crate::trace::{EnabledReactions, SlicingElement, SlicingTrace};
+use crate::transitions::TraceIterator;
 
 pub trait BasicSystem
 where
@@ -48,6 +50,14 @@ where
     fn to_transitions_iterator(
         &self,
     ) -> Result<impl Iterator<Item = (Self::Label, Self)>, String>;
+
+    #[allow(clippy::type_complexity)]
+    fn to_slicing_iterator(
+        &self,
+    ) -> Result<
+        impl Iterator<Item = (Self::Set, Self::Set, Vec<usize>, Self)>,
+        String,
+    >;
 
     fn environment(&self) -> &Self::Environment;
     fn available_entities(&self) -> &Self::Set;
@@ -89,7 +99,12 @@ pub trait ExtensionsSystem: BasicSystem {
         limit: usize,
     ) -> Result<Vec<(Self::Set, Self::Set, Self::Set)>, String>;
 
-    fn traces(self, n: usize) -> Result<Vec<Trace<Self::Label, Self>>, String>;
+    fn traces(&self, n: usize)
+    -> Result<Vec<Trace<Self::Label, Self>>, String>;
+
+    fn slice_trace(
+        &self,
+    ) -> Result<SlicingTrace<Self::Set, Self::Reaction, Self>, String>;
 }
 
 impl<T: BasicSystem> ExtensionsSystem for T {
@@ -242,14 +257,18 @@ impl<T: BasicSystem> ExtensionsSystem for T {
     /// Return the first n traces. Equivalent to visiting the execution tree
     /// depth first and returning the first n leaf nodes and their path to the
     /// root.
-    fn traces(self, n: usize) -> Result<Vec<Trace<Self::Label, Self>>, String> {
+    fn traces(
+        &self,
+        n: usize,
+    ) -> Result<Vec<Trace<Self::Label, Self>>, String> {
         if n == 0 {
             return Ok(vec![]);
         }
+        let sys = self.clone();
         let mut n = n;
         let mut res: Vec<Trace<Self::Label, Self>> = vec![];
         let mut current_trace: Trace<Self::Label, Self> = Trace::default();
-        current_trace.push((None, Rc::new(self)));
+        current_trace.push((None, Rc::new(sys)));
         let mut branch = vec![0];
         let mut depth = 0;
         let mut new_branch = true;
@@ -292,6 +311,57 @@ impl<T: BasicSystem> ExtensionsSystem for T {
         }
 
         Ok(res)
+    }
+
+    #[allow(clippy::field_reassign_with_default)]
+    #[allow(clippy::type_complexity)]
+    fn slice_trace(
+        &self,
+    ) -> Result<SlicingTrace<Self::Set, Self::Reaction, Self>, String> {
+        let mut trace = SlicingTrace::default();
+
+        trace.context_elements = Rc::new(self.context_elements());
+        trace.products_elements = Rc::new(self.products_elements());
+        trace.reactions = Rc::new(self.reactions().clone());
+        trace.systems.push(Rc::new(self.clone()));
+        trace.elements.push(SlicingElement::from((
+            Self::Set::default(),
+            self.available_entities().clone(),
+        )));
+
+        let current: Option<(Self::Set, Self::Set, Vec<usize>, Self)> =
+            self.to_slicing_iterator()?.next();
+        if current.is_none() {
+            return Ok(trace);
+        }
+        let current = current.unwrap();
+
+        let (context, products, enabled_reactions, mut current) = current;
+        trace
+            .elements
+            .push(SlicingElement::from((context, products)));
+        trace
+            .enabled_reactions
+            .push(EnabledReactions::from(enabled_reactions));
+        trace.systems.push(Rc::new(current.clone()));
+
+        loop {
+            let t = current.to_slicing_iterator()?.next();
+            if let Some((context, products, enabled_reactions, next_sys)) = t {
+                current = next_sys;
+                trace
+                    .elements
+                    .push(SlicingElement::from((context, products)));
+                trace
+                    .enabled_reactions
+                    .push(EnabledReactions::from(enabled_reactions));
+                trace.systems.push(Rc::new(current.clone()));
+            } else {
+                break;
+            }
+        }
+        // trace.enabled_reactions.pop();
+        Ok(trace)
     }
 }
 
@@ -433,6 +503,14 @@ impl BasicSystem for System {
         TransitionsIterator::<Self::Set, Self, Self::Process>::try_from(self)
     }
 
+    #[allow(refining_impl_trait)] // otherwise impl cannot be resolved to
+    // concrete type and the compiler complains
+    fn to_slicing_iterator(
+        &self,
+    ) -> Result<TraceIterator<'_, Self::Set, Self, Self::Process>, String> {
+        unimplemented!()
+    }
+
     fn environment(&self) -> &Self::Environment {
         &self.delta
     }
@@ -454,7 +532,8 @@ impl BasicSystem for System {
         if c.is_some() {
             c.as_ref().unwrap().clone()
         } else {
-            let all_elements_context = self.delta
+            let all_elements_context = self
+                .delta
                 .all_elements()
                 .union(&self.context_process.all_elements())
                 .subtraction(&self.products_elements());
@@ -469,10 +548,12 @@ impl BasicSystem for System {
         if p.is_some() {
             p.as_ref().unwrap().clone()
         } else {
-            let products_elements = self.reaction_rules
+            let products_elements = self
+                .reaction_rules
                 .iter()
-                .fold(Self::Set::default(), |acc: Self::Set, r|
-                      acc.union(&r.products));
+                .fold(Self::Set::default(), |acc: Self::Set, r| {
+                    acc.union(&r.products)
+                });
 
             *p = Some(products_elements.clone());
             products_elements
@@ -729,6 +810,15 @@ impl BasicSystem for PositiveSystem {
         TransitionsIterator::<Self::Set, Self, Self::Process>::try_from(self)
     }
 
+    fn to_slicing_iterator(
+        &self,
+    ) -> Result<
+        impl Iterator<Item = (Self::Set, Self::Set, Vec<usize>, Self)>,
+        String,
+    > {
+        TraceIterator::<Self::Set, Self, Self::Process>::try_from(self)
+    }
+
     fn environment(&self) -> &Self::Environment {
         &self.delta
     }
@@ -750,10 +840,14 @@ impl BasicSystem for PositiveSystem {
         if c.is_some() {
             c.as_ref().unwrap().clone()
         } else {
-            let all_elements_context = self.delta
+            let all_elements_context = self
+                .delta
                 .all_elements()
                 .union(&self.context_process.all_elements())
-                .subtraction(&self.products_elements());
+                .subtraction(&self.products_elements())
+                .iter()
+                .map(|e| (*e.0, IdState::Positive))
+                .collect::<Self::Set>();
 
             *c = Some(all_elements_context.clone());
             all_elements_context
@@ -765,10 +859,15 @@ impl BasicSystem for PositiveSystem {
         if p.is_some() {
             p.as_ref().unwrap().clone()
         } else {
-            let products_elements = self.reaction_rules
+            let products_elements = self
+                .reaction_rules
                 .iter()
-                .fold(Self::Set::default(), |acc: Self::Set, r|
-                      acc.union(&r.products));
+                .fold(Self::Set::default(), |acc: Self::Set, r| {
+                    acc.union(&r.products)
+                })
+                .iter()
+                .map(|e| (*e.0, IdState::Positive))
+                .collect::<Self::Set>();
 
             *p = Some(products_elements.clone());
             products_elements
@@ -937,5 +1036,12 @@ impl PositiveSystem {
             context_elements: Rc::new(RefCell::new(None)),
             products_elements: Rc::new(RefCell::new(None)),
         }
+    }
+
+    pub fn negated_products_elements(&self) -> PositiveSet {
+        self.products_elements()
+            .iter()
+            .map(|el| (*el.0, IdState::Negative))
+            .collect::<PositiveSet>()
     }
 }

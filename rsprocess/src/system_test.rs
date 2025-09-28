@@ -1,5 +1,6 @@
 use super::set::PositiveSet;
 use super::system::BasicSystem;
+use crate::system::ExtensionsSystem;
 
 #[test]
 fn one_transition() {
@@ -343,4 +344,89 @@ fn conversion_entities() {
             (5, Negative)
         ])
     );
+}
+
+#[test]
+fn slice_trace() {
+    use std::rc::Rc;
+
+    use super::environment::Environment;
+    use super::process::Process;
+    use super::reaction::Reaction;
+    use super::set::Set;
+    use super::system::{PositiveSystem, System};
+
+    let mut translator = crate::translator::Translator::new();
+
+    let mut tr = |a| translator.encode(a);
+
+    let system = System::from(
+        Rc::new(Environment::from([])),
+        Set::from([tr("a"), tr("b")]),
+        Process::EntitySet {
+            entities:     Set::from([tr("c")]),
+            next_process: Rc::new(Process::EntitySet {
+                entities:     Set::from([]),
+                next_process: Rc::new(Process::Nill),
+            }),
+        },
+        Rc::new(vec![Reaction::from(
+            Set::from([tr("a")]),
+            Set::from([]),
+            Set::from([tr("b")]),
+        )]),
+    );
+
+    let system: PositiveSystem = system.into();
+
+    let res_slice = system.slice_trace().unwrap();
+    let res_run = system.run().unwrap();
+
+    assert_eq!(res_slice.systems, res_run);
+}
+
+#[test]
+fn slice_trace_2() {
+    use std::rc::Rc;
+
+    use super::environment::Environment;
+    use super::process::Process;
+    use super::reaction::Reaction;
+    use super::set::Set;
+    use super::system::{PositiveSystem, System};
+
+    let mut translator = crate::translator::Translator::new();
+
+    let mut tr = |a| translator.encode(a);
+
+    let system = System::from(
+        Rc::new(Environment::from([])),
+        Set::from([tr("a"), tr("b")]),
+        Process::EntitySet {
+            entities:     Set::from([tr("c")]),
+            next_process: Rc::new(Process::EntitySet {
+                entities:     Set::from([]),
+                next_process: Rc::new(Process::Nill),
+            }),
+        },
+        Rc::new(vec![
+            Reaction::from(
+                Set::from([tr("a")]),
+                Set::from([tr("b")]),
+                Set::from([tr("b")]),
+            ),
+            Reaction::from(
+                Set::from([tr("b")]),
+                Set::from([tr("a")]),
+                Set::from([tr("a")]),
+            ),
+        ]),
+    );
+
+    let system: PositiveSystem = system.into();
+
+    let res_slice = system.slice_trace().unwrap();
+    let res_run = system.run().unwrap();
+
+    assert_eq!(res_slice.systems, res_run);
 }

@@ -187,6 +187,7 @@ impl<'a> Iterator
         );
         let new_system = PositiveSystem::from(
             Rc::clone(&self.system.delta),
+            // products.add_unique(&self.system.negated_products_elements()),
             products,
             (*k).clone(),
             Rc::clone(&self.system.reaction_rules),
@@ -224,6 +225,14 @@ impl<'a> TryFrom<&'a PositiveSystem>
     }
 }
 
+impl<'a> Iterator for TraceIterator<'a, Set, System, Process> {
+    type Item = (Set, Set, Vec<usize>, System);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        unimplemented!()
+    }
+}
+
 impl<'a> Iterator
     for TraceIterator<'a, PositiveSet, PositiveSystem, PositiveProcess>
 {
@@ -249,14 +258,16 @@ impl<'a> Iterator
 
         let new_system = PositiveSystem::from(
             Rc::clone(&self.system.delta),
-            all_products,
+            // all_products.add_unique(&self.system.
+            // negated_products_elements()),
+            all_products.clone(),
             (*k).clone(),
             Rc::clone(&self.system.reaction_rules),
         );
 
         Some((
             context.as_ref().clone(),
-            self.system.available_entities().clone(),
+            all_products.mask(&self.system.products_elements()),
             enabled_reaction_positions,
             new_system,
         ))

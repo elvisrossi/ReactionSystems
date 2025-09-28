@@ -638,9 +638,16 @@ impl PositiveSet {
 
     /// Returns all elements that are present in self and are positive in other.
     pub fn mask(&self, other: &Self) -> Self {
-        Self::from_iter(self.iter().filter(|el| {
-            other.contains(&PositiveType::from((*el.0, IdState::Positive)))
-        }).map(|el| (*el.0, *el.1)))
+        Self::from_iter(
+            self.iter()
+                .filter(|el| {
+                    other.contains(&PositiveType::from((
+                        *el.0,
+                        IdState::Positive,
+                    )))
+                })
+                .map(|el| (*el.0, *el.1)),
+        )
     }
 
     fn remove_elements(&mut self, other: Vec<IdType>) {
@@ -664,6 +671,7 @@ impl PositiveSet {
         self_copy.is_empty()
     }
 
+    // Returns only the positive entities.
     pub fn positives(&self) -> Self {
         self.iter()
             .filter(|el| *el.1 == IdState::Positive)
@@ -671,10 +679,20 @@ impl PositiveSet {
             .collect::<PositiveSet>()
     }
 
+    // Returns only the negative entities.
     pub fn negatives(&self) -> Self {
         self.iter()
             .filter(|el| *el.1 == IdState::Negative)
             .map(|el| (*el.0, *el.1))
             .collect::<PositiveSet>()
+    }
+
+    pub fn add_unique(&self, other: &Self) -> Self {
+        other
+            .iter()
+            .filter(|e| !self.contains(&PositiveType::from((*e.0, *e.1))))
+            .map(|el| (*el.0, *el.1))
+            .collect::<PositiveSet>()
+            .union(self)
     }
 }

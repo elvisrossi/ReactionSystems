@@ -86,6 +86,15 @@ pub struct SlicingElement<S> {
     pub reaction_products: S,
 }
 
+impl<S> From<(S, S)> for SlicingElement<S> {
+    fn from(value: (S, S)) -> Self {
+        Self {
+            context: value.0,
+            reaction_products: value.1,
+        }
+    }
+}
+
 impl<S> Debug for SlicingElement<S>
 where
     S: Debug,
@@ -126,6 +135,28 @@ pub struct EnabledReactions {
     pub data: Vec<usize>,
 }
 
+impl From<Vec<usize>> for EnabledReactions {
+    fn from(value: Vec<usize>) -> Self {
+        Self { data: value }
+    }
+}
+
+impl From<&[usize]> for EnabledReactions {
+    fn from(value: &[usize]) -> Self {
+        Self {
+            data: value.to_vec(),
+        }
+    }
+}
+
+impl<const N: usize> From<[usize; N]> for EnabledReactions {
+    fn from(value: [usize; N]) -> Self {
+        Self {
+            data: value.to_vec(),
+        }
+    }
+}
+
 impl PrintableWithTranslator for EnabledReactions {
     fn print(
         &self,
@@ -160,10 +191,11 @@ impl EnabledReactions {
 }
 
 #[derive(Clone)]
-pub struct SlicingTrace<S: BasicSet,
-                        R: BasicReaction<Set = S>,
-                        Sys: BasicSystem<Set = S, Reaction = R>>
-{
+pub struct SlicingTrace<
+    S: BasicSet,
+    R: BasicReaction<Set = S>,
+    Sys: BasicSystem<Set = S, Reaction = R>,
+> {
     pub elements: Vec<SlicingElement<S>>,
     pub enabled_reactions: Vec<EnabledReactions>,
 
@@ -174,10 +206,11 @@ pub struct SlicingTrace<S: BasicSet,
     pub products_elements: Rc<S>,
 }
 
-impl<S: BasicSet,
-     R: BasicReaction<Set = S>,
-     Sys: BasicSystem<Set = S, Reaction = R>>
-    Default for SlicingTrace<S, R, Sys>
+impl<
+    S: BasicSet,
+    R: BasicReaction<Set = S>,
+    Sys: BasicSystem<Set = S, Reaction = R>,
+> Default for SlicingTrace<S, R, Sys>
 {
     fn default() -> Self {
         Self {
@@ -191,10 +224,11 @@ impl<S: BasicSet,
     }
 }
 
-impl<S: BasicSet + Debug,
-     R: BasicReaction<Set = S>,
-     Sys: BasicSystem<Set = S, Reaction = R>>
-    SlicingTrace<S, R, Sys>
+impl<
+    S: BasicSet + Debug,
+    R: BasicReaction<Set = S>,
+    Sys: BasicSystem<Set = S, Reaction = R>,
+> SlicingTrace<S, R, Sys>
 {
     pub fn is_empty(&self) -> bool {
         self.elements.is_empty()
@@ -204,7 +238,6 @@ impl<S: BasicSet + Debug,
         self.elements.len()
     }
 }
-
 
 impl SlicingTrace<Set, Reaction, System> {
     pub fn slice(&self, marking: Set) -> Result<Self, String> {
@@ -295,7 +328,8 @@ impl SlicingTrace<PositiveSet, PositiveReaction, PositiveSystem> {
             for r in self.enabled_reactions[i].iter() {
                 if !reversed_elements[reverse_i - 1]
                     .reaction_products
-                    .intersection(self.reactions[*r].products()).is_empty()
+                    .intersection(self.reactions[*r].products())
+                    .is_empty()
                 {
                     reversed_enabled_reactions[reverse_i - 1].data.push(*r);
                     reversed_elements[reverse_i].context.push(
@@ -328,11 +362,11 @@ impl SlicingTrace<PositiveSet, PositiveReaction, PositiveSystem> {
     }
 }
 
-
-impl<S: BasicSet,
-     R: BasicReaction<Set = S>,
-     Sys: BasicSystem<Set = S, Reaction = R>,>
-    PrintableWithTranslator for SlicingTrace<S, R, Sys>
+impl<
+    S: BasicSet,
+    R: BasicReaction<Set = S>,
+    Sys: BasicSystem<Set = S, Reaction = R>,
+> PrintableWithTranslator for SlicingTrace<S, R, Sys>
 {
     fn print(
         &self,
