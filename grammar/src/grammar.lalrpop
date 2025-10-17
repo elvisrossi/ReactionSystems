@@ -294,7 +294,6 @@ CTX_process: process::Process = {
         }
 };
 
-
 // -----------------------------------------------------------------------------
 //                             EnvironmentParser
 // -----------------------------------------------------------------------------
@@ -794,7 +793,7 @@ NodeDisplayBase: graph::NodeDisplayBase = {
         graph::NodeDisplayBase::Context,
     "UncommonEntities" =>
         graph::NodeDisplayBase::UncommonEntities,
-    "MaskUncommonentities" <mask: Set> =>
+    "MaskUncommonEntities" <mask: Set> =>
         graph::NodeDisplayBase::MaskUncommonEntities{mask},
 }
 

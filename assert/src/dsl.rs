@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use serde::{Serialize, Deserialize};
 
 use rsprocess::set::BasicSet;
 use rsprocess::{element, graph, label, process, set, system, translator};
@@ -8,12 +9,12 @@ use rsprocess::{element, graph, label, process, set, system, translator};
 /// AssertExpression
 type IntegerType = i64;
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize, Hash)]
 pub struct Assert<S> {
     pub tree: Tree<S>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize, Hash)]
 pub enum Tree<S> {
     Concat(Box<Tree<S>>, Box<Tree<S>>),
     If(Box<Expression<S>>, Box<Tree<S>>),
@@ -23,7 +24,7 @@ pub enum Tree<S> {
     For(Variable<S>, Range<S>, Box<Tree<S>>),
 }
 
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Variable<S> {
     Id(String),
     Special(S),
@@ -52,7 +53,7 @@ pub(super) trait SpecialVariables<G>:
     fn correct_type(&self, other: &AssertReturnValue) -> bool;
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize, Hash)]
 pub enum Expression<S> {
     True,
     False,
@@ -67,13 +68,13 @@ pub enum Expression<S> {
     Binary(Binary, Box<Expression<S>>, Box<Expression<S>>),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize, Hash)]
 pub enum Range<S> {
     IterateOverSet(Box<Expression<S>>),
     IterateInRange(Box<Expression<S>>, Box<Expression<S>>),
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Serialize, Deserialize, Hash)]
 pub enum Unary {
     Not,
     Rand,
@@ -85,7 +86,7 @@ pub enum Unary {
     Qualifier(Qualifier),
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Serialize, Deserialize, Hash)]
 pub enum QualifierRestricted {
     Entities,
     Context,
@@ -96,32 +97,32 @@ pub enum QualifierRestricted {
     Products,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Serialize, Deserialize, Hash)]
 pub enum QualifierLabel {
     AvailableEntities,
     AllReactants,
     AllInhibitors,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Serialize, Deserialize, Hash)]
 pub enum QualifierSystem {
     Entities,
     Context,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Serialize, Deserialize, Hash)]
 pub enum QualifierEdge {
     Source,
     Target,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Serialize, Deserialize, Hash)]
 pub enum QualifierNode {
     Neighbours,
     System,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Serialize, Deserialize, Hash)]
 pub enum Qualifier {
     System(QualifierSystem),
     Label(QualifierLabel),
@@ -130,7 +131,7 @@ pub enum Qualifier {
     Node(QualifierNode),
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Serialize, Deserialize, Hash)]
 pub enum Binary {
     And,
     Or,
@@ -155,7 +156,7 @@ pub enum Binary {
     CommonSubStr,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub(super) enum AssertionTypes {
     Boolean,
     Integer,
@@ -174,7 +175,7 @@ pub(super) enum AssertionTypes {
     Edge,
 }
 
-#[derive(Clone, Hash, PartialEq, Eq)]
+#[derive(Clone, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AssertReturnValue {
     Boolean(bool),
     Integer(IntegerType),
@@ -192,6 +193,12 @@ pub enum AssertReturnValue {
 // -----------------------------------------------------------------------------
 //                         Implementations for types
 // -----------------------------------------------------------------------------
+
+impl<S> Default for Assert<S> {
+    fn default() -> Self {
+        Self { tree: Tree::Return(Box::new(Expression::True)) }
+    }
+}
 
 impl QualifierRestricted {
     pub(super) fn referenced_mut<'a>(

@@ -1,0 +1,63 @@
+Environment: [
+    k = ({act_1}.k + {act_2}.k + {act_3}.k + {act_4}.k + {act_5}.k)
+]
+Initial Entities: {out_1, out_2, out_3, out_4, out_5}
+Context: [k, k]
+Reactions: (
+    [{out_1}, {act_1}, {out_1}];
+    [{out_1,act_1}, {}, {req_1}];
+    [{req_1}, {act_1}, {req_1}];
+    [{req_1,lock}, {}, {req_1}];
+    [{in_1}, {act_1}, {in_1}];
+    [{in_1,act_1}, {}, {out_1,done}];
+    [{req_1,act_2}, {}, {req_1}];
+    [{req_1,act_3}, {}, {req_1}];
+    [{req_1,act_4}, {}, {req_1}];
+    [{req_1,act_5}, {}, {req_1}];
+    [{req_1,act_1}, {lock,act_2,act_3,act_4,act_5}, {in_1,lock}];
+    [{out_2}, {act_2}, {out_2}];
+    [{out_2,act_2}, {}, {req_2}];
+    [{req_2}, {act_2}, {req_2}];
+    [{req_2,lock}, {}, {req_2}];
+    [{in_2}, {act_2}, {in_2}];
+    [{in_2,act_2}, {}, {out_2,done}];
+    [{req_2,act_1}, {}, {req_2}];
+    [{req_2,act_3}, {}, {req_2}];
+    [{req_2,act_4}, {}, {req_2}];
+    [{req_2,act_5}, {}, {req_2}];
+    [{req_2,act_2}, {lock,act_1,act_3,act_4,act_5}, {in_2,lock}];
+    [{out_3}, {act_3}, {out_3}];
+    [{out_3,act_3}, {}, {req_3}];
+    [{req_3}, {act_3}, {req_3}];
+    [{req_3,lock}, {}, {req_3}];
+    [{in_3}, {act_3}, {in_3}];
+    [{in_3,act_3}, {}, {out_3,done}];
+    [{req_3,act_1}, {}, {req_3}];
+    [{req_3,act_2}, {}, {req_3}];
+    [{req_3,act_4}, {}, {req_3}];
+    [{req_3,act_5}, {}, {req_3}];
+    [{req_3,act_3}, {lock,act_1,act_2,act_4,act_5}, {in_3,lock}];
+    [{out_4}, {act_4}, {out_4}];
+    [{out_4,act_4}, {}, {req_4}];
+    [{req_4}, {act_4}, {req_4}];
+    [{req_4,lock}, {}, {req_4}];
+    [{in_4}, {act_4}, {in_4}];
+    [{in_4,act_4}, {}, {out_4,done}];
+    [{req_4,act_1}, {}, {req_4}];
+    [{req_4,act_2}, {}, {req_4}];
+    [{req_4,act_3}, {}, {req_4}];
+    [{req_4,act_5}, {}, {req_4}];
+    [{req_4,act_4}, {lock,act_1,act_2,act_3,act_5}, {in_4,lock}];
+    [{out_5}, {act_5}, {out_5}];
+    [{out_5,act_5}, {}, {req_5}];
+    [{req_5}, {act_5}, {req_5}];
+    [{req_5,lock}, {}, {req_5}];
+    [{in_5}, {act_5}, {in_5}];
+    [{in_5,act_5}, {}, {out_5,done}];
+    [{req_5,act_1}, {}, {req_5}];
+    [{req_5,act_2}, {}, {req_5}];
+    [{req_5,act_3}, {}, {req_5}];
+    [{req_5,act_4}, {}, {req_5}];
+    [{req_5,act_5}, {lock,act_1,act_2,act_3,act_4}, {in_5,lock}];
+    [{lock}, {done}, {lock}];
+)

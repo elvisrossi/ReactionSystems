@@ -1,6 +1,7 @@
 use std::cmp;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::Debug;
+use std::hash::Hash;
 use std::rc::Rc;
 
 use serde::{Deserialize, Serialize};
@@ -256,9 +257,9 @@ where
 
 // -----------------------------------------------------------------------------
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, Hash)]
 pub struct Environment {
-    definitions: HashMap<IdType, Process>,
+    definitions: BTreeMap<IdType, Process>,
 }
 
 impl BasicEnvironment for Environment {
@@ -411,7 +412,7 @@ impl PrintableWithTranslator for Environment {
 
 impl IntoIterator for Environment {
     type Item = (IdType, Process);
-    type IntoIter = std::collections::hash_map::IntoIter<IdType, Process>;
+    type IntoIter = std::collections::btree_map::IntoIter<IdType, Process>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.definitions.into_iter()
@@ -420,7 +421,7 @@ impl IntoIterator for Environment {
 
 impl<'a> IntoIterator for &'a Environment {
     type Item = (&'a IdType, &'a Process);
-    type IntoIter = std::collections::hash_map::Iter<'a, IdType, Process>;
+    type IntoIter = std::collections::btree_map::Iter<'a, IdType, Process>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.definitions.iter()
@@ -430,7 +431,7 @@ impl<'a> IntoIterator for &'a Environment {
 impl<const N: usize> From<[(IdType, Process); N]> for Environment {
     fn from(arr: [(IdType, Process); N]) -> Self {
         Environment {
-            definitions: HashMap::from(arr),
+            definitions: BTreeMap::from(arr),
         }
     }
 }
@@ -438,7 +439,7 @@ impl<const N: usize> From<[(IdType, Process); N]> for Environment {
 impl From<&[(IdType, Process)]> for Environment {
     fn from(arr: &[(IdType, Process)]) -> Self {
         Environment {
-            definitions: HashMap::from_iter(arr.to_vec()),
+            definitions: BTreeMap::from_iter(arr.to_vec()),
         }
     }
 }
@@ -446,10 +447,11 @@ impl From<&[(IdType, Process)]> for Environment {
 impl From<Vec<(IdType, Process)>> for Environment {
     fn from(arr: Vec<(IdType, Process)>) -> Self {
         Environment {
-            definitions: HashMap::from_iter(arr),
+            definitions: BTreeMap::from_iter(arr),
         }
     }
 }
+
 
 // -----------------------------------------------------------------------------
 //                                 Confluence

@@ -6,5 +6,6 @@ edition = "2024"
 [dependencies]
 rand = { version = "*" }
 rsprocess = { path = "../rsprocess/" }
+serde = { version = ">=1"}
 petgraph = { version = "*", features = ["serde-1"] }
 petgraph-graphml = { version = "*" }

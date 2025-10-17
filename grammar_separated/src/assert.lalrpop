@@ -1,0 +1,294 @@
+use std::str::FromStr;
+use lalrpop_util::ParseError;
+
+use assert::relabel;
+use rsprocess::{set, label};
+use rsprocess::translator::Translator;
+use crate::custom_error;
+
+grammar(translator: &mut Translator);
+
+extern {
+    type Error = custom_error::UserError;
+}
+
+// -----------------------------------------------------------------------------
+//                                  Helpers
+// -----------------------------------------------------------------------------
+
+// order
+match {
+    "!", "!=", "%", "&&", "'", "(", ")", "*", "+", ",", "-", "..", "/", ":",
+    "::", ";", "<", "<=", "=", "==", ">", ">=", "AllInhibitors", "AllReactants",
+    "AvailableEntities", "Context", "Entities", "Inhibitors",
+    "InhibitorsPresent", "Products", "Reactants", "ReactantsAbsent",
+    "SystemContext", "SystemEntities", "[", "\"", "]", "^", "^^", "edge",
+    "else", "empty", "false", "for", "if", "in", "label", "length", "let",
+    "neighbours", "not", "rand", "return", "source", "system", "target", "then",
+    "toel", "tostr", "true", "{", "||", "}",
+} else {
+    r"[0-9]+" => NUMBER
+} else {
+    r"([[:alpha:]])([[:word:]])*" => WORD
+    // r"(\p{L}|\p{Emoji})(\p{L}|\p{Emoji}|\p{Dash}|\p{N})*" => WORD,
+} else {
+    r#""[^"]+""# => PATH, // " <- ignore comment, its for the linter in emacs
+} else {
+    _
+}
+
+// matches words (letter followed by numbers, letters or _)
+Literal: String = {
+    WORD => <>.into(),
+};
+
+Num: i64 = {
+    <sign: "-"?> <start: @L> <n: NUMBER> <end: @R> =>? {
+        if sign.is_some() {
+            i64::from_str(n)
+                  .map(|n| -n)
+                  .map_err(|_| ParseError::User {
+                      error: custom_error::UserError {
+                          token: (start, n.into(), end),
+                          error: custom_error::UserErrorTypes::NumberTooBigi64
+                      }
+                  })
+        } else {
+            i64::from_str(n)
+                  .map_err(|_| ParseError::User {
+                      error: custom_error::UserError {
+                          token: (start, n.into(), end),
+                          error: custom_error::UserErrorTypes::NumberTooBigi64
+                      }
+                  })
+        }
+
+    }
+};
+
+// macro for matching sequence of patterns with C as separator
+Separated<T, C>: Vec<T> = {
+    <mut v:(<T> C)+> <e:T?> => match e {
+        None => v,
+        Some(e) => {
+            v.push(e);
+            v
+        }
+    }
+};
+
+Separated_Or<T, C>: Vec<T> = {
+    <v: T> => vec![v],
+    <v: Separated<T, C>> => v
+}
+
+Separated_Empty<LP, T, C, RP>: Vec<T> = {
+    LP RP => vec![],
+    LP <v: T> RP => vec![v],
+    LP <v: Separated<T, C>> RP => v
+}
+
+// -----------------------------------------------------------------------------
+//                                 SetParser
+// -----------------------------------------------------------------------------
+
+Set: set::Set = {
+    <s: Separated_Empty<"{", Literal, ",", "}">> =>
+        set::Set::from(s.into_iter().map(|t| translator.encode(t))
+                           .collect::<Vec<_>>())
+};
+
+// -----------------------------------------------------------------------------
+//                                LabelParser
+// -----------------------------------------------------------------------------
+
+Label: label::Label = {
+    "["
+       "Entities" ":" <e: Set> ","
+       "Context" ":" <c: Set> ","
+       "Reactants" ":" <r: Set> ","
+       "ReactantsAbsent" ":" <r_a: Set> ","
+       "Inhibitors" ":" <i: Set> ","
+       "InhibitorsPresent" ":" <i_p: Set> ","
+       "Products" ":" <p: Set> ","?
+    "]" => label::Label::create(e, c, r, r_a, i, i_p, p)
+}
+
+// -----------------------------------------------------------------------------
+//                                AssertParser
+// -----------------------------------------------------------------------------
+pub Assert: Box<relabel::Assert> = {
+     "label" "{" <f: AssertTree> "}" =>
+        Box::new(relabel::Assert{tree: f}),
+};
+
+AssertTree: relabel::Tree = {
+    <t1: AssertTree2> <t2: AssertTree> =>
+        relabel::Tree::Concat(Box::new(t1), Box::new(t2)),
+    <t: AssertTree2> => t,
+}
+
+AssertTree2: relabel::Tree = {
+    #[precedence(level="1")]
+    "if" <e: AssertExpression>
+    "then" "{" <t: AssertTree> "}" ";"? =>
+        relabel::Tree::If(Box::new(e), Box::new(t)),
+
+    #[precedence(level="0")]
+    "if" <e: AssertExpression>
+    "then" "{" <t1: AssertTree> "}"
+    "else" "{" <t2: AssertTree> "}" ";"? =>
+        relabel::Tree::IfElse(Box::new(e), Box::new(t1), Box::new(t2)),
+
+    "let" <v: AssertVariable> <q: AssertQualifier?> "=" <e: AssertExpression>
+    ";"
+        => relabel::Tree::Assignment(v, q, Box::new(e)),
+
+    "return" <e: AssertExpression> ";" =>
+        relabel::Tree::Return(Box::new(e)),
+
+    "for" <v: AssertVariable> "in" <r: AssertRange> "{" <t: AssertTree> "}" ";"?
+        => relabel::Tree::For(v, r, Box::new(t)),
+}
+
+AssertVariable: relabel::Variable = {
+    #[precedence(level="0")]
+    "label" => relabel::Variable::Special(relabel::Special::Label),
+    "edge"  => relabel::Variable::Special(relabel::Special::Edge),
+    #[precedence(level="1")]
+    <v: Literal> => relabel::Variable::Id(v),
+}
+
+AssertExpression: relabel::Expression = {
+    #[precedence(level="100")]
+    <unp: AssertUnaryPrefix> "(" <e: AssertExpression> ")" =>
+        relabel::Expression::Unary(unp, Box::new(e)),
+
+    #[precedence(level="50")]
+    <e: AssertExpression> "." <uns: AssertUnarySuffix> =>
+        relabel::Expression::Unary(uns, Box::new(e)),
+
+    #[precedence(level="100")] #[assoc(side="left")]
+    "(" <e1: AssertExpression> <b: AssertBinary> <e2: AssertExpression> ")" =>
+        relabel::Expression::Binary(b, Box::new(e1), Box::new(e2)),
+
+    #[precedence(level="100")]
+    <b: AssertBinaryPrefix>
+    "(" <e1: AssertExpression> "," <e2: AssertExpression> ")" =>
+        relabel::Expression::Binary(b, Box::new(e1), Box::new(e2)),
+
+    #[precedence(level="0")]
+    <t: AssertTerm> => t,
+}
+
+AssertTerm: relabel::Expression = {
+    "true" => relabel::Expression::True,
+    "false" => relabel::Expression::False,
+
+    <v: AssertVariable> => relabel::Expression::Var(v),
+
+    // If changing IntegerType in assert.rs, also change from Num to another
+    // similar parser with different return type
+    <i: Num> => relabel::Expression::Integer(i),
+
+    <lab: Label> => relabel::Expression::Label(Box::new(lab)),
+    <set: Set> => relabel::Expression::Set(set),
+    "'" <el: Literal> "'" =>
+        relabel::Expression::Element(translator.encode(el)),
+
+    // strings
+    PATH => relabel::Expression::String(<>.trim_end_matches("\"")
+                                        .trim_start_matches("\"")
+                                        .to_string()),
+
+    // allow arbitrary parenthesis
+    "(" <e: AssertExpression> ")" => e,
+}
+
+AssertRange: relabel::Range = {
+    "{" <e: AssertExpression> "}" =>
+        relabel::Range::IterateOverSet(Box::new(e)),
+    "{" <e1: AssertExpression> ".." <e2: AssertExpression> "}" =>
+        relabel::Range::IterateInRange(Box::new(e1), Box::new(e2)),
+}
+
+AssertUnaryPrefix: relabel::Unary = {
+    "not" => relabel::Unary::Not,
+    "rand" => relabel::Unary::Rand,
+}
+
+AssertUnarySuffix: relabel::Unary = {
+    #[precedence(level="0")]
+    "empty" => relabel::Unary::Empty,
+    "length" => relabel::Unary::Length,
+    "tostr" => relabel::Unary::ToStr,
+    "toel" => relabel::Unary::ToEl,
+
+    #[precedence(level="1")]
+    <q: AssertQualifier> => relabel::Unary::Qualifier(q),
+}
+
+AssertQualifierRestricted: relabel::QualifierRestricted = {
+    "Entities" => relabel::QualifierRestricted::Entities,
+    "Context" => relabel::QualifierRestricted::Context,
+    "Reactants" => relabel::QualifierRestricted::Reactants,
+    "ReactantsAbsent" => relabel::QualifierRestricted::ReactantsAbsent,
+    "Inhibitors" => relabel::QualifierRestricted::Inhibitors,
+    "InhibitorsPresent" => relabel::QualifierRestricted::InhibitorsPresent,
+    "Products" => relabel::QualifierRestricted::Products,
+}
+
+AssertQualifierLabel: relabel::QualifierLabel = {
+    "AvailableEntities" => relabel::QualifierLabel::AvailableEntities,
+    "AllReactants" => relabel::QualifierLabel::AllReactants,
+    "AllInhibitors" => relabel::QualifierLabel::AllInhibitors,
+}
+
+AssertQualifierSystem: relabel::QualifierSystem = {
+    "SystemEntities" => relabel::QualifierSystem::Entities,
+    "SystemContext" => relabel::QualifierSystem::Context,
+}
+
+AssertQualifierEdge: relabel::QualifierEdge = {
+    "source" => relabel::QualifierEdge::Source,
+    "target" => relabel::QualifierEdge::Target,
+}
+
+AssertQualifierNode: relabel::QualifierNode = {
+    "neighbours" => relabel::QualifierNode::Neighbours,
+    "system" => relabel::QualifierNode::System,
+}
+
+AssertQualifier: relabel::Qualifier = {
+    <q: AssertQualifierSystem> => relabel::Qualifier::System(q),
+    <q: AssertQualifierLabel> => relabel::Qualifier::Label(q),
+    <q: AssertQualifierRestricted> => relabel::Qualifier::Restricted(q),
+    <q: AssertQualifierEdge> => relabel::Qualifier::Edge(q),
+    <q: AssertQualifierNode> => relabel::Qualifier::Node(q),
+}
+
+AssertBinary: relabel::Binary = {
+    "&&" => relabel::Binary::And,
+    "||" => relabel::Binary::Or,
+    "^^" => relabel::Binary::Xor,
+    "<" => relabel::Binary::Less,
+    "<=" => relabel::Binary::LessEq,
+    ">" => relabel::Binary::More,
+    ">=" => relabel::Binary::MoreEq,
+    "==" => relabel::Binary::Eq,
+    "!=" => relabel::Binary::NotEq,
+    "+" => relabel::Binary::Plus,
+    "-" => relabel::Binary::Minus,
+    "*" => relabel::Binary::Times,
+    "^" => relabel::Binary::Exponential,
+    "/" => relabel::Binary::Quotient,
+    "%" => relabel::Binary::Reminder,
+    "::" => relabel::Binary::Concat,
+}
+
+AssertBinaryPrefix: relabel::Binary = {
+    "substr" => relabel::Binary::SubStr,
+    "min" => relabel::Binary::Min,
+    "max" => relabel::Binary::Max,
+    "commonsubstr" => relabel::Binary::CommonSubStr,
+}

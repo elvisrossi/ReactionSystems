@@ -1,0 +1,481 @@
+use std::str::FromStr;
+use lalrpop_util::ParseError;
+
+use rsprocess::set;
+use rsprocess::translator::Translator;
+use rsprocess::graph;
+use crate::custom_error;
+
+grammar(translator: &mut Translator);
+
+extern {
+    type Error = custom_error::UserError;
+}
+
+// -----------------------------------------------------------------------------
+//                                  Helpers
+// -----------------------------------------------------------------------------
+
+// order
+match {
+    "!", "(", ")", ",", "<", "<=", "=", "==", ">", ">=", "?", "AbsentReactants",
+    "Context", "Context.EntitySet", "Context.Nill",
+    "Context.NonDeterministicChoice", "Context.RecursiveIdentifier",
+    "Context.Summation", "Context.WaitEntity", "Difference", "Entities",
+    "EntitiesAdded", "EntitiesDeleted", "ExcludeEntities", "Hide", "Inhibitors",
+    "MaskContext", "MaskDifference", "MaskEntities", "MaskEntitiesAdded",
+    "MaskEntitiesDeleted", "MaskProducts", "MaskUncommonEntities", "MaskUnion",
+    "PresentInhibitors", "Products", "Reactants", "T", "UncommonContext",
+    "UncommonDifference", "UncommonEntities", "UncommonEntitiesAdded",
+    "UncommonEntitiesDeleted", "UncommonMaskContext", "UncommonMaskDifference",
+    "UncommonMaskEntities", "UncommonMaskEntitiesAdded",
+    "UncommonMaskEntitiesDeleted", "UncommonMaskProducts", "UncommonMaskUnion",
+    "UncommonProducts", "UncommonUnion", "Union", "\"", "{", "||", "}", "⊂",
+    "⊃", "⊆", "⊇",
+} else {
+    r"[0-9]+" => NUMBER
+} else {
+    r"([[:alpha:]])([[:word:]])*" => WORD
+    // r"(\p{L}|\p{Emoji})(\p{L}|\p{Emoji}|\p{Dash}|\p{N})*" => WORD,
+} else {
+    r#""[^"]+""# => PATH, // " <- ignore comment, its for the linter in emacs
+} else {
+    _
+}
+
+// matches words (letter followed by numbers, letters or _)
+Literal: String = {
+    WORD => <>.into(),
+};
+
+LiteralProcess: String = {
+    Literal => <>,
+    "AbsentReactants" => <>.into(),
+    "Context" => <>.into(),
+    "Context.EntitySet" => <>.into(),
+    "Context.Nill" => <>.into(),
+    "Context.NonDeterministicChoice" => <>.into(),
+    "Context.RecursiveIdentifier" => <>.into(),
+    "Context.Summation" => <>.into(),
+    "Context.WaitEntity" => <>.into(),
+    "Difference" => <>.into(),
+    "Entities" => <>.into(),
+    "EntitiesAdded" => <>.into(),
+    "EntitiesDeleted" => <>.into(),
+    "ExcludeEntities" => <>.into(),
+    "Hide" => <>.into(),
+    "Inhibitors" => <>.into(),
+    "MaskContext" => <>.into(),
+    "MaskDifference" => <>.into(),
+    "MaskEntities" => <>.into(),
+    "MaskEntitiesAdded" => <>.into(),
+    "MaskEntitiesDeleted" => <>.into(),
+    "MaskProducts" => <>.into(),
+    "MaskUncommonEntities" => <>.into(),
+    "MaskUnion" => <>.into(),
+    "PresentInhibitors" => <>.into(),
+    "Products" => <>.into(),
+    "Reactants" => <>.into(),
+    "T" => <>.into(),
+    "UncommonContext" => <>.into(),
+    "UncommonDifference" => <>.into(),
+    "UncommonEntities" => <>.into(),
+    "UncommonEntitiesAdded" => <>.into(),
+    "UncommonEntitiesDeleted" => <>.into(),
+    "UncommonMaskContext" => <>.into(),
+    "UncommonMaskDifference" => <>.into(),
+    "UncommonMaskEntities" => <>.into(),
+    "UncommonMaskEntitiesAdded" => <>.into(),
+    "UncommonMaskEntitiesDeleted" => <>.into(),
+    "UncommonMaskProducts" => <>.into(),
+    "UncommonMaskUnion" => <>.into(),
+    "UncommonProducts" => <>.into(),
+    "UncommonUnion" => <>.into(),
+    "Union" => <>.into(),
+};
+
+Num: i64 = {
+    <sign: "-"?> <start: @L> <n: NUMBER> <end: @R> =>? {
+        if sign.is_some() {
+            i64::from_str(n)
+                  .map(|n| -n)
+                  .map_err(|_| ParseError::User {
+                      error: custom_error::UserError {
+                          token: (start, n.into(), end),
+                          error: custom_error::UserErrorTypes::NumberTooBigi64
+                      }
+                  })
+        } else {
+            i64::from_str(n)
+                  .map_err(|_| ParseError::User {
+                      error: custom_error::UserError {
+                          token: (start, n.into(), end),
+                          error: custom_error::UserErrorTypes::NumberTooBigi64
+                      }
+                  })
+        }
+
+    }
+};
+
+NumUsize: usize = {
+    <start: @L> <n: NUMBER> <end: @R> =>? usize::from_str(n)
+               .map_err(|_| ParseError::User {
+                   error: custom_error::UserError {
+                       token: (start, n.into(), end),
+                       error: custom_error::UserErrorTypes::NumberTooBigUsize
+                   }
+               })
+};
+
+Path: String = {
+    PATH => <>.trim_end_matches("\"").trim_start_matches("\"").to_string()
+};
+
+// macro for matching sequence of patterns with C as separator
+Separated<T, C>: Vec<T> = {
+    <mut v:(<T> C)+> <e:T?> => match e {
+        None => v,
+        Some(e) => {
+            v.push(e);
+            v
+        }
+    }
+};
+
+Separated_Or<T, C>: Vec<T> = {
+    <v: T> => vec![v],
+    <v: Separated<T, C>> => v
+}
+
+Separated_Empty<LP, T, C, RP>: Vec<T> = {
+    LP RP => vec![],
+    LP <v: T> RP => vec![v],
+    LP <v: Separated<T, C>> RP => v
+}
+
+
+// -----------------------------------------------------------------------------
+//                                 SetParser
+// -----------------------------------------------------------------------------
+
+pub Set: set::Set = {
+    <s: Separated_Empty<"{", Literal, ",", "}">> =>
+        set::Set::from(s.into_iter().map(|t| translator.encode(t))
+                           .collect::<Vec<_>>())
+};
+
+
+// ~~~~~~~~~~~~~~~~~~~
+// Instruction Parsing
+// ~~~~~~~~~~~~~~~~~~~
+
+/// Match for strings between nodes formatters
+LiteralSeparatorNode: graph::NodeDisplayBase = {
+    PATH =>
+        graph::NodeDisplayBase::String {
+            string: <>.trim_end_matches("\"")
+                      .trim_start_matches("\"")
+                      .to_string()
+        }
+};
+
+/// Match for strings between edge formatters
+LiteralSeparatorEdge: graph::EdgeDisplayBase = {
+    PATH =>
+        graph::EdgeDisplayBase::String {
+            string: <>.trim_end_matches("\"")
+                      .trim_start_matches("\"")
+                      .to_string()
+        }
+};
+
+NodeDisplayBase: graph::NodeDisplayBase = {
+    "Hide" =>
+        graph::NodeDisplayBase::Hide,
+    "Entities" =>
+        graph::NodeDisplayBase::Entities,
+    "MaskEntities" <mask: Set> =>
+        graph::NodeDisplayBase::MaskEntities{mask},
+    "ExcludeEntities" <mask: Set> =>
+      graph::NodeDisplayBase::ExcludeEntities{mask},
+    "Context" =>
+        graph::NodeDisplayBase::Context,
+    "UncommonEntities" =>
+        graph::NodeDisplayBase::UncommonEntities,
+    "MaskUncommonEntities" <mask: Set> =>
+        graph::NodeDisplayBase::MaskUncommonEntities{mask},
+}
+
+/// Node display formatters separated by arbitrary strings in quotes
+pub SeparatorNode: graph::NodeDisplay = {
+    <v: NodeDisplayBase> => graph::NodeDisplay {base: vec![v]},
+    <v:(<NodeDisplayBase> <LiteralSeparatorNode>)+> <e: NodeDisplayBase?> =>
+        match e {
+            None => graph::NodeDisplay {
+                        base:
+                        v.iter().fold(vec![],
+                            |mut acc, (a, b)| {
+                                acc.push(a.clone());
+                                acc.push(b.clone());
+                                acc.clone()
+                            })
+                        },
+            Some(e) => {
+                let mut v = v.iter().fold(vec![],
+                                          |mut acc, (a, b)| {
+                                              acc.push(a.clone());
+                                              acc.push(b.clone());
+                                              acc.clone()
+                                          });
+                v.push(e);
+                graph::NodeDisplay { base: v }
+            }
+        }
+}
+
+// -----------------------------------------------------------------------------
+
+EdgeDisplay: graph::EdgeDisplayBase = {
+    "Hide" =>
+        graph::EdgeDisplayBase::Hide,
+
+    "Products" =>
+        graph::EdgeDisplayBase::Products
+        { mask: None, filter_common: false },
+    "MaskProducts" <mask: Set> =>
+        graph::EdgeDisplayBase::Entities
+        { mask: Some(mask), filter_common: false },
+    "UncommonProducts" =>
+        graph::EdgeDisplayBase::Products
+        { mask: None, filter_common: true },
+    "UncommonMaskProducts" <mask: Set> =>
+        graph::EdgeDisplayBase::Entities
+        { mask: Some(mask), filter_common: true },
+
+    "Entities" =>
+        graph::EdgeDisplayBase::Entities
+        { mask: None, filter_common: false },
+    "MaskEntities" <mask: Set> =>
+        graph::EdgeDisplayBase::Entities
+        { mask: Some(mask), filter_common: false },
+    "UncommonEntities" =>
+        graph::EdgeDisplayBase::Entities
+        { mask: None, filter_common: true },
+    "UncommonMaskEntities" <mask: Set> =>
+        graph::EdgeDisplayBase::Entities
+        { mask: Some(mask), filter_common: true },
+
+    "Context" =>
+        graph::EdgeDisplayBase::Context
+        { mask: None, filter_common: false },
+    "MaskContext" <mask: Set> =>
+        graph::EdgeDisplayBase::Context
+        { mask: Some(mask), filter_common: false },
+    "UncommonContext" =>
+        graph::EdgeDisplayBase::Context
+        { mask: None, filter_common: true },
+    "UncommonMaskContext" <mask: Set> =>
+        graph::EdgeDisplayBase::Context
+        { mask: Some(mask), filter_common: true },
+
+    "Union" =>
+        graph::EdgeDisplayBase::Union
+        { mask: None, filter_common: false },
+    "MaskUnion" <mask: Set> =>
+        graph::EdgeDisplayBase::Union
+        { mask: Some(mask), filter_common: false },
+    "UncommonUnion" =>
+        graph::EdgeDisplayBase::Union
+        { mask: None, filter_common: true },
+    "UncommonMaskUnion" <mask: Set> =>
+        graph::EdgeDisplayBase::Union
+        { mask: Some(mask), filter_common: true },
+
+    "Difference" =>
+        graph::EdgeDisplayBase::Difference
+        { mask: None, filter_common: false },
+    "MaskDifference" <mask: Set> =>
+        graph::EdgeDisplayBase::Difference
+        { mask: Some(mask), filter_common: false },
+    "UncommonDifference" =>
+        graph::EdgeDisplayBase::Difference
+        { mask: None, filter_common: true },
+    "UncommonMaskDifference" <mask: Set> =>
+        graph::EdgeDisplayBase::Difference
+        { mask: Some(mask), filter_common: true },
+
+    "EntitiesDeleted" =>
+        graph::EdgeDisplayBase::EntitiesDeleted
+        { mask: None, filter_common: false },
+    "MaskEntitiesDeleted" <mask: Set> =>
+        graph::EdgeDisplayBase::EntitiesDeleted
+        { mask: Some(mask), filter_common: false },
+    "UncommonEntitiesDeleted" =>
+        graph::EdgeDisplayBase::EntitiesDeleted
+        { mask: None, filter_common: true },
+    "UncommonMaskEntitiesDeleted" <mask: Set> =>
+        graph::EdgeDisplayBase::EntitiesDeleted
+        { mask: Some(mask), filter_common: true },
+
+    "EntitiesAdded" =>
+        graph::EdgeDisplayBase::EntitiesAdded
+        { mask: None, filter_common: false },
+    "MaskEntitiesAdded" <mask: Set> =>
+        graph::EdgeDisplayBase::EntitiesAdded
+        { mask: Some(mask), filter_common: false },
+    "UncommonEntitiesAdded" =>
+        graph::EdgeDisplayBase::EntitiesAdded
+        { mask: None, filter_common: true },
+    "UncommonMaskEntitiesAdded" <mask: Set> =>
+        graph::EdgeDisplayBase::EntitiesAdded
+        { mask: Some(mask), filter_common: true },
+}
+
+/// Edge display formatters separated by arbitrary strings in quotes
+pub SeparatorEdge: graph::EdgeDisplay = {
+    <v: EdgeDisplay> => graph::EdgeDisplay{ base: vec![v] },
+    <v:(<EdgeDisplay> <LiteralSeparatorEdge>)+> <e: EdgeDisplay?> =>
+        match e {
+            None => graph::EdgeDisplay{ base: v.iter().fold(vec![],
+                                              |mut acc, (a, b)| {
+                                                  acc.push(a.clone());
+                                                  acc.push(b.clone());
+                                                  acc.clone()
+                                              }) },
+            Some(e) => {
+                let mut v = v.iter().fold(vec![],
+                                          |mut acc, (a, b)| {
+                                              acc.push(a.clone());
+                                              acc.push(b.clone());
+                                              acc.clone()
+                                          });
+                v.push(e);
+                graph::EdgeDisplay{ base: v }
+            }
+        }
+}
+
+// -----------------------------------------------------------------------------
+
+Operation: graph::OperationType = {
+    "==" => graph::OperationType::Equals,
+    "="  => graph::OperationType::Equals,
+    "<"  => graph::OperationType::Subset,
+    "⊂"  => graph::OperationType::Subset,
+    "<=" => graph::OperationType::SubsetEqual,
+    "⊆"  => graph::OperationType::SubsetEqual,
+    ">"  => graph::OperationType::Superset,
+    "⊃"  => graph::OperationType::Superset,
+    ">=" => graph::OperationType::SupersetEqual,
+    "⊇"  => graph::OperationType::SupersetEqual
+}
+
+NodeColorConditional: (graph::NodeColorConditional, String) = {
+    "Entities" <op: Operation> <set: Set> "?" <color: PATH> =>
+        (graph::NodeColorConditional::EntitiesConditional(op, set),
+            color.to_string()),
+    "Context.Nill" "?" <color: PATH> =>
+        (graph::NodeColorConditional::ContextConditional(
+            graph::ContextColorConditional::Nill),
+            color.to_string()),
+    "Context.RecursiveIdentifier" "(" <x: Literal> ")" "?" <color: PATH> =>
+        (graph::NodeColorConditional::ContextConditional(
+            graph::ContextColorConditional::RecursiveIdentifier(
+                translator.encode(x)
+            )),
+            color.to_string()),
+    "Context.EntitySet" <op: Operation> <set: Set> "?" <color: PATH> =>
+        (graph::NodeColorConditional::ContextConditional(
+            graph::ContextColorConditional::EntitySet(op, set)),
+            color.to_string()),
+    "Context.NonDeterministicChoice" "?" <color: PATH> =>
+        (graph::NodeColorConditional::ContextConditional(
+            graph::ContextColorConditional::NonDeterministicChoice),
+            color.to_string()),
+    "Context.Summation" "?" <color: PATH> =>
+        (graph::NodeColorConditional::ContextConditional(
+            graph::ContextColorConditional::Summation),
+            color.to_string()),
+    "Context.WaitEntity" "?" <color: PATH> =>
+        (graph::NodeColorConditional::ContextConditional(
+            graph::ContextColorConditional::WaitEntity),
+            color.to_string()),
+}
+
+/// Node color formatter
+pub ColorNode: graph::NodeColor = {
+    <conditionals: Separated_Or<NodeColorConditional, "||">>
+    "!" <base_color: PATH> =>
+        graph::NodeColor { conditionals,
+                           base_color: base_color.to_string() },
+
+    "!" <base_color: PATH> =>
+        graph::NodeColor { conditionals: vec![],
+                           base_color: base_color.to_string() },
+}
+
+// -----------------------------------------------------------------------------
+
+EdgeColorConditional: (graph::EdgeColorConditional, String) = {
+    "Entities" <op: Operation> <set: Set> "?" <color: PATH> =>
+        (graph::EdgeColorConditional::Entities(op, set),
+            color.to_string()),
+    "Context" <op: Operation> <set: Set> "?" <color: PATH> =>
+        (graph::EdgeColorConditional::Context(op, set),
+            color.to_string()),
+    "T" <op: Operation> <set: Set> "?" <color: PATH> =>
+        (graph::EdgeColorConditional::T(op, set),
+            color.to_string()),
+    "Reactants" <op: Operation> <set: Set> "?" <color: PATH> =>
+        (graph::EdgeColorConditional::Reactants(op, set),
+            color.to_string()),
+    "AbsentReactants" <op: Operation> <set: Set> "?" <color: PATH> =>
+        (graph::EdgeColorConditional::ReactantsAbsent(op, set),
+            color.to_string()),
+    "Inhibitors" <op: Operation> <set: Set> "?" <color: PATH> =>
+        (graph::EdgeColorConditional::Inhibitors(op, set),
+            color.to_string()),
+    "PresentInhibitors" <op: Operation> <set: Set> "?" <color: PATH> =>
+        (graph::EdgeColorConditional::InhibitorsPresent(op, set),
+            color.to_string()),
+    "Products" <op: Operation> <set: Set> "?" <color: PATH> =>
+        (graph::EdgeColorConditional::Products(op, set),
+            color.to_string()),
+}
+
+pub ColorEdge: graph::EdgeColor = {
+    <conditionals: Separated_Or<EdgeColorConditional, "||">>
+    "!" <base_color: PATH> =>
+        graph::EdgeColor { conditionals,
+                           base_color: base_color.to_string() },
+
+    "!" <base_color: PATH> =>
+        graph::EdgeColor { conditionals: vec![],
+                           base_color: base_color.to_string() },
+}
+
+// -----------------------------------------------------------------------------
+
+// pub GraphSaveOptions: presets::GraphSaveOptions = {
+//     "Dot"
+//           "|"? <s_node: SeparatorNode>
+//           "|" <s_edge: SeparatorEdge>
+//           "|" <c_node: ColorNode>
+//           "|" <c_edge: ColorEdge>
+//           ">" <so: SaveOptions> =>
+//         presets::GraphSaveOptions::Dot { node_display: s_node,
+//                                          edge_display: s_edge,
+//                                          node_color:   c_node,
+//                                          edge_color:   c_edge,
+//                                          so },
+//     "GraphML"
+//           "|"? <s_node: SeparatorNode>
+//           "|" <s_edge: SeparatorEdge>
+//           ">" <so: SaveOptions> =>
+//         presets::GraphSaveOptions::GraphML { node_display: s_node,
+//                                              edge_display: s_edge,
+//                                              so },
+//     "Serialize" "(" <path: Path> ")" =>
+//         presets::GraphSaveOptions::Serialize { path },
+// }

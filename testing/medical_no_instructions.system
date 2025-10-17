@@ -1,0 +1,219 @@
+Environment: [
+    eafib1 = (?[{},{afib},{}]?.eafib1 + ?[{afib},{},{}]?.ehr),
+    ehr = (?[{},{heart_rate},{}]?.ehr + ?[{heart_rate},{},{}]?.ebb),
+    ebb = ({}.ebb + e_cbb + e_nsbb + e_sbb),
+    e_cbb = (?[{},{verapamil},{get_diltiazem}]?.empty
+	     + ?[{},{diltiazem},{get_verapamil}]?.empty),
+    e_nsbb = (?[{},{carvedilol},{get_propranolol}]?.empty
+	      + ?[{},{propranolol},{get_carvedilol}]?.empty),
+    e_sbb = (?[{},{atenolol},{get_bisoprolol}]?.empty
+	     + ?[{},{bisoprolol},{get_atenolol}]?.empty),
+    eafib2 = (?[{},{afib},{}]?.eafib2 + ?[{afib},{},{}]?.ehf),
+    ehf = (?[{},{has_fib},{}]?.ehf + ?[{has_fib},{},{}]?.eflec),
+    eflec = ({}.eflec + e_flec),
+    e_flec = {get_flecainide}.empty,
+    eafib3 = (?[{},{afib},{}]?.eafib3 + ?[{afib},{},{}]?.econs),
+    econs = (?[{},{heart_rate,has_fib},{}]?.econs
+	     + ?[{},{consensus_acei},{}]?.econs
+	     + ?[{consensus_acei,heart_rate},{},{}]?.estroke
+	     + ?[{consensus_acei,has_fib},{},{}]?.estroke),
+    estroke = (?[{},{diseases,over75},{}]?.ewarf
+	       + ?[{over75},{doac_fail,doac_int},{}]?.edoac
+	       + ?[{diseases},{doac_fail,doac_int},{}]?.edoac
+	       + ?[{over75,doac_fail},{},{}]?.evkant
+	       + ?[{over75,doac_int},{},{}]?.evkant
+	       + ?[{diseases,doac_fail},{},{}]?.evkant
+	       + ?[{diseases,doac_int},{},{}]?.evkant),
+    ewarf = ({}.ewarf + e_warf),
+    e_warf = {get_warfarin}.empty,
+    edoac = ({}.edoac + e_doac),
+    e_doac = (?[{},{dabigatran},{get_apixaban}]?.e_doacfail
+	      + ?[{},{apixaban},{get_dabigatran}]?.e_doacfail),
+    e_doacfail = (?[{doac_fail},{},{stop_doac}]?.evkant
+		  + ?[{},{doac_fail},{}]?.e_doacfail),
+    evkant = ({}.evkant + e_vkant),
+    e_vkant = {get_vkant}.empty,
+    ghyper = (?[{},{hyper},{}]?.ghyper + ?[{hyper},{},{}]?.g1),
+    g1 = (?[{diabete},{},{}]?.g2
+	  + ?[{below55},{diabete,origin},{}]?.g2
+	  + ?[{},{below55,diabete},{}]?.g3
+	  + ?[{origin},{diabete},{}]?.g3),
+    g2 = ({}.g2 + <1,e_acei>.g4 + <1,e_arb>.g5),
+    g3 = ({}.g3 + <1,e_cbb>.g6),
+    g4 = ({}.g4 + <1,e_cbb>.g7 + <1,e_td>.g8),
+    g5 = ({}.g5 + <1,e_cbb>.g9 + <1,e_td>.g10),
+    g6 = ({}.g6 + <1,e_acei>.g7 + <1,e_arb>.g9 + <1,e_td>.g11),
+    g7 = ({}.g7 + <1,e_arb>.etd + <1,e_td>.earb),
+    g8 = ({}.g8 + <1,e_arb>.ecbb + <1,e_cbb>.earb),
+    g9 = ({}.g9 + <1,e_acei>.etd + <1,e_td>.eacei),
+    g10 = ({}.g10 + <1,e_acei>.ecbb + <1,e_cbb>.eacei),
+    g11 = ({}.g11 + <1,e_acei>.earb + <1,e_arb>.eacei),
+    ecbb = ({}.ecbb + e_cbb),
+    eacei = ({}.eacei + e_acei),
+    e_acei = (?[{},{captopril},{get_benazepril}]?.empty
+	      + ?[{},{benazepril},{get_captopril}]?.empty),
+    earb = ({}.earb + e_arb),
+    e_arb = (?[{},{irbesartan},{get_olmesortan}]?.empty
+	     + ?[{},{olmesortan},{get_irbesartan}]?.empty),
+    etd = ({}.etd + e_td),
+    e_td = (?[{},{chlorothiazide},{get_indapamide}]?.empty
+	    + ?[{},{indapamide},{get_chlorothiazide}]?.empty),
+    k_doac = (?[{doac_test},{},{doac_ok}]?.empty
+	      + ?[{doac_test},{},{doac_fail}]?.empty
+	      + ?[{},{doac_test},{}]?.k_doac),
+    empty = {}.empty,
+    kafib = {afib}.empty,
+    khf = {has_fib}.empty,
+    khr = {heart_rate}.empty,
+    kcons = {consensus_acei}.empty,
+    kageA = {over75}.empty,
+    kageB = {below55}.empty,
+    kdiabete = {diabete}.empty,
+    kdoacint = {doac_int}.empty,
+    khyper = {hyper}.empty,
+    korigin = {origin}.empty
+]
+Initial Entities: {}
+Context: [
+    eafib1,
+    eafib2,
+    eafib3,
+    ghyper,
+    kafib,
+    khf,
+    empty,
+    empty,
+    empty,
+    empty,
+    empty,
+    empty,
+    khyper,
+    empty,
+    k_doac
+]
+Reactions: (
+    [{hyper}, {}, {hyper}];
+    [{afib}, {}, {afib}];
+    [{has_fib}, {}, {has_fib}];
+    [{heart_rate}, {}, {heart_rate}];
+    [{consensus_acei}, {}, {consensus_acei}];
+    [{over75}, {}, {over75}];
+    [{below55}, {}, {below55}];
+    [{diabete}, {}, {diabete}];
+    [{origin}, {}, {origin}];
+    [{doac_int}, {}, {doac_int}];
+    [{doac}, {doac_ok,doac_fail}, {doac_test}];
+    [{doac_ok}, {doac_fail}, {doac_ok}];
+    [{doac_fail}, {doac_ok}, {doac_fail}];
+    [{hyper}, {}, {diseases}];
+    [{diabete}, {}, {diseases}];
+    [{get_diltiazem}, {stop_cbb}, {diltiazem,cbb}];
+    [{diltiazem}, {stop_cbb}, {diltiazem,cbb}];
+    [{get_verapamil}, {stop_cbb}, {verapamil,cbb}];
+    [{verapamil}, {stop_cbb}, {verapamil,cbb}];
+    [{diltiazem,verapamil}, {stop_cbb}, {alert_dup}];
+    [{get_propranolol}, {stop_nsbb}, {propranolol,nsbb}];
+    [{propranolol}, {stop_nsbb}, {propranolol,nsbb}];
+    [{get_carvedilol}, {stop_nsbb}, {carvedilol,nsbb}];
+    [{carvedilol}, {stop_nsbb}, {carvedilol,nsbb}];
+    [{propranolol,carvedilol}, {stop_nsbb}, {alert_dup}];
+    [{get_bisoprolol}, {stop_sbb}, {bisoprolol,sbb}];
+    [{bisoprolol}, {stop_sbb}, {bisoprolol,sbb}];
+    [{get_atenolol}, {stop_sbb}, {atenolol,sbb}];
+    [{atenolol}, {stop_sbb}, {atenolol,sbb}];
+    [{bisoprolol,atenolol}, {stop_sbb}, {alert_dup}];
+    [{get_flecainide}, {stop_flec}, {flecainide}];
+    [{flecainide}, {stop_flec}, {flecainide}];
+    [{get_warfarin}, {stop_warf}, {warfarin}];
+    [{warfarin}, {stop_warf}, {warfarin}];
+    [{get_apixaban}, {stop_doac}, {apixaban,doac}];
+    [{apixaban}, {stop_doac}, {apixaban,doac}];
+    [{get_dabigatran}, {stop_doac}, {dabigatran,doac}];
+    [{dabigatran}, {stop_doac}, {dabigatran,doac}];
+    [{apixaban,dabigatran}, {stop_doac}, {alert_dup}];
+    [{get_vkant}, {stop_vkant}, {vkant}];
+    [{vkant}, {stop_vkant}, {vkant}];
+    [{get_benazepril}, {stop_acei}, {benazepril,acei}];
+    [{benazepril}, {stop_acei}, {benazepril,acei}];
+    [{get_captopril}, {stop_acei}, {captopril,acei}];
+    [{captopril}, {stop_acei}, {captopril,acei}];
+    [{benazepril,captopril}, {stop_acei}, {alert_dup}];
+    [{get_olmesortan}, {stop_arb}, {olmesortan,arb}];
+    [{olmesortan}, {stop_arb}, {olmesortan,arb}];
+    [{get_irbesartan}, {stop_arb}, {irbesartan,arb}];
+    [{irbesartan}, {stop_arb}, {irbesartan,arb}];
+    [{olmesortan,irbesartan}, {stop_arb}, {alert_dup}];
+    [{get_indapamide}, {stop_td}, {indapamide,td}];
+    [{indapamide}, {stop_td}, {indapamide,td}];
+    [{get_chlorothiazide}, {stop_td}, {chlorothiazide,td}];
+    [{chlorothiazide}, {stop_td}, {chlorothiazide,td}];
+    [{indapamide,chlorothiazide}, {stop_td}, {alert_dup}];
+    [{doac,doac_fail}, {stop_doac}, {doac_danger}];
+    [{doac,doac_danger}, {stop_doac}, {danger}];
+    [{get_apixaban,get_diltiazem}, {}, {moderate}];
+    [{get_apixaban,diltiazem}, {}, {moderate}];
+    [{apixaban,get_diltiazem}, {}, {moderate}];
+    [{apixaban,diltiazem}, {}, {moderate}];
+    [{get_apixaban,get_verapamil}, {}, {moderate}];
+    [{get_apixaban,verapamil}, {}, {moderate}];
+    [{apixaban,get_verapamil}, {}, {moderate}];
+    [{apixaban,verapamil}, {}, {moderate}];
+    [{get_dabigatran,get_diltiazem}, {}, {moderate}];
+    [{get_dabigatran,diltiazem}, {}, {moderate}];
+    [{dabigatran,get_diltiazem}, {}, {moderate}];
+    [{dabigatran,diltiazem}, {}, {moderate}];
+    [{get_dabigatran,get_verapamil}, {}, {major}];
+    [{get_dabigatran,verapamil}, {}, {major}];
+    [{dabigatran,get_verapamil}, {}, {major}];
+    [{dabigatran,verapamil}, {}, {major}];
+    [{get_dabigatran,get_carvedilol}, {}, {moderate}];
+    [{get_dabigatran,carvedilol}, {}, {moderate}];
+    [{dabigatran,get_carvedilol}, {}, {moderate}];
+    [{dabigatran,carvedilol}, {}, {moderate}];
+    [{get_warfarin,get_benazepril}, {}, {minor}];
+    [{get_warfarin,benazepril}, {}, {minor}];
+    [{warfarin,get_benazepril}, {}, {minor}];
+    [{warfarin,benazepril}, {}, {minor}];
+    [{get_warfarin,get_indapamide}, {}, {minor}];
+    [{get_warfarin,indapamide}, {}, {minor}];
+    [{warfarin,get_indapamide}, {}, {minor}];
+    [{warfarin,indapamide}, {}, {minor}];
+    [{get_warfarin,get_chlorothiazide}, {}, {minor}];
+    [{get_warfarin,chlorothiazide}, {}, {minor}];
+    [{warfarin,get_chlorothiazide}, {}, {minor}];
+    [{warfarin,chlorothiazide}, {}, {minor}];
+    [{get_warfarin,get_propranolol}, {}, {minor}];
+    [{get_warfarin,propranolol}, {}, {minor}];
+    [{warfarin,get_propranolol}, {}, {minor}];
+    [{warfarin,propranolol}, {}, {minor}];
+    [{get_flecainide,get_diltiazem}, {}, {major}];
+    [{get_flecainide,diltiazem}, {}, {major}];
+    [{flecainide,get_diltiazem}, {}, {major}];
+    [{flecainide,diltiazem}, {}, {major}];
+    [{get_flecainide,get_verapamil}, {}, {major}];
+    [{get_flecainide,verapamil}, {}, {major}];
+    [{flecainide,get_verapamil}, {}, {major}];
+    [{flecainide,verapamil}, {}, {major}];
+    [{get_flecainide,get_bisoprolol}, {}, {moderate}];
+    [{get_flecainide,bisoprolol}, {}, {moderate}];
+    [{flecainide,get_bisoprolol}, {}, {moderate}];
+    [{flecainide,bisoprolol}, {}, {moderate}];
+    [{get_flecainide,get_atenolol}, {}, {moderate}];
+    [{get_flecainide,atenolol}, {}, {moderate}];
+    [{flecainide,get_atenolol}, {}, {moderate}];
+    [{flecainide,atenolol}, {}, {moderate}];
+    [{get_flecainide,get_propranolol}, {}, {moderate}];
+    [{get_flecainide,propranolol}, {}, {moderate}];
+    [{flecainide,get_propranolol}, {}, {moderate}];
+    [{flecainide,propranolol}, {}, {moderate}];
+    [{get_flecainide,get_carvedilol}, {}, {moderate}];
+    [{get_flecainide,carvedilol}, {}, {moderate}];
+    [{flecainide,get_carvedilol}, {}, {moderate}];
+    [{flecainide,carvedilol}, {}, {moderate}];
+    [{major}, {}, {major}];
+    [{moderate}, {}, {moderate}];
+    [{minor}, {}, {minor}];
+    [{alert_dup}, {}, {alert_dup}];
+    [{danger},{},{danger}]
+)
+

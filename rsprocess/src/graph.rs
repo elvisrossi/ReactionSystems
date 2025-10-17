@@ -4,6 +4,7 @@ use std::rc::Rc;
 
 use petgraph::visit::{IntoEdgeReferences, IntoNodeReferences};
 use petgraph::{Directed, Graph};
+use serde::{Deserialize, Serialize};
 
 use super::element::IdType;
 use super::label::Label;
@@ -97,7 +98,7 @@ common_label!(
 // Nodes -----------------------------------------------------------------------
 
 /// Helper structure that specifies what information to display for nodes.
-#[derive(Clone)]
+#[derive(Clone, Debug, Serialize, Deserialize, Hash)]
 pub enum NodeDisplayBase {
     String { string: String },
     Hide,
@@ -109,6 +110,7 @@ pub enum NodeDisplayBase {
     MaskUncommonEntities { mask: Set },
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize, Hash)]
 pub struct NodeDisplay {
     pub base: Vec<NodeDisplayBase>,
 }
@@ -183,7 +185,7 @@ impl NodeDisplay {
 
 // Edges -----------------------------------------------------------------------
 
-#[derive(Clone)]
+#[derive(Clone, Debug, Serialize, Deserialize, Hash)]
 pub enum EdgeDisplayBase {
     String {
         string: String,
@@ -219,6 +221,7 @@ pub enum EdgeDisplayBase {
     },
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize, Hash)]
 pub struct EdgeDisplay {
     pub base: Vec<EdgeDisplayBase>,
 }
@@ -481,7 +484,7 @@ type RSformatNodeTyOpt<'a> = dyn Fn(
     ) -> Option<String>
     + 'a;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, Hash)]
 pub enum OperationType {
     Equals,
     Subset,
@@ -502,7 +505,7 @@ impl OperationType {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, Serialize, Deserialize, Hash)]
 pub enum ContextColorConditional {
     Nill,
     RecursiveIdentifier(IdType),
@@ -512,13 +515,13 @@ pub enum ContextColorConditional {
     WaitEntity,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, Serialize, Deserialize, Hash)]
 pub enum NodeColorConditional {
     ContextConditional(ContextColorConditional),
     EntitiesConditional(OperationType, Set),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, Serialize, Deserialize, Hash)]
 pub struct NodeColor {
     pub conditionals: Vec<(NodeColorConditional, String)>,
     pub base_color:   String,
@@ -620,7 +623,7 @@ type RSformatEdgeTyOpt<'a> = dyn Fn(
     ) -> Option<String>
     + 'a;
 
-#[derive(Clone)]
+#[derive(Clone, Debug, Serialize, Deserialize, Hash)]
 pub enum EdgeColorConditional {
     Entities(OperationType, Set),
     Context(OperationType, Set),
@@ -632,7 +635,7 @@ pub enum EdgeColorConditional {
     Products(OperationType, Set),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, Serialize, Deserialize, Hash)]
 pub struct EdgeColor {
     pub conditionals: Vec<(EdgeColorConditional, String)>,
     pub base_color:   String,

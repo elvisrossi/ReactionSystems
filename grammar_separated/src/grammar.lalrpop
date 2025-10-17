@@ -1,0 +1,313 @@
+use std::rc::Rc;
+use std::str::FromStr;
+use lalrpop_util::ParseError;
+
+// use assert::{relabel, grouping};
+use rsprocess::{set, reaction, process, environment, system, label};
+use rsprocess::element::IdType;
+use rsprocess::translator::Translator;
+// use execution::presets;
+// use rsprocess::graph;
+use crate::custom_error;
+
+grammar(translator: &mut Translator);
+
+extern {
+    type Error = custom_error::UserError;
+}
+
+// -----------------------------------------------------------------------------
+//                                  Helpers
+// -----------------------------------------------------------------------------
+
+// order
+match {
+    "!", "(", ")", "+", ",", "-", ".", ":", ";", "<", "<=", "=", "==", ">",
+    ">=", "?", "AbsentReactants", "Bisimilarity", "Context",
+    "Context.EntitySet", "Context.Nill", "Context.NonDeterministicChoice",
+    "Context.RecursiveIdentifier", "Context.Summation", "Context.WaitEntity",
+    "Deserialize", "Difference", "Digraph", "Dot", "Entities", "EntitiesAdded",
+    "EntitiesDeleted", "Environment", "ExcludeEntities", "FastFrequency",
+    "GraphML", "Grequency", "Hide", "Inhibitors", "InhibitorsPresent", "Initial
+    Entities", "Limit", "LimitFrequency", "Loop", "MaskContext",
+    "MaskDifference", "MaskEntities", "MaskEntitiesAdded",
+    "MaskEntitiesDeleted", "MaskProducts", "MaskUncommonEntities", "MaskUnion",
+    "PresentInhibitors", "Print", "Products", "Reactants", "ReactantsAbsent",
+    "Reactions", "Run", "Save", "Serialize", "Sets", "Stats", "T", "Target",
+    "UncommonContext", "UncommonDifference", "UncommonEntities",
+    "UncommonEntitiesAdded", "UncommonEntitiesDeleted", "UncommonMaskContext",
+    "UncommonMaskDifference", "UncommonMaskEntities",
+    "UncommonMaskEntitiesAdded", "UncommonMaskEntitiesDeleted",
+    "UncommonMaskProducts", "UncommonMaskUnion", "UncommonProducts",
+    "UncommonUnion", "Union", "Weights", "[", "]", "i:", "nill", "p:", "r:",
+    "relabel", "{", "|", "}", "⊂", "⊃", "⊆", "⊇",
+} else {
+    r"[0-9]+" => NUMBER
+} else {
+    r"([[:alpha:]])([[:word:]])*" => WORD
+    // r"(\p{L}|\p{Emoji})(\p{L}|\p{Emoji}|\p{Dash}|\p{N})*" => WORD,
+} else {
+    r#""[^"]+""# => PATH, // " <- ignore comment, its for the linter in emacs
+} else {
+    _
+}
+
+// matches words (letter followed by numbers, letters or _)
+Literal: String = {
+    WORD => <>.into(),
+};
+
+LiteralProcess: String = {
+    Literal => <>,
+    "AbsentReactants" => <>.into(),
+    "Bisimilarity" => <>.into(),
+    "Context" => <>.into(),
+    "Context.EntitySet" => <>.into(),
+    "Context.Nill" => <>.into(),
+    "Context.NonDeterministicChoice" => <>.into(),
+    "Context.RecursiveIdentifier" => <>.into(),
+    "Context.Summation" => <>.into(),
+    "Context.WaitEntity" => <>.into(),
+    "Deserialize" => <>.into(),
+    "Difference" => <>.into(),
+    "Digraph" => <>.into(),
+    "Dot" => <>.into(),
+    "Entities" => <>.into(),
+    "EntitiesAdded" => <>.into(),
+    "EntitiesDeleted" => <>.into(),
+    "Environment" => <>.into(),
+    "ExcludeEntities" => <>.into(),
+    "FastFrequency" => <>.into(),
+    "GraphML" => <>.into(),
+    "Grequency" => <>.into(),
+    "Hide" => <>.into(),
+    "Inhibitors" => <>.into(),
+    "InhibitorsPresent" => <>.into(),
+    "Initial" => <>.into(),
+    "Limit" => <>.into(),
+    "LimitFrequency" => <>.into(),
+    "Loop" => <>.into(),
+    "MaskContext" => <>.into(),
+    "MaskDifference" => <>.into(),
+    "MaskEntities" => <>.into(),
+    "MaskEntitiesAdded" => <>.into(),
+    "MaskEntitiesDeleted" => <>.into(),
+    "MaskProducts" => <>.into(),
+    "MaskUncommonEntities" => <>.into(),
+    "MaskUnion" => <>.into(),
+    "PresentInhibitors" => <>.into(),
+    "Print" => <>.into(),
+    "Products" => <>.into(),
+    "Reactants" => <>.into(),
+    "ReactantsAbsent" => <>.into(),
+    "Reactions" => <>.into(),
+    "Run" => <>.into(),
+    "Save" => <>.into(),
+    "Serialize" => <>.into(),
+    "Sets" => <>.into(),
+    "Stats" => <>.into(),
+    "T" => <>.into(),
+    "Target" => <>.into(),
+    "UncommonContext" => <>.into(),
+    "UncommonDifference" => <>.into(),
+    "UncommonEntities" => <>.into(),
+    "UncommonEntitiesAdded" => <>.into(),
+    "UncommonEntitiesDeleted" => <>.into(),
+    "UncommonMaskContext" => <>.into(),
+    "UncommonMaskDifference" => <>.into(),
+    "UncommonMaskEntities" => <>.into(),
+    "UncommonMaskEntitiesAdded" => <>.into(),
+    "UncommonMaskEntitiesDeleted" => <>.into(),
+    "UncommonMaskProducts" => <>.into(),
+    "UncommonMaskUnion" => <>.into(),
+    "UncommonProducts" => <>.into(),
+    "UncommonUnion" => <>.into(),
+    "Union" => <>.into(),
+    "Weights" => <>.into(),
+    "relabel" => <>.into(),
+};
+
+Num: i64 = {
+    <sign: "-"?> <start: @L> <n: NUMBER> <end: @R> =>? {
+        if sign.is_some() {
+            i64::from_str(n)
+                  .map(|n| -n)
+                  .map_err(|_| ParseError::User {
+                      error: custom_error::UserError {
+                          token: (start, n.into(), end),
+                          error: custom_error::UserErrorTypes::NumberTooBigi64
+                      }
+                  })
+        } else {
+            i64::from_str(n)
+                  .map_err(|_| ParseError::User {
+                      error: custom_error::UserError {
+                          token: (start, n.into(), end),
+                          error: custom_error::UserErrorTypes::NumberTooBigi64
+                      }
+                  })
+        }
+
+    }
+};
+
+NumUsize: usize = {
+    <start: @L> <n: NUMBER> <end: @R> =>? usize::from_str(n)
+               .map_err(|_| ParseError::User {
+                   error: custom_error::UserError {
+                       token: (start, n.into(), end),
+                       error: custom_error::UserErrorTypes::NumberTooBigUsize
+                   }
+               })
+};
+
+Path: String = {
+    PATH => <>.trim_end_matches("\"").trim_start_matches("\"").to_string()
+};
+
+// macro for matching sequence of patterns with C as separator
+Separated<T, C>: Vec<T> = {
+    <mut v:(<T> C)+> <e:T?> => match e {
+        None => v,
+        Some(e) => {
+            v.push(e);
+            v
+        }
+    }
+};
+
+Separated_Or<T, C>: Vec<T> = {
+    <v: T> => vec![v],
+    <v: Separated<T, C>> => v
+}
+
+Separated_Empty<LP, T, C, RP>: Vec<T> = {
+    LP RP => vec![],
+    LP <v: T> RP => vec![v],
+    LP <v: Separated<T, C>> RP => v
+}
+
+// -----------------------------------------------------------------------------
+//                                 SetParser
+// -----------------------------------------------------------------------------
+
+pub Set: set::Set = {
+    <s: Separated_Empty<"{", Literal, ",", "}">> =>
+        set::Set::from(s.into_iter().map(|t| translator.encode(t))
+                           .collect::<Vec<_>>())
+};
+
+
+// -----------------------------------------------------------------------------
+//                               ReactionParser
+// -----------------------------------------------------------------------------
+
+pub Reactions: Vec<reaction::Reaction> = {
+    <s: Separated_Empty<"(", Reaction, ";", ")">> => s
+}
+
+Reaction: reaction::Reaction = {
+    #[precedence(level="1")]
+    "[" <r: Set> "," <i: Set> "," <p: Set> "]" =>
+        reaction::Reaction::from(r, i, p),
+
+    #[precedence(level="0")]
+    "[" "r:" <r: Set> "," "i:" <i: Set> "," "p:" <p: Set> "]" =>
+        reaction::Reaction::from(r, i, p),
+}
+
+
+// -----------------------------------------------------------------------------
+//                               ContextParser
+// -----------------------------------------------------------------------------
+pub Context: process::Process = {
+    <t: Separated_Empty<"[", ContextProcess, ",", "]">> =>
+        process::Process::NondeterministicChoice{
+            children: t.into_iter().map(Rc::new).collect::<Vec<_>>()
+        }
+};
+
+ContextProcess: process::Process = {
+    "nill" => process::Process::Nill,
+
+    <c: Set> "." <k: ContextProcess> =>
+        process::Process::EntitySet{ entities: c, next_process: Rc::new(k) },
+
+    "(" <k: ContextProcess>  ")" => k,
+
+    "(" <k: Separated<ContextProcess, "+">> ")" =>
+        process::Process::Summation{
+            children: k.into_iter().map(Rc::new).collect::<Vec<_>>()
+        },
+
+    "?" <r: Reaction> "?" "." <k: ContextProcess> =>
+        process::Process::Guarded{ reaction: r, next_process: Rc::new(k) },
+
+    "<" <n: Num> "," <k1: ContextProcess> ">" "." <k: ContextProcess> =>
+        process::Process::WaitEntity{ repeat: n,
+                                      repeated_process: Rc::new(k1),
+                                      next_process: Rc::new(k) },
+
+    <identifier: LiteralProcess> =>
+        process::Process::RecursiveIdentifier{
+            identifier: translator.encode(identifier)
+        }
+};
+
+
+// -----------------------------------------------------------------------------
+//                             EnvironmentParser
+// -----------------------------------------------------------------------------
+pub Environment: Box<environment::Environment> = {
+    <t: Separated_Empty<"[", Env_term, ",", "]">> =>
+        Box::new(environment::Environment::from(t))
+};
+
+Env_term: (IdType, process::Process) = {
+    <identifier: LiteralProcess> "=" <k: ContextProcess> =>
+        (translator.encode(identifier), k)
+};
+
+// -----------------------------------------------------------------------------
+//                                LabelParser
+// -----------------------------------------------------------------------------
+
+pub Label: label::Label = {
+    "["
+       "Entities" ":" <e: Set> ","
+       "Context" ":" <c: Set> ","
+       "Reactants" ":" <r: Set> ","
+       "ReactantsAbsent" ":" <r_a: Set> ","
+       "Inhibitors" ":" <i: Set> ","
+       "InhibitorsPresent" ":" <i_p: Set> ","
+       "Products" ":" <p: Set> ","?
+    "]" => label::Label::create(e, c, r, r_a, i, i_p, p)
+}
+
+
+// ----------------------------------------------------------------------------
+//                                File Parsing
+// ----------------------------------------------------------------------------
+
+// system
+// a system is an environment, a set of entities as initial state, a context and
+// a set of reaction rules.
+pub System: system::System = {
+    "Environment" ":" <delta: Environment>
+    "Initial Entities" ":" <available_entities: Set>
+    "Context" ":" <context_process: Context>
+    "Reactions" ":" <reaction_rules: Reactions>
+        => system::System::from(delta.into(),
+                                available_entities,
+                                context_process,
+                                Rc::new(reaction_rules))
+}
+
+// experiment
+// an experiment is composed by a sequence of weights and a sequence of sets of
+// entities of equal length.
+pub Experiment: (Vec<u32>, Vec<set::Set>) = {
+    "Weights" ":" <w: Separated_Or<Num, ",">>
+    "Sets" ":" <s: Separated_Or<Set, ",">>
+        => (w.into_iter().map(|x| x as u32).collect::<Vec<_>>(), s),
+}

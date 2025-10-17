@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use serde::{Serialize, Deserialize};
 
 use rsprocess::translator::PrintableWithTranslator;
 use rsprocess::{graph, label, set, system, translator};
@@ -46,13 +47,13 @@ pub mod useful_types_edge_relabeler {
 
 // Implementation for graph labeling in bisimulation.
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum EdgeRelablerInput {
     Label,
     Edge,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 enum EdgeRelablerInputValues {
     Label(label::Label),
     Edge(petgraph::graph::EdgeIndex),
@@ -211,13 +212,13 @@ pub mod useful_types_node_relabeler {
     pub type Special = super::NodeRelablerInput;
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum NodeRelablerInput {
     Entities,
     Node,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 enum NodeRelablerInputValues {
     Entities(set::Set),
     Node(petgraph::graph::NodeIndex),

@@ -1,0 +1,302 @@
+use std::rc::Rc;
+use std::str::FromStr;
+use lalrpop_util::ParseError;
+
+use assert::{relabel, grouping};
+use rsprocess::{set, reaction, process, environment, system, label};
+use rsprocess::element::IdType;
+use rsprocess::translator::Translator;
+use execution::presets;
+use rsprocess::graph;
+use crate::custom_error;
+
+grammar(translator: &mut Translator);
+
+extern {
+    type Error = custom_error::UserError;
+}
+
+
+// -----------------------------------------------------------------------------
+//                                  Helpers
+// -----------------------------------------------------------------------------
+
+// order
+match {
+    "!",
+} else {
+    r"[0-9]+" => NUMBER
+} else {
+    r"([[:alpha:]])([[:word:]])*" => WORD
+    // r"(\p{L}|\p{Emoji})(\p{L}|\p{Emoji}|\p{Dash}|\p{N})*" => WORD,
+} else {
+    r#""[^"]+""# => PATH, // " <- ignore comment, its for the linter in emacs
+} else {
+    _
+}
+
+// matches words (letter followed by numbers, letters or _)
+Literal: String = {
+    WORD => <>.into(),
+};
+
+Num: i64 = {
+    <sign: "-"?> <start: @L> <n: NUMBER> <end: @R> =>? {
+        if sign.is_some() {
+            i64::from_str(n)
+                  .map(|n| -n)
+                  .map_err(|_| ParseError::User {
+                      error: custom_error::UserError {
+                          token: (start, n.into(), end),
+                          error: custom_error::UserErrorTypes::NumberTooBigi64
+                      }
+                  })
+        } else {
+            i64::from_str(n)
+                  .map_err(|_| ParseError::User {
+                      error: custom_error::UserError {
+                          token: (start, n.into(), end),
+                          error: custom_error::UserErrorTypes::NumberTooBigi64
+                      }
+                  })
+        }
+
+    }
+};
+
+// macro for matching sequence of patterns with C as separator
+Separated<T, C>: Vec<T> = {
+    <mut v:(<T> C)+> <e:T?> => match e {
+        None => v,
+        Some(e) => {
+            v.push(e);
+            v
+        }
+    }
+};
+
+Separated_Or<T, C>: Vec<T> = {
+    <v: T> => vec![v],
+    <v: Separated<T, C>> => v
+}
+
+Separated_Empty<LP, T, C, RP>: Vec<T> = {
+    LP RP => vec![],
+    LP <v: T> RP => vec![v],
+    LP <v: Separated<T, C>> RP => v
+}
+
+// -----------------------------------------------------------------------------
+//                                 SetParser
+// -----------------------------------------------------------------------------
+
+pub Set: set::Set = {
+    <s: Separated_Empty<"{", Literal, ",", "}">> =>
+        set::Set::from(t.into_iter().map(|t| translator.encode(t))
+                           .collect::<Vec<_>>())
+};
+
+// -----------------------------------------------------------------------------
+//                                LabelParser
+// -----------------------------------------------------------------------------
+
+pub Label: label::Label = {
+    "["
+       "Entities" ":" <e: Set> ","
+       "Context" ":" <c: Set> ","
+       "Reactants" ":" <r: Set> ","
+       "ReactantsAbsent" ":" <r_a: Set> ","
+       "Inhibitors" ":" <i: Set> ","
+       "InhibitorsPresent" ":" <i_p: Set> ","
+       "Products" ":" <p: Set> ","?
+    "]" => label::Label::create(e, c, r, r_a, i, i_p, p)
+}
+
+
+// -----------------------------------------------------------------------------
+//                               GroupingParser
+// -----------------------------------------------------------------------------
+Group: Box<grouping::Assert> = {
+     ">" "node" "{" <f: GroupTree> "}" =>
+        Box::new(grouping::Assert{tree: f}),
+};
+
+GroupTree: grouping::Tree = {
+    <t1: GroupTree2> <t2: GroupTree> =>
+        grouping::Tree::Concat(Box::new(t1), Box::new(t2)),
+    <t: GroupTree2> => t,
+}
+
+GroupTree2: grouping::Tree = {
+    #[precedence(level="1")]
+    "if" <e: GroupExpression>
+    "then" "{" <t: GroupTree> "}" ";"? =>
+        grouping::Tree::If(Box::new(e), Box::new(t)),
+
+    #[precedence(level="0")]
+    "if" <e: GroupExpression>
+    "then" "{" <t1: GroupTree> "}"
+    "else" "{" <t2: GroupTree> "}" ";"? =>
+        grouping::Tree::IfElse(Box::new(e), Box::new(t1), Box::new(t2)),
+
+    "let" <v: GroupVariable> <q: GroupQualifier?> "=" <e: GroupExpression> ";"
+        => grouping::Tree::Assignment(v, q, Box::new(e)),
+
+    "return" <e: GroupExpression> ";" =>
+        grouping::Tree::Return(Box::new(e)),
+
+    "for" <v: GroupVariable> "in" <r: GroupRange> "{" <t: GroupTree> "}" ";"? =>
+        grouping::Tree::For(v, r, Box::new(t)),
+}
+
+GroupVariable: grouping::Variable = {
+    #[precedence(level="0")]
+    "entities" => grouping::Variable::Special(grouping::Special::Entities),
+    "node"  => grouping::Variable::Special(grouping::Special::Node),
+    #[precedence(level="1")]
+    <v: Literal> => grouping::Variable::Id(v),
+}
+
+GroupExpression: grouping::Expression = {
+    #[precedence(level="100")]
+    <unp: GroupUnaryPrefix> "(" <e: GroupExpression> ")" =>
+        grouping::Expression::Unary(unp, Box::new(e)),
+
+    #[precedence(level="50")]
+    <e: GroupExpression> "." <uns: GroupUnarySuffix> =>
+        grouping::Expression::Unary(uns, Box::new(e)),
+
+    #[precedence(level="100")] #[assoc(side="left")]
+    <e1: GroupExpression> <b: GroupBinary> <e2: GroupExpression> =>
+        grouping::Expression::Binary(b, Box::new(e1), Box::new(e2)),
+
+    #[precedence(level="100")]
+    <b: GroupBinaryPrefix>
+    "(" <e1: GroupExpression> "," <e2: GroupExpression> ")" =>
+        grouping::Expression::Binary(b, Box::new(e1), Box::new(e2)),
+
+    #[precedence(level="0")]
+    <t: GroupTerm> => t,
+}
+
+GroupTerm: grouping::Expression = {
+    "true" => grouping::Expression::True,
+    "false" => grouping::Expression::False,
+
+    <v: GroupVariable> => grouping::Expression::Var(v),
+
+    // If changing IntegerType in assert.rs, also change from Num to another
+    // similar parser with different return type
+    <i: Num> => grouping::Expression::Integer(i),
+
+    <lab: Label> => grouping::Expression::Label(Box::new(lab)),
+    <set: Set> => grouping::Expression::Set(set),
+    "'" <el: Literal> "'" =>
+        grouping::Expression::Element(translator.encode(el)),
+
+    // strings
+    PATH => grouping::Expression::String(<>.trim_end_matches("\"")
+                                         .trim_start_matches("\"")
+                                         .to_string()),
+    // allow arbitrary parenthesis
+    "(" <e: GroupExpression> ")" => e,
+}
+
+#[inline]
+GroupRange: grouping::Range = {
+    "{" <e: GroupExpression> "}" =>
+        grouping::Range::IterateOverSet(Box::new(e)),
+    "{" <e1: GroupExpression> ".." <e2: GroupExpression> "}" =>
+        grouping::Range::IterateInRange(Box::new(e1), Box::new(e2)),
+}
+
+#[inline]
+GroupUnaryPrefix: grouping::Unary = {
+    "not" => grouping::Unary::Not,
+    "rand" => grouping::Unary::Rand,
+}
+
+#[inline]
+GroupUnarySuffix: grouping::Unary = {
+    #[precedence(level="0")]
+    "empty" => grouping::Unary::Empty,
+    "length" => grouping::Unary::Length,
+    "tostr" => grouping::Unary::ToStr,
+    "toel" => grouping::Unary::ToEl,
+
+    #[precedence(level="1")]
+    <q: GroupQualifier> => grouping::Unary::Qualifier(q),
+}
+
+#[inline]
+GroupQualifierRestricted: grouping::QualifierRestricted = {
+    "Entities" => grouping::QualifierRestricted::Entities,
+    "Context" => grouping::QualifierRestricted::Context,
+    "Reactants" => grouping::QualifierRestricted::Reactants,
+    "ReactantsAbsent" => grouping::QualifierRestricted::ReactantsAbsent,
+    "Inhibitors" => grouping::QualifierRestricted::Inhibitors,
+    "InhibitorsPresent" => grouping::QualifierRestricted::InhibitorsPresent,
+    "Products" => grouping::QualifierRestricted::Products,
+}
+
+#[inline]
+GroupQualifierLabel: grouping::QualifierLabel = {
+    "AvailableEntities" => grouping::QualifierLabel::AvailableEntities,
+    "AllReactants" => grouping::QualifierLabel::AllReactants,
+    "AllInhibitors" => grouping::QualifierLabel::AllInhibitors,
+}
+
+#[inline]
+GroupQualifierSystem: grouping::QualifierSystem = {
+    "SystemEntities" => grouping::QualifierSystem::Entities,
+    "SystemContext" => grouping::QualifierSystem::Context,
+}
+
+#[inline]
+GroupQualifierEdge: grouping::QualifierEdge = {
+    "source" => grouping::QualifierEdge::Source,
+    "target" => grouping::QualifierEdge::Target,
+}
+
+#[inline]
+GroupQualifierNode: grouping::QualifierNode = {
+    "neighbours" => grouping::QualifierNode::Neighbours,
+    "system" => grouping::QualifierNode::System,
+}
+
+#[inline]
+GroupQualifier: grouping::Qualifier = {
+    <q: GroupQualifierSystem> => grouping::Qualifier::System(q),
+    <q: GroupQualifierLabel> => grouping::Qualifier::Label(q),
+    <q: GroupQualifierRestricted> => grouping::Qualifier::Restricted(q),
+    <q: GroupQualifierEdge> => grouping::Qualifier::Edge(q),
+    <q: GroupQualifierNode> => grouping::Qualifier::Node(q),
+}
+
+#[inline]
+GroupBinary: grouping::Binary = {
+    "&&" => grouping::Binary::And,
+    "||" => grouping::Binary::Or,
+    "^^" => grouping::Binary::Xor,
+    "<" => grouping::Binary::Less,
+    "<=" => grouping::Binary::LessEq,
+    ">" => grouping::Binary::More,
+    ">=" => grouping::Binary::MoreEq,
+    "==" => grouping::Binary::Eq,
+    "!=" => grouping::Binary::NotEq,
+    "+" => grouping::Binary::Plus,
+    "-" => grouping::Binary::Minus,
+    "*" => grouping::Binary::Times,
+    "^" => grouping::Binary::Exponential,
+    "/" => grouping::Binary::Quotient,
+    "%" => grouping::Binary::Reminder,
+    "::" => grouping::Binary::Concat,
+}
+
+#[inline]
+GroupBinaryPrefix: grouping::Binary = {
+    "substr" => grouping::Binary::SubStr,
+    "min" => grouping::Binary::Min,
+    "max" => grouping::Binary::Max,
+    "commonsubstr" => grouping::Binary::CommonSubStr,
+}

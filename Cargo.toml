@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = [ "analysis", "assert", "bisimilarity", "execution","grammar", "rsprocess"]
+members = [ "analysis", "assert", "bisimilarity", "execution","grammar", "rsprocess", "grammar_separated" ]
 exclude = ["*.system", "*.experiment", "/testing/", "*.serial", "*.dot", "*.trace", "*.svg"]
 
 [profile.dev]
