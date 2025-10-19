@@ -7,5 +7,5 @@ edition = "2024"
 rand = { version = "*" }
 rsprocess = { path = "../rsprocess/" }
 serde = { version = ">=1"}
-petgraph = { version = "*", features = ["serde-1"] }
+petgraph = { version = ">=0.8", features = ["serde-1"] }
 petgraph-graphml = { version = "*" }

@@ -8,6 +8,6 @@ rsprocess = { path = "../rsprocess/" }
 assert = { path = "../assert/" }
 bisimilarity = { path = "../bisimilarity/" }
 colored = { version = "*" }
-petgraph = { version = "0.8", features = ["serde-1"] }
+petgraph = { version = ">=0.8", features = ["serde-1"] }
 petgraph-graphml = { version = "*" }
 lalrpop-util = { version = "*", features = ["lexer", "unicode"] }

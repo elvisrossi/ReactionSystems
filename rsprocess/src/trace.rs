@@ -80,7 +80,7 @@ impl<L, Sys, I: SliceIndex<[TraceElement<L, Sys>]>> IndexMut<I>
 // -----------------------------------------------------------------------------
 //                               Slicing Trace
 // -----------------------------------------------------------------------------
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Hash)]
 pub struct SlicingElement<S> {
     pub context: S,
     pub reaction_products: S,
@@ -130,7 +130,7 @@ where
     }
 }
 
-#[derive(Clone, Default, Debug)]
+#[derive(Clone, Default, Debug, Hash)]
 pub struct EnabledReactions {
     pub data: Vec<usize>,
 }
@@ -190,7 +190,7 @@ impl EnabledReactions {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, Hash)]
 pub struct SlicingTrace<
     S: BasicSet,
     R: BasicReaction<Set = S>,
