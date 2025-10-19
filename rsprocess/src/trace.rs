@@ -3,6 +3,8 @@ use std::ops::{Index, IndexMut};
 use std::rc::Rc;
 use std::slice::SliceIndex;
 
+use serde::{Deserialize, Serialize};
+
 use crate::reaction::{BasicReaction, PositiveReaction, Reaction};
 use crate::set::{BasicSet, PositiveSet, Set};
 use crate::system::{BasicSystem, PositiveSystem, System};
@@ -80,7 +82,7 @@ impl<L, Sys, I: SliceIndex<[TraceElement<L, Sys>]>> IndexMut<I>
 // -----------------------------------------------------------------------------
 //                               Slicing Trace
 // -----------------------------------------------------------------------------
-#[derive(Clone, Default, Hash)]
+#[derive(Clone, Default, Hash, Serialize, Deserialize)]
 pub struct SlicingElement<S> {
     pub context: S,
     pub reaction_products: S,
@@ -130,7 +132,7 @@ where
     }
 }
 
-#[derive(Clone, Default, Debug, Hash)]
+#[derive(Clone, Default, Debug, Hash, Serialize, Deserialize)]
 pub struct EnabledReactions {
     pub data: Vec<usize>,
 }
@@ -190,12 +192,10 @@ impl EnabledReactions {
     }
 }
 
-#[derive(Clone, Debug, Hash)]
-pub struct SlicingTrace<
-    S: BasicSet,
-    R: BasicReaction<Set = S>,
-    Sys: BasicSystem<Set = S, Reaction = R>,
-> {
+
+#[derive(Clone, Debug, Hash, Serialize, Deserialize)]
+pub struct SlicingTrace<S, R, Sys>
+{
     pub elements: Vec<SlicingElement<S>>,
     pub enabled_reactions: Vec<EnabledReactions>,
 
@@ -206,12 +206,7 @@ pub struct SlicingTrace<
     pub products_elements: Rc<S>,
 }
 
-impl<
-    S: BasicSet,
-    R: BasicReaction<Set = S>,
-    Sys: BasicSystem<Set = S, Reaction = R>,
-> Default for SlicingTrace<S, R, Sys>
-{
+impl<S: Default, R, Sys> Default for SlicingTrace<S, R, Sys> {
     fn default() -> Self {
         Self {
             elements: Vec::default(),
@@ -224,12 +219,7 @@ impl<
     }
 }
 
-impl<
-    S: BasicSet + Debug,
-    R: BasicReaction<Set = S>,
-    Sys: BasicSystem<Set = S, Reaction = R>,
-> SlicingTrace<S, R, Sys>
-{
+impl<S, R, Sys> SlicingTrace<S, R, Sys> {
     pub fn is_empty(&self) -> bool {
         self.elements.is_empty()
     }
