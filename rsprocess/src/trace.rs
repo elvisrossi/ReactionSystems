@@ -400,31 +400,38 @@ impl<
             Formatter::from(translator, &*self.products_elements)
         )?;
 
+        writeln!(f, "Trace:")?;
+
         let mut elements = self.elements.iter().peekable();
         let mut enabled_reactions = self.enabled_reactions.iter();
 
-        writeln!(f, "Trace:")?;
         while let Some(el) = elements.next() {
             if let Some(r) = enabled_reactions.next() {
+                let reaction_string = format!("{}", Formatter::from(translator, r));
+                let reaction_string = if reaction_string.is_empty() {
+                    "( )"
+                } else {
+                    &format!("({})", reaction_string)
+                };
                 if elements.peek().is_some() {
                     writeln!(
                         f,
-                        "{}\n\t\t|\n{: ^17}\n\t\t|\n\t\tv",
+                        "{}\n        |\n{: ^18}\n        |\n        v",
                         Formatter::from(translator, el),
-                        format!("({})", Formatter::from(translator, r)),
+                        reaction_string,
                     )?;
                 } else {
                     writeln!(
                         f,
-                        "{}\n\t\t|\n{: ^17}\n\t\t|\n\t\t?",
+                        "{}\n        |\n{: ^18}\n        |\n        ?",
                         Formatter::from(translator, el),
-                        format!("({})", Formatter::from(translator, r)),
+                        reaction_string,
                     )?;
                 }
             } else if elements.peek().is_some() {
                 writeln!(
                     f,
-                    "{}\n\t\t|\n\t\t|\n\t\t|\n\t\tv",
+                    "{}\n        |\n        |\n        |\n        v",
                     Formatter::from(translator, el)
                 )?;
             } else {
