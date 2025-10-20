@@ -192,10 +192,8 @@ impl EnabledReactions {
     }
 }
 
-
 #[derive(Clone, Debug, Hash, Serialize, Deserialize)]
-pub struct SlicingTrace<S, R, Sys>
-{
+pub struct SlicingTrace<S, R, Sys> {
     pub elements: Vec<SlicingElement<S>>,
     pub enabled_reactions: Vec<EnabledReactions>,
 
@@ -411,14 +409,14 @@ impl<
                 if elements.peek().is_some() {
                     writeln!(
                         f,
-                        "{}\n\t|\n{: ^17}\n\t|\n\t▼",
+                        "{}\n\t\t|\n{: ^17}\n\t\t|\n\t\tv",
                         Formatter::from(translator, el),
                         format!("({})", Formatter::from(translator, r)),
                     )?;
                 } else {
                     writeln!(
                         f,
-                        "{}\n\t|\n{: ^17}\n\t|\n\t?",
+                        "{}\n\t\t|\n{: ^17}\n\t\t|\n\t\t?",
                         Formatter::from(translator, el),
                         format!("({})", Formatter::from(translator, r)),
                     )?;
@@ -426,7 +424,7 @@ impl<
             } else if elements.peek().is_some() {
                 writeln!(
                     f,
-                    "{}\n\t|\n\t|\n\t|\n\t▼",
+                    "{}\n\t\t|\n\t\t|\n\t\t|\n\t\tv",
                     Formatter::from(translator, el)
                 )?;
             } else {

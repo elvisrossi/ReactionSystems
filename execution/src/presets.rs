@@ -737,9 +737,9 @@ where
         .map_edges(edge_relabeler, &mut system_a.translator)?;
     let b: Graph<system::System, AssertReturnValue> =
         system_b
-        .graph
-        .unwrap()
-        .map_edges(edge_relabeler, &mut system_b.translator)?;
+            .graph
+            .unwrap()
+            .map_edges(edge_relabeler, &mut system_b.translator)?;
     Ok(format!(
         "{}",
         // bisimilarity::bisimilarity_kanellakis_smolka::bisimilarity(&&a, &&b)

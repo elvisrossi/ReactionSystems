@@ -1,8 +1,8 @@
 use std::collections::HashMap;
-use serde::{Serialize, Deserialize};
 
 use rsprocess::translator::PrintableWithTranslator;
 use rsprocess::{graph, label, set, system, translator};
+use serde::{Deserialize, Serialize};
 
 use super::dsl::*;
 

@@ -2,12 +2,9 @@ use std::rc::Rc;
 use std::str::FromStr;
 use lalrpop_util::ParseError;
 
-// use assert::{relabel, grouping};
 use rsprocess::{set, reaction, process, environment, system, label};
-use rsprocess::element::IdType;
+use rsprocess::element::{self, IdType};
 use rsprocess::translator::Translator;
-// use execution::presets;
-// use rsprocess::graph;
 use crate::custom_error;
 
 grammar(translator: &mut Translator);
@@ -196,6 +193,16 @@ pub Set: set::Set = {
         set::Set::from(s.into_iter().map(|t| translator.encode(t))
                            .collect::<Vec<_>>())
 };
+
+pub PositiveSet: set::PositiveSet = {
+    <s: Separated_Empty<"{", PositiveLiteral, ",", "}">> =>
+        set::PositiveSet::from(s)
+};
+
+PositiveLiteral: (element::IdType, element::IdState) = {
+    "+" <t: Literal> => (translator.encode(t), element::IdState::Positive),
+    "-" <t: Literal> => (translator.encode(t), element::IdState::Negative),
+}
 
 
 // -----------------------------------------------------------------------------

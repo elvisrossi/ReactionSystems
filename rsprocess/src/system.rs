@@ -105,6 +105,11 @@ pub trait ExtensionsSystem: BasicSystem {
     fn slice_trace(
         &self,
     ) -> Result<SlicingTrace<Self::Set, Self::Reaction, Self>, String>;
+
+    fn slice_trace_limit(
+        &self,
+        limit: usize,
+    ) -> Result<SlicingTrace<Self::Set, Self::Reaction, Self>, String>;
 }
 
 impl<T: BasicSystem> ExtensionsSystem for T {
@@ -363,6 +368,62 @@ impl<T: BasicSystem> ExtensionsSystem for T {
         // trace.enabled_reactions.pop();
         Ok(trace)
     }
+
+    #[allow(clippy::field_reassign_with_default)]
+    #[allow(clippy::type_complexity)]
+    fn slice_trace_limit(
+        &self,
+        limit: usize,
+    ) -> Result<SlicingTrace<Self::Set, Self::Reaction, Self>, String> {
+        let mut trace = SlicingTrace::default();
+
+        trace.context_elements = Rc::new(self.context_elements());
+        trace.products_elements = Rc::new(self.products_elements());
+        trace.reactions = Rc::new(self.reactions().clone());
+        trace.systems.push(Rc::new(self.clone()));
+        trace.elements.push(SlicingElement::from((
+            Self::Set::default(),
+            self.available_entities().clone(),
+        )));
+
+        let current: Option<(Self::Set, Self::Set, Vec<usize>, Self)> =
+            self.to_slicing_iterator()?.next();
+        if current.is_none() {
+            return Ok(trace);
+        }
+        let current = current.unwrap();
+
+        let (context, products, enabled_reactions, mut current) = current;
+        trace
+            .elements
+            .push(SlicingElement::from((context, products)));
+        trace
+            .enabled_reactions
+            .push(EnabledReactions::from(enabled_reactions));
+        trace.systems.push(Rc::new(current.clone()));
+
+        let mut n = limit;
+        loop {
+            n -= 1;
+            let t = current.to_slicing_iterator()?.next();
+            if let Some((context, products, enabled_reactions, next_sys)) = t
+                && n > 0
+            {
+                current = next_sys;
+                trace
+                    .elements
+                    .push(SlicingElement::from((context, products)));
+                trace
+                    .enabled_reactions
+                    .push(EnabledReactions::from(enabled_reactions));
+                trace.systems.push(Rc::new(current.clone()));
+            } else {
+                break;
+            }
+        }
+        // trace.enabled_reactions.pop();
+        Ok(trace)
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -508,7 +569,7 @@ impl BasicSystem for System {
     fn to_slicing_iterator(
         &self,
     ) -> Result<TraceIterator<'_, Self::Set, Self, Self::Process>, String> {
-        unimplemented!()
+        TraceIterator::<Self::Set, Self, Self::Process>::try_from(self)
     }
 
     fn environment(&self) -> &Self::Environment {

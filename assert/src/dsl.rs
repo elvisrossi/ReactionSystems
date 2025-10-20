@@ -1,8 +1,8 @@
 use std::collections::HashMap;
-use serde::{Serialize, Deserialize};
 
 use rsprocess::set::BasicSet;
 use rsprocess::{element, graph, label, process, set, system, translator};
+use serde::{Deserialize, Serialize};
 
 /// If changing IntegerType in assert.rs, also change from Num to another
 /// similar parser with different return type in grammar.lalrpop in
@@ -196,7 +196,9 @@ pub enum AssertReturnValue {
 
 impl<S> Default for Assert<S> {
     fn default() -> Self {
-        Self { tree: Tree::Return(Box::new(Expression::True)) }
+        Self {
+            tree: Tree::Return(Box::new(Expression::True)),
+        }
     }
 }
 

@@ -225,11 +225,56 @@ impl<'a> TryFrom<&'a PositiveSystem>
     }
 }
 
+impl<'a> TryFrom<&'a System> for TraceIterator<'a, Set, System, Process> {
+    type Error = String;
+
+    fn try_from(value: &'a System) -> Result<Self, Self::Error> {
+        match value.unfold() {
+            | Ok(o) => Ok(Self {
+                choices_iterator: o.into_iter(),
+                system: value,
+            }),
+            | Err(e) => Err(e),
+        }
+    }
+}
+
 impl<'a> Iterator for TraceIterator<'a, Set, System, Process> {
     type Item = (Set, Set, Vec<usize>, System);
 
     fn next(&mut self) -> Option<Self::Item> {
-        unimplemented!()
+        let (context, k) = self.choices_iterator.next()?;
+        let total_entities =
+            self.system.available_entities().union(context.as_ref());
+
+        let (enabled_reaction_positions, all_products) =
+            self.system.reactions().iter().enumerate().fold(
+                (vec![], Set::default()),
+                |mut acc, (pos, reaction)| {
+                    if reaction.enabled(&total_entities) {
+                        acc.0.push(pos);
+                        (acc.0, acc.1.union(&reaction.products))
+                    } else {
+                        acc
+                    }
+                },
+            );
+
+        let new_system = System::from(
+            Rc::clone(&self.system.delta),
+            // all_products.add_unique(&self.system.
+            // negated_products_elements()),
+            all_products.clone(),
+            (*k).clone(),
+            Rc::clone(&self.system.reaction_rules),
+        );
+
+        Some((
+            context.as_ref().clone(),
+            all_products,
+            enabled_reaction_positions,
+            new_system,
+        ))
     }
 }
 
