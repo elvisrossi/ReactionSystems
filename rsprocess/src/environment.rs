@@ -1,5 +1,5 @@
 use std::cmp;
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, HashSet};
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::rc::Rc;
@@ -627,9 +627,9 @@ impl Environment {
 
 // -----------------------------------------------------------------------------
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Hash, Serialize, Deserialize)]
 pub struct PositiveEnvironment {
-    definitions: HashMap<IdType, PositiveProcess>,
+    definitions: BTreeMap<IdType, PositiveProcess>,
 }
 
 impl BasicEnvironment for PositiveEnvironment {
@@ -778,7 +778,7 @@ impl PrintableWithTranslator for PositiveEnvironment {
 impl IntoIterator for PositiveEnvironment {
     type Item = (IdType, PositiveProcess);
     type IntoIter =
-        std::collections::hash_map::IntoIter<IdType, PositiveProcess>;
+        std::collections::btree_map::IntoIter<IdType, PositiveProcess>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.definitions.into_iter()
@@ -788,7 +788,7 @@ impl IntoIterator for PositiveEnvironment {
 impl<'a> IntoIterator for &'a PositiveEnvironment {
     type Item = (&'a IdType, &'a PositiveProcess);
     type IntoIter =
-        std::collections::hash_map::Iter<'a, IdType, PositiveProcess>;
+        std::collections::btree_map::Iter<'a, IdType, PositiveProcess>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.definitions.iter()
@@ -802,7 +802,7 @@ impl From<&Environment> for PositiveEnvironment {
                 .definitions
                 .iter()
                 .map(|(id, proc)| (*id, proc.into()))
-                .collect::<HashMap<_, _>>(),
+                .collect::<BTreeMap<_, _>>(),
         }
     }
 }
