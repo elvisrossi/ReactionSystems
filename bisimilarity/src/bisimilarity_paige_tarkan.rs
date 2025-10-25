@@ -613,11 +613,12 @@ where
     }
 
     for node in graph.node_identifiers() {
-        let mut previous = *association_weight_id.get(&node).unwrap();
-        for _ in 0..converter_edges.last_id.last_ids + 2 {
-            let path = new_graph_a.add_node(0);
-            new_graph_a.add_edge(previous, path, 0);
-            previous = path;
+        if let Some(previous) = association_weight_id.get_mut(&node) {
+            for _ in 0..converter_edges.last_id.last_ids + 2 {
+                let path = new_graph_a.add_node(0);
+                new_graph_a.add_edge(*previous, path, 0);
+                *previous = path;
+            }
         }
     }
 
