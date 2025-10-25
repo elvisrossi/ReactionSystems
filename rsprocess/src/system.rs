@@ -668,7 +668,7 @@ impl PrintableWithTranslator for System {
     ) -> std::fmt::Result {
         write!(
             f,
-            "[delta: {}, available_entities: {}, context_process: {}, \
+            "[\ndelta: {},\navailable_entities: {},\ncontext_process: {},\n\
              reaction_rules: [",
             Formatter::from(translator, &*self.delta),
             Formatter::from(translator, &self.available_entities),
@@ -682,7 +682,7 @@ impl PrintableWithTranslator for System {
                 write!(f, "{}, ", Formatter::from(translator, el))?;
             }
         }
-        write!(f, "] ]")
+        write!(f, "]\n]")
     }
 }
 
@@ -982,7 +982,7 @@ impl PrintableWithTranslator for PositiveSystem {
     ) -> std::fmt::Result {
         write!(
             f,
-            "[delta: {}, available_entities: {}, context_process: {}, \
+            "[\ndelta: {},\navailable_entities: {},\ncontext_process: {},\n\
              reaction_rules: [",
             Formatter::from(translator, &*self.delta),
             Formatter::from(translator, &self.available_entities),
@@ -996,7 +996,7 @@ impl PrintableWithTranslator for PositiveSystem {
                 write!(f, "{}, ", Formatter::from(translator, el))?;
             }
         }
-        write!(f, "] ]")
+        write!(f, "]\n]")
     }
 }
 
