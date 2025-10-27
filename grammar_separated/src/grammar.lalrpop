@@ -224,6 +224,21 @@ Reaction: reaction::Reaction = {
 }
 
 
+pub PositiveReactions: Vec<reaction::PositiveReaction> = {
+    <s: Separated_Empty<"(", PositiveReaction, ";", ")">> => s
+}
+
+PositiveReaction: reaction::PositiveReaction = {
+    #[precedence(level="1")]
+    "[" <r: PositiveSet> "," <p: PositiveSet> "]" =>
+        reaction::PositiveReaction::from(r, p),
+
+    #[precedence(level="0")]
+    "[" "r:" <r: PositiveSet> "," "p:" <p: PositiveSet> "]" =>
+        reaction::PositiveReaction::from(r, p),
+}
+
+
 // -----------------------------------------------------------------------------
 //                               ContextParser
 // -----------------------------------------------------------------------------
@@ -261,6 +276,40 @@ ContextProcess: process::Process = {
         }
 };
 
+pub PositiveContext: process::PositiveProcess = {
+    <t: Separated_Empty<"[", PositiveContextProcess, ",", "]">> =>
+        process::PositiveProcess::NondeterministicChoice{
+            children: t.into_iter().map(Rc::new).collect::<Vec<_>>()
+        }
+};
+
+PositiveContextProcess: process::PositiveProcess = {
+    "nill" => process::PositiveProcess::Nill,
+
+    <c: PositiveSet> "." <k: PositiveContextProcess> =>
+        process::PositiveProcess::EntitySet{ entities: c, next_process: Rc::new(k) },
+
+    "(" <k: PositiveContextProcess>  ")" => k,
+
+    "(" <k: Separated<PositiveContextProcess, "+">> ")" =>
+        process::PositiveProcess::Summation{
+            children: k.into_iter().map(Rc::new).collect::<Vec<_>>()
+        },
+
+    "?" <r: PositiveReaction> "?" "." <k: PositiveContextProcess> =>
+        process::PositiveProcess::Guarded{ reaction: r, next_process: Rc::new(k) },
+
+    "<" <n: Num> "," <k1: PositiveContextProcess> ">" "." <k: PositiveContextProcess> =>
+        process::PositiveProcess::WaitEntity{ repeat: n,
+                                              repeated_process: Rc::new(k1),
+                                              next_process: Rc::new(k) },
+
+    <identifier: LiteralProcess> =>
+        process::PositiveProcess::RecursiveIdentifier{
+            identifier: translator.encode(identifier)
+        }
+};
+
 
 // -----------------------------------------------------------------------------
 //                             EnvironmentParser
@@ -272,6 +321,17 @@ pub Environment: Box<environment::Environment> = {
 
 Env_term: (IdType, process::Process) = {
     <identifier: LiteralProcess> "=" <k: ContextProcess> =>
+        (translator.encode(identifier), k)
+};
+
+
+pub PositiveEnvironment: Box<environment::PositiveEnvironment> = {
+    <t: Separated_Empty<"[", PositiveEnv_term, ",", "]">> =>
+        Box::new(environment::PositiveEnvironment::from(t))
+};
+
+PositiveEnv_term: (IdType, process::PositiveProcess) = {
+    <identifier: LiteralProcess> "=" <k: PositiveContextProcess> =>
         (translator.encode(identifier), k)
 };
 
