@@ -16,11 +16,28 @@ where
         + Ord
         + Hash
         + PrintableWithTranslator,
-    for<'a> Self: Deserialize<'a>,
 {
     type Set: BasicSet;
 
     fn get_context(&self) -> (&Self::Set, &Self::Set, &Self::Set);
+
+    fn available_entities(&self) -> &Self::Set;
+    fn context(&self) -> &Self::Set;
+    fn t(&self) -> &Self::Set;
+    fn reactants(&self) -> &Self::Set;
+    fn reactants_absent(&self) -> &Self::Set;
+    fn inhibitors(&self) -> &Self::Set;
+    fn inhibitors_present(&self) -> &Self::Set;
+    fn products(&self) -> &Self::Set;
+
+    fn set_available_entities(&mut self, set: Self::Set);
+    fn set_context(&mut self, set: Self::Set);
+    fn set_t(&mut self, set: Self::Set);
+    fn set_reactants(&mut self, set: Self::Set);
+    fn set_reactants_absent(&mut self, set: Self::Set);
+    fn set_inhibitors(&mut self, set: Self::Set);
+    fn set_inhibitors_present(&mut self, set: Self::Set);
+    fn set_products(&mut self, set: Self::Set);
 }
 
 // -----------------------------------------------------------------------------
@@ -44,6 +61,57 @@ impl BasicLabel for Label {
 
     fn get_context(&self) -> (&Set, &Set, &Set) {
         (&self.available_entities, &self.context, &self.t)
+    }
+
+    fn available_entities(&self) -> &Self::Set {
+        &self.available_entities
+    }
+    fn context(&self) -> &Self::Set {
+        &self.context
+    }
+    fn t(&self) -> &Self::Set {
+        &self.t
+    }
+    fn reactants(&self) -> &Self::Set {
+        &self.reactants
+    }
+    fn reactants_absent(&self) -> &Self::Set {
+        &self.reactants_absent
+    }
+    fn inhibitors(&self) -> &Self::Set {
+        &self.inhibitors
+    }
+    fn inhibitors_present(&self) -> &Self::Set {
+        &self.inhibitors_present
+    }
+    fn products(&self) -> &Self::Set {
+        &self.products
+    }
+
+
+    fn set_available_entities(&mut self, set: Self::Set) {
+        self.available_entities = set;
+    }
+    fn set_context(&mut self, set: Self::Set) {
+        self.context = set;
+    }
+    fn set_t(&mut self, set: Self::Set) {
+        self.t = set;
+    }
+    fn set_reactants(&mut self, set: Self::Set) {
+        self.reactants = set;
+    }
+    fn set_reactants_absent(&mut self, set: Self::Set) {
+        self.reactants_absent = set;
+    }
+    fn set_inhibitors(&mut self, set: Self::Set) {
+        self.inhibitors = set;
+    }
+    fn set_inhibitors_present(&mut self, set: Self::Set) {
+        self.inhibitors_present = set;
+    }
+    fn set_products(&mut self, set: Self::Set) {
+        self.products = set;
     }
 }
 
@@ -170,6 +238,57 @@ impl BasicLabel for PositiveLabel {
 
     fn get_context(&self) -> (&PositiveSet, &PositiveSet, &PositiveSet) {
         (&self.available_entities, &self.context, &self.t)
+    }
+
+    fn available_entities(&self) -> &Self::Set {
+        &self.available_entities
+    }
+    fn context(&self) -> &Self::Set {
+        &self.context
+    }
+    fn t(&self) -> &Self::Set {
+        &self.t
+    }
+    fn reactants(&self) -> &Self::Set {
+        &self.reactants
+    }
+    fn reactants_absent(&self) -> &Self::Set {
+        &self.reactants_absent
+    }
+    fn inhibitors(&self) -> &Self::Set {
+        &self.inhibitors
+    }
+    fn inhibitors_present(&self) -> &Self::Set {
+        &self.inhibitors_present
+    }
+    fn products(&self) -> &Self::Set {
+        &self.products
+    }
+
+
+    fn set_available_entities(&mut self, set: Self::Set) {
+        self.available_entities = set;
+    }
+    fn set_context(&mut self, set: Self::Set) {
+        self.context = set;
+    }
+    fn set_t(&mut self, set: Self::Set) {
+        self.t = set;
+    }
+    fn set_reactants(&mut self, set: Self::Set) {
+        self.reactants = set;
+    }
+    fn set_reactants_absent(&mut self, set: Self::Set) {
+        self.reactants_absent = set;
+    }
+    fn set_inhibitors(&mut self, set: Self::Set) {
+        self.inhibitors = set;
+    }
+    fn set_inhibitors_present(&mut self, set: Self::Set) {
+        self.inhibitors_present = set;
+    }
+    fn set_products(&mut self, set: Self::Set) {
+        self.products = set;
     }
 }
 

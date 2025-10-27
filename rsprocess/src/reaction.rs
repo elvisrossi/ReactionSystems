@@ -226,9 +226,7 @@ impl Reaction {
 
 // -----------------------------------------------------------------------------
 
-#[derive(
-    Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq, Hash,
-)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct PositiveReaction {
     pub reactants: PositiveSet,
     pub products:  PositiveSet,
@@ -306,5 +304,63 @@ impl PositiveReaction {
             }
         }
         Some(self.reactants.intersection(&other.reactants))
+    }
+}
+
+// -----------------------------------------------------------------------------
+// Convert from list of reactions to list of positive reactions
+
+impl Reaction {
+    pub fn into_positive_reactions(reactions: &[Self]) -> Vec<PositiveReaction> {
+        let mut res = vec![];
+        let old_reactions = &reactions;
+
+        let all_products = Reaction::all_products(old_reactions);
+        for el in all_products {
+            let p =
+                Reaction::all_reactions_with_product(old_reactions, &el);
+            let mut tmp = vec![];
+            for r in p.iter() {
+                tmp.push(PositiveReaction::create(
+                    r.reactants.clone(),
+                    r.inhibitors.clone(),
+                    Set::from([el]),
+                ))
+            }
+            tmp.sort_by(|r1, r2| r1.reactants.cmp(&r2.reactants));
+
+            // remove reactions with only one element of opposite state
+            // as intersection (same product ```el```)
+            let mut pos = tmp.len() - 1;
+            while pos > 0 {
+                if let Some(intersection) =
+                    tmp[pos].differ_only_one_element(&tmp[pos - 1])
+                {
+                    tmp[pos - 1].reactants = intersection;
+                    tmp.remove(pos);
+                }
+                pos -= 1;
+            }
+
+            res.extend(tmp);
+            let prohib_set = Set::prohibiting_set(
+                &p.iter().map(|p| p.reactants.clone()).collect::<Vec<_>>(),
+                &p.iter().map(|p| p.inhibitors.clone()).collect::<Vec<_>>(),
+            )
+                .unwrap(); // since we have in input a valid system
+            for s in prohib_set {
+                res.push(PositiveReaction {
+                    reactants: s,
+                    products:  PositiveSet::from([(el, IdState::Negative)]),
+                })
+            }
+        }
+        res
+    }
+}
+
+impl PositiveReaction {
+    pub fn from_reactions(reactions: &[Reaction]) -> Vec<Self> {
+        Reaction::into_positive_reactions(reactions)
     }
 }

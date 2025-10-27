@@ -33,6 +33,7 @@ where
     fn len(&self) -> usize;
     fn is_empty(&self) -> bool;
     fn contains(&self, el: &Self::Element) -> bool;
+    fn add(&mut self, el: Self::Element);
 }
 
 pub trait ExtensionsSet {
@@ -139,6 +140,10 @@ impl BasicSet for Set {
 
     fn contains(&self, el: &Self::Element) -> bool {
         self.identifiers.contains(el)
+    }
+
+    fn add(&mut self, el: Self::Element) {
+        self.identifiers.insert(el);
     }
 }
 
@@ -487,6 +492,10 @@ impl BasicSet for PositiveSet {
         } else {
             false
         }
+    }
+
+    fn add(&mut self, el: Self::Element) {
+        self.identifiers.insert(el.id, el.state);
     }
 }
 

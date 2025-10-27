@@ -703,6 +703,17 @@ impl System {
             products_elements: Rc::new(RefCell::new(None)),
         }
     }
+
+    pub fn overwrite_context_elements(&mut self, new_context_elements: Set) {
+        self.context_elements = Rc::new(RefCell::new(Some(new_context_elements)));
+    }
+
+    pub fn overwrite_product_elements(&mut self, new_product_elements: Set) {
+        // since context_elements depend on product elements we make sure that
+        // its computed to ensure consistent behaviour
+        self.context_elements();
+        self.products_elements = Rc::new(RefCell::new(Some(new_product_elements)));
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -1028,54 +1039,8 @@ impl From<System> for PositiveSystem {
         let new_available_entities =
             positive_entities.union(&negative_entities);
 
+        let new_reactions = Rc::new(PositiveReaction::from_reactions(value.reactions()));
         let new_context = value.context_process.into();
-        let new_reactions = {
-            let mut res = vec![];
-            let old_reactions = &value.reaction_rules;
-
-            let all_products = Reaction::all_products(old_reactions);
-            for el in all_products {
-                let p =
-                    Reaction::all_reactions_with_product(old_reactions, &el);
-                let mut tmp = vec![];
-                for r in p.iter() {
-                    tmp.push(PositiveReaction::create(
-                        r.reactants.clone(),
-                        r.inhibitors.clone(),
-                        Set::from([el]),
-                    ))
-                }
-                tmp.sort_by(|r1, r2| r1.reactants.cmp(&r2.reactants));
-
-                // remove reactions with only one element of opposite state
-                // as intersection (same product ```el```)
-                let mut pos = tmp.len() - 1;
-                while pos > 0 {
-                    if let Some(intersection) =
-                        tmp[pos].differ_only_one_element(&tmp[pos - 1])
-                    {
-                        tmp[pos - 1].reactants = intersection;
-                        tmp.remove(pos);
-                    }
-                    pos -= 1;
-                }
-
-                res.extend(tmp);
-                let prohib_set = Set::prohibiting_set(
-                    &p.iter().map(|p| p.reactants.clone()).collect::<Vec<_>>(),
-                    &p.iter().map(|p| p.inhibitors.clone()).collect::<Vec<_>>(),
-                )
-                .unwrap(); // since we have in input a valid system
-                for s in prohib_set {
-                    res.push(PositiveReaction {
-                        reactants: s,
-                        products:  PositiveSet::from([(el, IdState::Negative)]),
-                    })
-                }
-            }
-
-            Rc::new(res)
-        };
 
         Self::from(new_env, new_available_entities, new_context, new_reactions)
     }
@@ -1104,5 +1069,16 @@ impl PositiveSystem {
             .iter()
             .map(|el| (*el.0, IdState::Negative))
             .collect::<PositiveSet>()
+    }
+
+    pub fn overwrite_context_elements(&mut self, new_context_elements: PositiveSet) {
+        self.context_elements = Rc::new(RefCell::new(Some(new_context_elements)));
+    }
+
+    pub fn overwrite_product_elements(&mut self, new_product_elements: PositiveSet) {
+        // since context_elements depend on product elements we make sure that
+        // its computed to ensure consistent behaviour
+        self.context_elements();
+        self.products_elements = Rc::new(RefCell::new(Some(new_product_elements)));
     }
 }

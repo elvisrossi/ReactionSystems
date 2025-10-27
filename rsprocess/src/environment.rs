@@ -430,7 +430,7 @@ impl<'a> IntoIterator for &'a Environment {
 
 impl<const N: usize> From<[(IdType, Process); N]> for Environment {
     fn from(arr: [(IdType, Process); N]) -> Self {
-        Environment {
+        Self {
             definitions: BTreeMap::from(arr),
         }
     }
@@ -438,7 +438,7 @@ impl<const N: usize> From<[(IdType, Process); N]> for Environment {
 
 impl From<&[(IdType, Process)]> for Environment {
     fn from(arr: &[(IdType, Process)]) -> Self {
-        Environment {
+        Self {
             definitions: BTreeMap::from_iter(arr.to_vec()),
         }
     }
@@ -446,7 +446,7 @@ impl From<&[(IdType, Process)]> for Environment {
 
 impl From<Vec<(IdType, Process)>> for Environment {
     fn from(arr: Vec<(IdType, Process)>) -> Self {
-        Environment {
+        Self {
             definitions: BTreeMap::from_iter(arr),
         }
     }
@@ -810,5 +810,30 @@ impl From<&Environment> for PositiveEnvironment {
 impl From<Environment> for PositiveEnvironment {
     fn from(value: Environment) -> Self {
         (&value).into()
+    }
+}
+
+
+impl<const N: usize> From<[(IdType, PositiveProcess); N]> for PositiveEnvironment {
+    fn from(arr: [(IdType, PositiveProcess); N]) -> Self {
+        Self {
+            definitions: BTreeMap::from(arr),
+        }
+    }
+}
+
+impl From<&[(IdType, PositiveProcess)]> for PositiveEnvironment {
+    fn from(arr: &[(IdType, PositiveProcess)]) -> Self {
+        Self {
+            definitions: BTreeMap::from_iter(arr.to_vec()),
+        }
+    }
+}
+
+impl From<Vec<(IdType, PositiveProcess)>> for PositiveEnvironment {
+    fn from(arr: Vec<(IdType, PositiveProcess)>) -> Self {
+        Self {
+            definitions: BTreeMap::from_iter(arr),
+        }
     }
 }
