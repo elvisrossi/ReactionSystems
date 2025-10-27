@@ -1,13 +1,9 @@
-use std::rc::Rc;
 use std::str::FromStr;
 use lalrpop_util::ParseError;
 
-use assert::{relabel, grouping};
-use rsprocess::{set, reaction, process, environment, system, label};
-use rsprocess::element::IdType;
+use assert::grouping;
+use rsprocess::{set, label};
 use rsprocess::translator::Translator;
-use execution::presets;
-use rsprocess::graph;
 use crate::custom_error;
 
 grammar(translator: &mut Translator);
@@ -23,7 +19,14 @@ extern {
 
 // order
 match {
-    "!",
+    "!", "!=", "%", "&&", "'", "(", ")", "*", "+", ",", "-", "..", "/", ":",
+    "::", ";", "<", "<=", "=", "==", ">", ">=", "AllInhibitors", "AllReactants",
+    "AvailableEntities", "Context", "Entities", "Inhibitors",
+    "InhibitorsPresent", "Products", "Reactants", "ReactantsAbsent",
+    "SystemContext", "SystemEntities", "[", "\"", "]", "^", "^^", "edge",
+    "else", "empty", "false", "for", "if", "in", "label", "length", "let",
+    "neighbours", "not", "rand", "return", "source", "system", "target", "then",
+    "toel", "tostr", "true", "{", "||", "}", "node",
 } else {
     r"[0-9]+" => NUMBER
 } else {
@@ -90,9 +93,9 @@ Separated_Empty<LP, T, C, RP>: Vec<T> = {
 //                                 SetParser
 // -----------------------------------------------------------------------------
 
-pub Set: set::Set = {
+Set: set::Set = {
     <s: Separated_Empty<"{", Literal, ",", "}">> =>
-        set::Set::from(t.into_iter().map(|t| translator.encode(t))
+        set::Set::from(s.into_iter().map(|t| translator.encode(t))
                            .collect::<Vec<_>>())
 };
 
@@ -100,7 +103,7 @@ pub Set: set::Set = {
 //                                LabelParser
 // -----------------------------------------------------------------------------
 
-pub Label: label::Label = {
+Label: label::Label = {
     "["
        "Entities" ":" <e: Set> ","
        "Context" ":" <c: Set> ","
@@ -116,8 +119,8 @@ pub Label: label::Label = {
 // -----------------------------------------------------------------------------
 //                               GroupingParser
 // -----------------------------------------------------------------------------
-Group: Box<grouping::Assert> = {
-     ">" "node" "{" <f: GroupTree> "}" =>
+pub Group: Box<grouping::Assert> = {
+     "node" "{" <f: GroupTree> "}" =>
         Box::new(grouping::Assert{tree: f}),
 };
 
@@ -202,7 +205,6 @@ GroupTerm: grouping::Expression = {
     "(" <e: GroupExpression> ")" => e,
 }
 
-#[inline]
 GroupRange: grouping::Range = {
     "{" <e: GroupExpression> "}" =>
         grouping::Range::IterateOverSet(Box::new(e)),
@@ -210,13 +212,11 @@ GroupRange: grouping::Range = {
         grouping::Range::IterateInRange(Box::new(e1), Box::new(e2)),
 }
 
-#[inline]
 GroupUnaryPrefix: grouping::Unary = {
     "not" => grouping::Unary::Not,
     "rand" => grouping::Unary::Rand,
 }
 
-#[inline]
 GroupUnarySuffix: grouping::Unary = {
     #[precedence(level="0")]
     "empty" => grouping::Unary::Empty,
@@ -228,7 +228,6 @@ GroupUnarySuffix: grouping::Unary = {
     <q: GroupQualifier> => grouping::Unary::Qualifier(q),
 }
 
-#[inline]
 GroupQualifierRestricted: grouping::QualifierRestricted = {
     "Entities" => grouping::QualifierRestricted::Entities,
     "Context" => grouping::QualifierRestricted::Context,
@@ -239,32 +238,27 @@ GroupQualifierRestricted: grouping::QualifierRestricted = {
     "Products" => grouping::QualifierRestricted::Products,
 }
 
-#[inline]
 GroupQualifierLabel: grouping::QualifierLabel = {
     "AvailableEntities" => grouping::QualifierLabel::AvailableEntities,
     "AllReactants" => grouping::QualifierLabel::AllReactants,
     "AllInhibitors" => grouping::QualifierLabel::AllInhibitors,
 }
 
-#[inline]
 GroupQualifierSystem: grouping::QualifierSystem = {
     "SystemEntities" => grouping::QualifierSystem::Entities,
     "SystemContext" => grouping::QualifierSystem::Context,
 }
 
-#[inline]
 GroupQualifierEdge: grouping::QualifierEdge = {
     "source" => grouping::QualifierEdge::Source,
     "target" => grouping::QualifierEdge::Target,
 }
 
-#[inline]
 GroupQualifierNode: grouping::QualifierNode = {
     "neighbours" => grouping::QualifierNode::Neighbours,
     "system" => grouping::QualifierNode::System,
 }
 
-#[inline]
 GroupQualifier: grouping::Qualifier = {
     <q: GroupQualifierSystem> => grouping::Qualifier::System(q),
     <q: GroupQualifierLabel> => grouping::Qualifier::Label(q),
@@ -273,7 +267,6 @@ GroupQualifier: grouping::Qualifier = {
     <q: GroupQualifierNode> => grouping::Qualifier::Node(q),
 }
 
-#[inline]
 GroupBinary: grouping::Binary = {
     "&&" => grouping::Binary::And,
     "||" => grouping::Binary::Or,
@@ -293,7 +286,6 @@ GroupBinary: grouping::Binary = {
     "::" => grouping::Binary::Concat,
 }
 
-#[inline]
 GroupBinaryPrefix: grouping::Binary = {
     "substr" => grouping::Binary::SubStr,
     "min" => grouping::Binary::Min,

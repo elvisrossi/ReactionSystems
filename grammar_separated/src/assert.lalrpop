@@ -140,8 +140,7 @@ AssertTree2: relabel::Tree = {
     "else" "{" <t2: AssertTree> "}" ";"? =>
         relabel::Tree::IfElse(Box::new(e), Box::new(t1), Box::new(t2)),
 
-    "let" <v: AssertVariable> <q: AssertQualifier?> "=" <e: AssertExpression>
-    ";"
+    "let" <v: AssertVariable> <q: AssertQualifier?> "=" <e: AssertExpression>";"
         => relabel::Tree::Assignment(v, q, Box::new(e)),
 
     "return" <e: AssertExpression> ";" =>

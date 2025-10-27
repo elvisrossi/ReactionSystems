@@ -33,6 +33,39 @@ pub mod assert {
 #[allow(clippy::just_underscores_and_digits)]
 #[allow(clippy::uninlined_format_args)]
 #[allow(clippy::type_complexity)]
+pub mod positive_assert {
+    include!(concat!(env!("OUT_DIR"), "/src/positive_assert.rs"));
+}
+
+#[rustfmt::skip]
+#[allow(clippy::extra_unused_lifetimes)]
+#[allow(clippy::needless_lifetimes)]
+#[allow(clippy::let_unit_value)]
+#[allow(clippy::just_underscores_and_digits)]
+#[allow(clippy::uninlined_format_args)]
+#[allow(clippy::type_complexity)]
+pub mod grouping {
+    include!(concat!(env!("OUT_DIR"), "/src/grouping.rs"));
+}
+
+#[rustfmt::skip]
+#[allow(clippy::extra_unused_lifetimes)]
+#[allow(clippy::needless_lifetimes)]
+#[allow(clippy::let_unit_value)]
+#[allow(clippy::just_underscores_and_digits)]
+#[allow(clippy::uninlined_format_args)]
+#[allow(clippy::type_complexity)]
+pub mod positive_grouping {
+    include!(concat!(env!("OUT_DIR"), "/src/positive_grouping.rs"));
+}
+
+#[rustfmt::skip]
+#[allow(clippy::extra_unused_lifetimes)]
+#[allow(clippy::needless_lifetimes)]
+#[allow(clippy::let_unit_value)]
+#[allow(clippy::just_underscores_and_digits)]
+#[allow(clippy::uninlined_format_args)]
+#[allow(clippy::type_complexity)]
 pub mod instructions {
     include!(concat!(env!("OUT_DIR"), "/src/instructions.rs"));
 }

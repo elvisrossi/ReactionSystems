@@ -1,0 +1,297 @@
+use std::str::FromStr;
+use lalrpop_util::ParseError;
+
+use assert::positive_relabel;
+use rsprocess::{set, label};
+use rsprocess::translator::Translator;
+use crate::custom_error;
+
+grammar(translator: &mut Translator);
+
+extern {
+    type Error = custom_error::UserError;
+}
+
+// -----------------------------------------------------------------------------
+//                                  Helpers
+// -----------------------------------------------------------------------------
+
+// order
+match {
+    "!", "!=", "%", "&&", "'", "(", ")", "*", "+", ",", "-", "..", "/", ":",
+    "::", ";", "<", "<=", "=", "==", ">", ">=", "AllInhibitors", "AllReactants",
+    "AvailableEntities", "Context", "Entities", "Inhibitors",
+    "InhibitorsPresent", "Products", "Reactants", "ReactantsAbsent",
+    "SystemContext", "SystemEntities", "[", "\"", "]", "^", "^^", "edge",
+    "else", "empty", "false", "for", "if", "in", "label", "length", "let",
+    "neighbours", "not", "rand", "return", "source", "system", "target", "then",
+    "toel", "tostr", "true", "{", "||", "}",
+} else {
+    r"[0-9]+" => NUMBER
+} else {
+    r"([[:alpha:]])([[:word:]])*" => WORD
+    // r"(\p{L}|\p{Emoji})(\p{L}|\p{Emoji}|\p{Dash}|\p{N})*" => WORD,
+} else {
+    r#""[^"]+""# => PATH, // " <- ignore comment, its for the linter in emacs
+} else {
+    _
+}
+
+// matches words (letter followed by numbers, letters or _)
+Literal: String = {
+    WORD => <>.into(),
+};
+
+Num: i64 = {
+    <sign: "-"?> <start: @L> <n: NUMBER> <end: @R> =>? {
+        if sign.is_some() {
+            i64::from_str(n)
+                  .map(|n| -n)
+                  .map_err(|_| ParseError::User {
+                      error: custom_error::UserError {
+                          token: (start, n.into(), end),
+                          error: custom_error::UserErrorTypes::NumberTooBigi64
+                      }
+                  })
+        } else {
+            i64::from_str(n)
+                  .map_err(|_| ParseError::User {
+                      error: custom_error::UserError {
+                          token: (start, n.into(), end),
+                          error: custom_error::UserErrorTypes::NumberTooBigi64
+                      }
+                  })
+        }
+
+    }
+};
+
+// macro for matching sequence of patterns with C as separator
+Separated<T, C>: Vec<T> = {
+    <mut v:(<T> C)+> <e:T?> => match e {
+        None => v,
+        Some(e) => {
+            v.push(e);
+            v
+        }
+    }
+};
+
+Separated_Or<T, C>: Vec<T> = {
+    <v: T> => vec![v],
+    <v: Separated<T, C>> => v
+}
+
+Separated_Empty<LP, T, C, RP>: Vec<T> = {
+    LP RP => vec![],
+    LP <v: T> RP => vec![v],
+    LP <v: Separated<T, C>> RP => v
+}
+
+// -----------------------------------------------------------------------------
+//                                 SetParser
+// -----------------------------------------------------------------------------
+
+PositiveSet: set::PositiveSet = {
+    <s: Separated_Empty<"{", PositiveLiteral, ",", "}">> =>
+        set::PositiveSet::from(s)
+};
+
+PositiveLiteral: (rsprocess::element::IdType, rsprocess::element::IdState) = {
+    "+" <t: Literal> => (translator.encode(t), rsprocess::element::IdState::Positive),
+    "-" <t: Literal> => (translator.encode(t), rsprocess::element::IdState::Negative),
+}
+
+// -----------------------------------------------------------------------------
+//                                LabelParser
+// -----------------------------------------------------------------------------
+
+Label: label::PositiveLabel = {
+    "["
+       "Entities" ":" <e: PositiveSet> ","
+       "Context" ":" <c: PositiveSet> ","
+       "Reactants" ":" <r: PositiveSet> ","
+       "ReactantsAbsent" ":" <r_a: PositiveSet> ","
+       "Inhibitors" ":" <i: PositiveSet> ","
+       "InhibitorsPresent" ":" <i_p: PositiveSet> ","
+       "Products" ":" <p: PositiveSet> ","?
+    "]" => label::PositiveLabel::create(e, c, r, r_a, i, i_p, p)
+}
+
+// -----------------------------------------------------------------------------
+//                                AssertParser
+// -----------------------------------------------------------------------------
+pub Assert: Box<positive_relabel::PositiveAssert> = {
+     "label" "{" <f: AssertTree> "}" =>
+        Box::new(positive_relabel::PositiveAssert{tree: f}),
+};
+
+AssertTree: positive_relabel::PositiveTree = {
+    <t1: AssertTree2> <t2: AssertTree> =>
+        positive_relabel::PositiveTree::Concat(Box::new(t1), Box::new(t2)),
+    <t: AssertTree2> => t,
+}
+
+AssertTree2: positive_relabel::PositiveTree = {
+    #[precedence(level="1")]
+    "if" <e: AssertExpression>
+    "then" "{" <t: AssertTree> "}" ";"? =>
+        positive_relabel::PositiveTree::If(Box::new(e), Box::new(t)),
+
+    #[precedence(level="0")]
+    "if" <e: AssertExpression>
+    "then" "{" <t1: AssertTree> "}"
+    "else" "{" <t2: AssertTree> "}" ";"? =>
+        positive_relabel::PositiveTree::IfElse(Box::new(e), Box::new(t1), Box::new(t2)),
+
+    "let" <v: AssertVariable> <q: AssertQualifier?> "=" <e: AssertExpression>";"
+        => positive_relabel::PositiveTree::Assignment(v, q, Box::new(e)),
+
+    "return" <e: AssertExpression> ";" =>
+        positive_relabel::PositiveTree::Return(Box::new(e)),
+
+    "for" <v: AssertVariable> "in" <r: AssertRange> "{" <t: AssertTree> "}" ";"?
+        => positive_relabel::PositiveTree::For(v, r, Box::new(t)),
+}
+
+AssertVariable: positive_relabel::PositiveVariable = {
+    #[precedence(level="0")]
+    "label" => positive_relabel::PositiveVariable::Special(positive_relabel::Special::Label),
+    "edge"  => positive_relabel::PositiveVariable::Special(positive_relabel::Special::Edge),
+    #[precedence(level="1")]
+    <v: Literal> => positive_relabel::PositiveVariable::Id(v),
+}
+
+AssertExpression: positive_relabel::PositiveExpression = {
+    #[precedence(level="100")]
+    <unp: AssertUnaryPrefix> "(" <e: AssertExpression> ")" =>
+        positive_relabel::PositiveExpression::Unary(unp, Box::new(e)),
+
+    #[precedence(level="50")]
+    <e: AssertExpression> "." <uns: AssertUnarySuffix> =>
+        positive_relabel::PositiveExpression::Unary(uns, Box::new(e)),
+
+    #[precedence(level="100")] #[assoc(side="left")]
+    "(" <e1: AssertExpression> <b: AssertBinary> <e2: AssertExpression> ")" =>
+        positive_relabel::PositiveExpression::Binary(b, Box::new(e1), Box::new(e2)),
+
+    #[precedence(level="100")]
+    <b: AssertBinaryPrefix>
+    "(" <e1: AssertExpression> "," <e2: AssertExpression> ")" =>
+        positive_relabel::PositiveExpression::Binary(b, Box::new(e1), Box::new(e2)),
+
+    #[precedence(level="0")]
+    <t: AssertTerm> => t,
+}
+
+AssertTerm: positive_relabel::PositiveExpression = {
+    "true" => positive_relabel::PositiveExpression::True,
+    "false" => positive_relabel::PositiveExpression::False,
+
+    <v: AssertVariable> => positive_relabel::PositiveExpression::Var(v),
+
+    // If changing IntegerType in assert.rs, also change from Num to another
+    // similar parser with different return type
+    <i: Num> => positive_relabel::PositiveExpression::Integer(i),
+
+    <lab: Label> => positive_relabel::PositiveExpression::Label(Box::new(lab)),
+    <set: PositiveSet> => positive_relabel::PositiveExpression::Set(set),
+    "'" <el: PositiveLiteral> "'" =>
+        positive_relabel::PositiveExpression::PositiveElement(el.into()),
+
+    // strings
+    PATH => positive_relabel::PositiveExpression::String(<>.trim_end_matches("\"")
+                                        .trim_start_matches("\"")
+                                        .to_string()),
+
+    // allow arbitrary parenthesis
+    "(" <e: AssertExpression> ")" => e,
+}
+
+AssertRange: positive_relabel::PositiveRange = {
+    "{" <e: AssertExpression> "}" =>
+        positive_relabel::PositiveRange::IterateOverSet(Box::new(e)),
+    "{" <e1: AssertExpression> ".." <e2: AssertExpression> "}" =>
+        positive_relabel::PositiveRange::IterateInRange(Box::new(e1), Box::new(e2)),
+}
+
+AssertUnaryPrefix: positive_relabel::PositiveUnary = {
+    "not" => positive_relabel::PositiveUnary::Not,
+    "rand" => positive_relabel::PositiveUnary::Rand,
+}
+
+AssertUnarySuffix: positive_relabel::PositiveUnary = {
+    #[precedence(level="0")]
+    "empty" => positive_relabel::PositiveUnary::Empty,
+    "length" => positive_relabel::PositiveUnary::Length,
+    "tostr" => positive_relabel::PositiveUnary::ToStr,
+    "toel" => positive_relabel::PositiveUnary::ToEl,
+
+    #[precedence(level="1")]
+    <q: AssertQualifier> => positive_relabel::PositiveUnary::Qualifier(q),
+}
+
+AssertQualifierRestricted: positive_relabel::QualifierRestricted = {
+    "Entities" => positive_relabel::QualifierRestricted::Entities,
+    "Context" => positive_relabel::QualifierRestricted::Context,
+    "Reactants" => positive_relabel::QualifierRestricted::Reactants,
+    "ReactantsAbsent" => positive_relabel::QualifierRestricted::ReactantsAbsent,
+    "Inhibitors" => positive_relabel::QualifierRestricted::Inhibitors,
+    "InhibitorsPresent" => positive_relabel::QualifierRestricted::InhibitorsPresent,
+    "Products" => positive_relabel::QualifierRestricted::Products,
+}
+
+AssertQualifierLabel: positive_relabel::QualifierLabel = {
+    "AvailableEntities" => positive_relabel::QualifierLabel::AvailableEntities,
+    "AllReactants" => positive_relabel::QualifierLabel::AllReactants,
+    "AllInhibitors" => positive_relabel::QualifierLabel::AllInhibitors,
+}
+
+AssertQualifierSystem: positive_relabel::QualifierSystem = {
+    "SystemEntities" => positive_relabel::QualifierSystem::Entities,
+    "SystemContext" => positive_relabel::QualifierSystem::Context,
+}
+
+AssertQualifierEdge: positive_relabel::QualifierEdge = {
+    "source" => positive_relabel::QualifierEdge::Source,
+    "target" => positive_relabel::QualifierEdge::Target,
+}
+
+AssertQualifierNode: positive_relabel::QualifierNode = {
+    "neighbours" => positive_relabel::QualifierNode::Neighbours,
+    "system" => positive_relabel::QualifierNode::System,
+}
+
+AssertQualifier: positive_relabel::PositiveQualifier = {
+    <q: AssertQualifierSystem> => positive_relabel::PositiveQualifier::System(q),
+    <q: AssertQualifierLabel> => positive_relabel::PositiveQualifier::Label(q),
+    <q: AssertQualifierRestricted> => positive_relabel::PositiveQualifier::Restricted(q),
+    <q: AssertQualifierEdge> => positive_relabel::PositiveQualifier::Edge(q),
+    <q: AssertQualifierNode> => positive_relabel::PositiveQualifier::Node(q),
+}
+
+AssertBinary: positive_relabel::PositiveBinary = {
+    "&&" => positive_relabel::PositiveBinary::And,
+    "||" => positive_relabel::PositiveBinary::Or,
+    "^^" => positive_relabel::PositiveBinary::Xor,
+    "<" => positive_relabel::PositiveBinary::Less,
+    "<=" => positive_relabel::PositiveBinary::LessEq,
+    ">" => positive_relabel::PositiveBinary::More,
+    ">=" => positive_relabel::PositiveBinary::MoreEq,
+    "==" => positive_relabel::PositiveBinary::Eq,
+    "!=" => positive_relabel::PositiveBinary::NotEq,
+    "+" => positive_relabel::PositiveBinary::Plus,
+    "-" => positive_relabel::PositiveBinary::Minus,
+    "*" => positive_relabel::PositiveBinary::Times,
+    "^" => positive_relabel::PositiveBinary::Exponential,
+    "/" => positive_relabel::PositiveBinary::Quotient,
+    "%" => positive_relabel::PositiveBinary::Reminder,
+    "::" => positive_relabel::PositiveBinary::Concat,
+}
+
+AssertBinaryPrefix: positive_relabel::PositiveBinary = {
+    "substr" => positive_relabel::PositiveBinary::SubStr,
+    "min" => positive_relabel::PositiveBinary::Min,
+    "max" => positive_relabel::PositiveBinary::Max,
+    "commonsubstr" => positive_relabel::PositiveBinary::CommonSubStr,
+}

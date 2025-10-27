@@ -7,12 +7,15 @@ use petgraph::{Directed, Graph};
 use serde::{Deserialize, Serialize};
 
 use super::element::IdType;
-use super::label::Label;
+use super::label::{Label, PositiveLabel};
 use super::set::{BasicSet, Set};
-use super::system::System;
+use super::system::{PositiveSystem, System};
 use super::translator;
 
 pub type SystemGraph = Graph<System, Label, Directed, u32>;
+
+pub type PositiveSystemGraph = Graph<PositiveSystem, PositiveLabel, Directed, u32>;
+
 
 fn common_system_entities(graph: &SystemGraph) -> Set {
     graph

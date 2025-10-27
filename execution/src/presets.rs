@@ -1,5 +1,4 @@
 //! Module that holds useful presets for interacting with other modules.
-use std::collections::HashMap;
 use std::io::prelude::*;
 use std::rc::Rc;
 use std::{env, fs, io};
@@ -629,7 +628,9 @@ where
 
 /// Computes the LTS.
 /// equivalent to main_do(digraph, Arcs) or to main_do(advdigraph, Arcs)
-pub fn digraph(system: &mut EvaluatedSystem) -> Result<(), String> {
+pub fn digraph(
+    system: &mut EvaluatedSystem,
+) -> Result<(), String> {
     if let (Some(sys), true) = (&system.sys, system.graph.is_none()) {
         let graph = sys.digraph()?;
         system.graph = Some(graph);
@@ -642,57 +643,16 @@ pub fn digraph(system: &mut EvaluatedSystem) -> Result<(), String> {
     Ok(())
 }
 
-/// Given a graph and a function that identifies nodes of the graph, merges
-/// nodes with the same identifier.
 pub fn grouping(
     system: &mut EvaluatedSystem,
     group: &assert::grouping::Assert,
 ) -> Result<(), String> {
-    let mut buckets = HashMap::new();
-    let mut leader: HashMap<petgraph::prelude::NodeIndex, _> = HashMap::new();
-
-    if let Some(graph) = &mut system.graph {
-        for node in graph.node_indices() {
-            let val = group.execute(graph, &node, &mut system.translator)?;
-            println!("node: {node:?} -> val: {val:?}");
-            buckets.entry(val.clone()).or_insert(vec![]).push(node);
-            let l = buckets.get(&val).unwrap().first().unwrap();
-            leader.insert(node, (*l, val));
-        }
-
-        for node in graph.node_indices().rev() {
-            let (origin, val) = leader.get(&node).unwrap();
-            if *origin == node {
-                continue;
-            }
-            if buckets.get(val).unwrap().len() <= 1 {
-                continue;
-            }
-
-            let mut edges =
-                graph.neighbors_directed(node, petgraph::Outgoing).detach();
-            while let Some(edge) = edges.next_edge(graph) {
-                graph.add_edge(
-                    *origin,
-                    graph.edge_endpoints(edge).unwrap().1,
-                    graph.edge_weight(edge).unwrap().clone(),
-                );
-            }
-            let mut edges =
-                graph.neighbors_directed(node, petgraph::Incoming).detach();
-            while let Some(edge) = edges.next_edge(graph) {
-                graph.add_edge(
-                    graph.edge_endpoints(edge).unwrap().0,
-                    *origin,
-                    graph.edge_weight(edge).unwrap().clone(),
-                );
-            }
-            graph
-                .remove_node(node)
-                .ok_or(format!("Could not remove node {node:?}"))?;
-        }
-
-        Ok(())
+    if system.graph.is_some() {
+        super::data::grouping(
+            system.graph.as_mut().unwrap(),
+            group,
+            &mut system.translator
+        )
     } else {
         Err("Grouping can be done only on graphs.".into())
     }
