@@ -226,7 +226,9 @@ impl Reaction {
 
 // -----------------------------------------------------------------------------
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(
+    Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq, Hash,
+)]
 pub struct PositiveReaction {
     pub reactants: PositiveSet,
     pub products:  PositiveSet,
@@ -311,14 +313,15 @@ impl PositiveReaction {
 // Convert from list of reactions to list of positive reactions
 
 impl Reaction {
-    pub fn into_positive_reactions(reactions: &[Self]) -> Vec<PositiveReaction> {
+    pub fn into_positive_reactions(
+        reactions: &[Self],
+    ) -> Vec<PositiveReaction> {
         let mut res = vec![];
         let old_reactions = &reactions;
 
         let all_products = Reaction::all_products(old_reactions);
         for el in all_products {
-            let p =
-                Reaction::all_reactions_with_product(old_reactions, &el);
+            let p = Reaction::all_reactions_with_product(old_reactions, &el);
             let mut tmp = vec![];
             for r in p.iter() {
                 tmp.push(PositiveReaction::create(
@@ -347,7 +350,7 @@ impl Reaction {
                 &p.iter().map(|p| p.reactants.clone()).collect::<Vec<_>>(),
                 &p.iter().map(|p| p.inhibitors.clone()).collect::<Vec<_>>(),
             )
-                .unwrap(); // since we have in input a valid system
+            .unwrap(); // since we have in input a valid system
             for s in prohib_set {
                 res.push(PositiveReaction {
                     reactants: s,

@@ -813,8 +813,9 @@ impl From<Environment> for PositiveEnvironment {
     }
 }
 
-
-impl<const N: usize> From<[(IdType, PositiveProcess); N]> for PositiveEnvironment {
+impl<const N: usize> From<[(IdType, PositiveProcess); N]>
+    for PositiveEnvironment
+{
     fn from(arr: [(IdType, PositiveProcess); N]) -> Self {
         Self {
             definitions: BTreeMap::from(arr),

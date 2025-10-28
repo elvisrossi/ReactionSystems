@@ -10,7 +10,6 @@ use super::{dsl, positivedsl};
 //                       Specific Assert Implementation
 // -----------------------------------------------------------------------------
 
-
 // -----------------------------------------------------------------------------
 // System
 
@@ -71,7 +70,10 @@ impl dsl::SpecialVariables<EdgeRelablerInputValues> for EdgeRelablerInput {
         }
     }
 
-    fn type_qualified(&self, q: &dsl::Qualifier) -> Result<dsl::AssertionTypes, String> {
+    fn type_qualified(
+        &self,
+        q: &dsl::Qualifier,
+    ) -> Result<dsl::AssertionTypes, String> {
         match (self, q) {
             | (Self::Label, dsl::Qualifier::Label(_))
             | (Self::Label, dsl::Qualifier::Restricted(_)) =>
@@ -169,7 +171,9 @@ impl dsl::Assert<EdgeRelablerInput> {
         );
 
         let mut context = dsl::Context::new(input_vals);
-        if let Some(v) = dsl::execute(&self.tree, &mut context, translator, graph)? {
+        if let Some(v) =
+            dsl::execute(&self.tree, &mut context, translator, graph)?
+        {
             Ok(v)
         } else {
             Err("No value returned.".into())
@@ -236,12 +240,19 @@ impl dsl::SpecialVariables<NodeRelablerInputValues> for NodeRelablerInput {
         }
     }
 
-    fn type_qualified(&self, q: &dsl::Qualifier) -> Result<dsl::AssertionTypes, String> {
+    fn type_qualified(
+        &self,
+        q: &dsl::Qualifier,
+    ) -> Result<dsl::AssertionTypes, String> {
         match (self, q) {
-            | (Self::Node, dsl::Qualifier::Node(dsl::QualifierNode::System)) =>
-                Ok(dsl::AssertionTypes::System),
-            | (Self::Node, dsl::Qualifier::Node(dsl::QualifierNode::Neighbours)) =>
-                Ok(dsl::AssertionTypes::RangeNeighbours),
+            | (
+                Self::Node,
+                dsl::Qualifier::Node(dsl::QualifierNode::System),
+            ) => Ok(dsl::AssertionTypes::System),
+            | (
+                Self::Node,
+                dsl::Qualifier::Node(dsl::QualifierNode::Neighbours),
+            ) => Ok(dsl::AssertionTypes::RangeNeighbours),
             | (s, q) =>
                 Err(format!("Wrong use of qualifier {q:?} on variable {s:?}.")),
         }
@@ -338,7 +349,9 @@ impl dsl::Assert<NodeRelablerInput> {
         );
 
         let mut context = dsl::Context::new(input_vals);
-        if let Some(v) = dsl::execute(&self.tree, &mut context, translator, graph)? {
+        if let Some(v) =
+            dsl::execute(&self.tree, &mut context, translator, graph)?
+        {
             Ok(v)
         } else {
             Err("No value returned.".into())
@@ -346,10 +359,8 @@ impl dsl::Assert<NodeRelablerInput> {
     }
 }
 
-
 // -----------------------------------------------------------------------------
 // Positive System
-
 
 /// Module that has all types and structures for bisimilarity relabeler.
 pub mod useful_types_positive_edge_relabeler {
@@ -392,7 +403,6 @@ pub mod useful_types_positive_edge_relabeler {
     pub type Special = super::PositiveEdgeRelablerInput;
 }
 
-
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum PositiveEdgeRelablerInput {
     Label,
@@ -405,7 +415,9 @@ enum PositiveEdgeRelablerInputValues {
     Edge(petgraph::graph::EdgeIndex),
 }
 
-impl positivedsl::SpecialVariables<PositiveEdgeRelablerInputValues> for PositiveEdgeRelablerInput {
+impl positivedsl::SpecialVariables<PositiveEdgeRelablerInputValues>
+    for PositiveEdgeRelablerInput
+{
     fn type_of(&self) -> positivedsl::PositiveAssertionTypes {
         match self {
             | Self::Edge => positivedsl::PositiveAssertionTypes::Edge,
@@ -413,7 +425,10 @@ impl positivedsl::SpecialVariables<PositiveEdgeRelablerInputValues> for Positive
         }
     }
 
-    fn type_qualified(&self, q: &positivedsl::PositiveQualifier) -> Result<positivedsl::PositiveAssertionTypes, String> {
+    fn type_qualified(
+        &self,
+        q: &positivedsl::PositiveQualifier,
+    ) -> Result<positivedsl::PositiveAssertionTypes, String> {
         match (self, q) {
             | (Self::Label, positivedsl::PositiveQualifier::Label(_))
             | (Self::Label, positivedsl::PositiveQualifier::Restricted(_)) =>
@@ -431,16 +446,24 @@ impl positivedsl::SpecialVariables<PositiveEdgeRelablerInputValues> for Positive
             .map(|(key, value)| match value {
                 | PositiveEdgeRelablerInputValues::Edge(e) =>
                     (*key, positivedsl::PositiveAssertReturnValue::Edge(*e)),
-                | PositiveEdgeRelablerInputValues::Label(l) =>
-                    (*key, positivedsl::PositiveAssertReturnValue::Label(l.clone())),
+                | PositiveEdgeRelablerInputValues::Label(l) => (
+                    *key,
+                    positivedsl::PositiveAssertReturnValue::Label(l.clone()),
+                ),
             })
             .collect::<HashMap<Self, positivedsl::PositiveAssertReturnValue>>()
     }
 
-    fn correct_type(&self, other: &positivedsl::PositiveAssertReturnValue) -> bool {
+    fn correct_type(
+        &self,
+        other: &positivedsl::PositiveAssertReturnValue,
+    ) -> bool {
         match (self, other) {
             | (Self::Edge, positivedsl::PositiveAssertReturnValue::Edge(_))
-            | (Self::Label, positivedsl::PositiveAssertReturnValue::Label(_)) => true,
+            | (
+                Self::Label,
+                positivedsl::PositiveAssertReturnValue::Label(_),
+            ) => true,
             | (_, _) => false,
         }
     }
@@ -464,7 +487,6 @@ impl PrintableWithTranslator for PositiveEdgeRelablerInput {
         write!(f, "{self:?}")
     }
 }
-
 
 impl positivedsl::PositiveAssert<PositiveEdgeRelablerInput> {
     pub fn typecheck(&self) -> Result<(), String> {
@@ -512,14 +534,15 @@ impl positivedsl::PositiveAssert<PositiveEdgeRelablerInput> {
         );
 
         let mut context = positivedsl::Context::new(input_vals);
-        if let Some(v) = positivedsl::execute(&self.tree, &mut context, translator, graph)? {
+        if let Some(v) =
+            positivedsl::execute(&self.tree, &mut context, translator, graph)?
+        {
             Ok(v)
         } else {
             Err("No value returned.".into())
         }
     }
 }
-
 
 // -----------------------------------------------------------------------------
 // Positive node grouping
@@ -564,7 +587,6 @@ pub mod useful_types_positive_node_relabeler {
     pub type Special = super::PositiveNodeRelablerInput;
 }
 
-
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum PositiveNodeRelablerInput {
     Entities,
@@ -577,8 +599,9 @@ enum PositiveNodeRelablerInputValues {
     Node(petgraph::graph::NodeIndex),
 }
 
-
-impl positivedsl::SpecialVariables<PositiveNodeRelablerInputValues> for PositiveNodeRelablerInput {
+impl positivedsl::SpecialVariables<PositiveNodeRelablerInputValues>
+    for PositiveNodeRelablerInput
+{
     fn type_of(&self) -> positivedsl::PositiveAssertionTypes {
         match self {
             | Self::Entities => positivedsl::PositiveAssertionTypes::Set,
@@ -586,12 +609,23 @@ impl positivedsl::SpecialVariables<PositiveNodeRelablerInputValues> for Positive
         }
     }
 
-    fn type_qualified(&self, q: &positivedsl::PositiveQualifier) -> Result<positivedsl::PositiveAssertionTypes, String> {
+    fn type_qualified(
+        &self,
+        q: &positivedsl::PositiveQualifier,
+    ) -> Result<positivedsl::PositiveAssertionTypes, String> {
         match (self, q) {
-            | (Self::Node, positivedsl::PositiveQualifier::Node(positivedsl::QualifierNode::System)) =>
-                Ok(positivedsl::PositiveAssertionTypes::System),
-            | (Self::Node, positivedsl::PositiveQualifier::Node(positivedsl::QualifierNode::Neighbours)) =>
-                Ok(positivedsl::PositiveAssertionTypes::RangeNeighbours),
+            | (
+                Self::Node,
+                positivedsl::PositiveQualifier::Node(
+                    positivedsl::QualifierNode::System,
+                ),
+            ) => Ok(positivedsl::PositiveAssertionTypes::System),
+            | (
+                Self::Node,
+                positivedsl::PositiveQualifier::Node(
+                    positivedsl::QualifierNode::Neighbours,
+                ),
+            ) => Ok(positivedsl::PositiveAssertionTypes::RangeNeighbours),
             | (s, q) =>
                 Err(format!("Wrong use of qualifier {q:?} on variable {s:?}.")),
         }
@@ -603,23 +637,31 @@ impl positivedsl::SpecialVariables<PositiveNodeRelablerInputValues> for Positive
         input
             .iter()
             .map(|(key, value)| match value {
-                | PositiveNodeRelablerInputValues::Entities(e) =>
-                    (*key, positivedsl::PositiveAssertReturnValue::Set(e.clone())),
+                | PositiveNodeRelablerInputValues::Entities(e) => (
+                    *key,
+                    positivedsl::PositiveAssertReturnValue::Set(e.clone()),
+                ),
                 | PositiveNodeRelablerInputValues::Node(n) =>
                     (*key, positivedsl::PositiveAssertReturnValue::Node(*n)),
             })
             .collect::<HashMap<Self, positivedsl::PositiveAssertReturnValue>>()
     }
 
-    fn correct_type(&self, other: &positivedsl::PositiveAssertReturnValue) -> bool {
+    fn correct_type(
+        &self,
+        other: &positivedsl::PositiveAssertReturnValue,
+    ) -> bool {
         match (self, other) {
-            | (Self::Entities, positivedsl::PositiveAssertReturnValue::Set(_))
-            | (Self::Node, positivedsl::PositiveAssertReturnValue::Node(_)) => true,
+            | (
+                Self::Entities,
+                positivedsl::PositiveAssertReturnValue::Set(_),
+            )
+            | (Self::Node, positivedsl::PositiveAssertReturnValue::Node(_)) =>
+                true,
             | (_, _) => false,
         }
     }
 }
-
 
 impl std::fmt::Debug for PositiveNodeRelablerInput {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -689,7 +731,9 @@ impl positivedsl::PositiveAssert<PositiveNodeRelablerInput> {
         );
 
         let mut context = positivedsl::Context::new(input_vals);
-        if let Some(v) = positivedsl::execute(&self.tree, &mut context, translator, graph)? {
+        if let Some(v) =
+            positivedsl::execute(&self.tree, &mut context, translator, graph)?
+        {
             Ok(v)
         } else {
             Err("No value returned.".into())

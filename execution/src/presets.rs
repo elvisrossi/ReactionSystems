@@ -628,9 +628,7 @@ where
 
 /// Computes the LTS.
 /// equivalent to main_do(digraph, Arcs) or to main_do(advdigraph, Arcs)
-pub fn digraph(
-    system: &mut EvaluatedSystem,
-) -> Result<(), String> {
+pub fn digraph(system: &mut EvaluatedSystem) -> Result<(), String> {
     if let (Some(sys), true) = (&system.sys, system.graph.is_none()) {
         let graph = sys.digraph()?;
         system.graph = Some(graph);
@@ -651,7 +649,7 @@ pub fn grouping(
         super::data::grouping(
             system.graph.as_mut().unwrap(),
             group,
-            &mut system.translator
+            &mut system.translator,
         )
     } else {
         Err("Grouping can be done only on graphs.".into())

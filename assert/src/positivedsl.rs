@@ -18,8 +18,16 @@ pub struct PositiveAssert<S> {
 pub enum PositiveTree<S> {
     Concat(Box<PositiveTree<S>>, Box<PositiveTree<S>>),
     If(Box<PositiveExpression<S>>, Box<PositiveTree<S>>),
-    IfElse(Box<PositiveExpression<S>>, Box<PositiveTree<S>>, Box<PositiveTree<S>>),
-    Assignment(PositiveVariable<S>, Option<PositiveQualifier>, Box<PositiveExpression<S>>),
+    IfElse(
+        Box<PositiveExpression<S>>,
+        Box<PositiveTree<S>>,
+        Box<PositiveTree<S>>,
+    ),
+    Assignment(
+        PositiveVariable<S>,
+        Option<PositiveQualifier>,
+        Box<PositiveExpression<S>>,
+    ),
     Return(Box<PositiveExpression<S>>),
     For(PositiveVariable<S>, PositiveRange<S>, Box<PositiveTree<S>>),
 }
@@ -43,11 +51,15 @@ pub(super) trait SpecialVariables<G>:
     fn type_of(&self) -> PositiveAssertionTypes;
 
     /// Returns the type of the qualified special variable.
-    fn type_qualified(&self, q: &PositiveQualifier) -> Result<PositiveAssertionTypes, String>;
+    fn type_qualified(
+        &self,
+        q: &PositiveQualifier,
+    ) -> Result<PositiveAssertionTypes, String>;
 
     /// Creates a new context.
-    fn new_context(input: HashMap<Self, G>)
-    -> HashMap<Self, PositiveAssertReturnValue>;
+    fn new_context(
+        input: HashMap<Self, G>,
+    ) -> HashMap<Self, PositiveAssertReturnValue>;
 
     /// Returns true if
     fn correct_type(&self, other: &PositiveAssertReturnValue) -> bool;
@@ -65,7 +77,11 @@ pub enum PositiveExpression<S> {
     Var(PositiveVariable<S>),
 
     Unary(PositiveUnary, Box<PositiveExpression<S>>),
-    Binary(PositiveBinary, Box<PositiveExpression<S>>, Box<PositiveExpression<S>>),
+    Binary(
+        PositiveBinary,
+        Box<PositiveExpression<S>>,
+        Box<PositiveExpression<S>>,
+    ),
 }
 
 #[derive(Clone, Serialize, Deserialize, Hash)]
@@ -233,18 +249,25 @@ impl QualifierRestricted {
         }
     }
 
-    pub(super) fn get(&self, label: &label::PositiveLabel) -> PositiveAssertReturnValue {
+    pub(super) fn get(
+        &self,
+        label: &label::PositiveLabel,
+    ) -> PositiveAssertReturnValue {
         PositiveAssertReturnValue::Set(self.referenced(label).clone())
     }
 }
 
 impl QualifierLabel {
-    pub(super) fn get(&self, l: &label::PositiveLabel) -> PositiveAssertReturnValue {
+    pub(super) fn get(
+        &self,
+        l: &label::PositiveLabel,
+    ) -> PositiveAssertReturnValue {
         match self {
             | QualifierLabel::AvailableEntities =>
                 PositiveAssertReturnValue::Set(l.t.clone()),
-            | QualifierLabel::AllReactants =>
-                PositiveAssertReturnValue::Set(l.reactants.union(&l.reactants_absent)),
+            | QualifierLabel::AllReactants => PositiveAssertReturnValue::Set(
+                l.reactants.union(&l.reactants_absent),
+            ),
             | QualifierLabel::AllInhibitors => PositiveAssertReturnValue::Set(
                 l.inhibitors.union(&l.inhibitors_present),
             ),
@@ -253,7 +276,10 @@ impl QualifierLabel {
 }
 
 impl QualifierSystem {
-    pub(super) fn get(&self, l: &system::PositiveSystem) -> PositiveAssertReturnValue {
+    pub(super) fn get(
+        &self,
+        l: &system::PositiveSystem,
+    ) -> PositiveAssertReturnValue {
         match self {
             | Self::Context =>
                 PositiveAssertReturnValue::Context(l.context_process.clone()),
@@ -288,7 +314,8 @@ impl PositiveUnary {
                 Ok(PositiveAssertionTypes::Boolean),
             | (Self::Rand, PositiveAssertionTypes::Integer) =>
                 Ok(PositiveAssertionTypes::Integer),
-            | (Self::Empty, PositiveAssertionTypes::Set) => Ok(PositiveAssertionTypes::Boolean),
+            | (Self::Empty, PositiveAssertionTypes::Set) =>
+                Ok(PositiveAssertionTypes::Boolean),
             | (Self::Length, PositiveAssertionTypes::Set)
             | (Self::Length, PositiveAssertionTypes::String) =>
                 Ok(PositiveAssertionTypes::Integer),
@@ -296,22 +323,30 @@ impl PositiveUnary {
             | (Self::ToStr, PositiveAssertionTypes::PositiveElement)
             | (Self::ToStr, PositiveAssertionTypes::Integer) =>
                 Ok(PositiveAssertionTypes::String),
-            | (Self::Qualifier(PositiveQualifier::Label(_)), PositiveAssertionTypes::Label) =>
-                Ok(PositiveAssertionTypes::Set),
+            | (
+                Self::Qualifier(PositiveQualifier::Label(_)),
+                PositiveAssertionTypes::Label,
+            ) => Ok(PositiveAssertionTypes::Set),
             | (
                 Self::Qualifier(PositiveQualifier::Restricted(_)),
                 PositiveAssertionTypes::Label,
             ) => Ok(PositiveAssertionTypes::Set),
             | (Self::ToEl, PositiveAssertionTypes::String) =>
                 Ok(PositiveAssertionTypes::PositiveElement),
-            | (Self::Qualifier(PositiveQualifier::Edge(_)), PositiveAssertionTypes::Edge) =>
-                Ok(PositiveAssertionTypes::Node),
             | (
-                Self::Qualifier(PositiveQualifier::Node(QualifierNode::Neighbours)),
+                Self::Qualifier(PositiveQualifier::Edge(_)),
+                PositiveAssertionTypes::Edge,
+            ) => Ok(PositiveAssertionTypes::Node),
+            | (
+                Self::Qualifier(PositiveQualifier::Node(
+                    QualifierNode::Neighbours,
+                )),
                 PositiveAssertionTypes::Node,
             ) => Ok(PositiveAssertionTypes::RangeNeighbours),
             | (
-                Self::Qualifier(PositiveQualifier::System(QualifierSystem::Entities)),
+                Self::Qualifier(PositiveQualifier::System(
+                    QualifierSystem::Entities,
+                )),
                 PositiveAssertionTypes::System,
             ) => Ok(PositiveAssertionTypes::Set),
             | (
@@ -332,7 +367,9 @@ impl PositiveUnary {
                      the system fields)."
             )),
             | (
-                Self::Qualifier(PositiveQualifier::System(QualifierSystem::Context)),
+                Self::Qualifier(PositiveQualifier::System(
+                    QualifierSystem::Context,
+                )),
                 PositiveAssertionTypes::System,
             ) => Ok(PositiveAssertionTypes::Context),
             | (
@@ -403,44 +440,96 @@ impl PositiveBinary {
         t2: &PositiveAssertionTypes,
     ) -> Result<PositiveAssertionTypes, String> {
         match (self, t1, t2) {
-            | (Self::And, PositiveAssertionTypes::Boolean, PositiveAssertionTypes::Boolean)
-            | (Self::Or, PositiveAssertionTypes::Boolean, PositiveAssertionTypes::Boolean) =>
-                Ok(PositiveAssertionTypes::Boolean),
-            | (Self::Xor, PositiveAssertionTypes::Boolean, PositiveAssertionTypes::Boolean) =>
-                Ok(PositiveAssertionTypes::Boolean),
-            | (Self::Xor, PositiveAssertionTypes::Set, PositiveAssertionTypes::Set) =>
-                Ok(PositiveAssertionTypes::Set),
+            | (
+                Self::And,
+                PositiveAssertionTypes::Boolean,
+                PositiveAssertionTypes::Boolean,
+            )
+            | (
+                Self::Or,
+                PositiveAssertionTypes::Boolean,
+                PositiveAssertionTypes::Boolean,
+            ) => Ok(PositiveAssertionTypes::Boolean),
+            | (
+                Self::Xor,
+                PositiveAssertionTypes::Boolean,
+                PositiveAssertionTypes::Boolean,
+            ) => Ok(PositiveAssertionTypes::Boolean),
+            | (
+                Self::Xor,
+                PositiveAssertionTypes::Set,
+                PositiveAssertionTypes::Set,
+            ) => Ok(PositiveAssertionTypes::Set),
             | (
                 Self::Less,
                 PositiveAssertionTypes::Integer,
                 PositiveAssertionTypes::Integer,
             )
-            | (Self::Less, PositiveAssertionTypes::Set, PositiveAssertionTypes::Set)
+            | (
+                Self::Less,
+                PositiveAssertionTypes::Set,
+                PositiveAssertionTypes::Set,
+            )
             | (
                 Self::LessEq,
                 PositiveAssertionTypes::Integer,
                 PositiveAssertionTypes::Integer,
             )
-            | (Self::LessEq, PositiveAssertionTypes::Set, PositiveAssertionTypes::Set)
+            | (
+                Self::LessEq,
+                PositiveAssertionTypes::Set,
+                PositiveAssertionTypes::Set,
+            )
             | (
                 Self::More,
                 PositiveAssertionTypes::Integer,
                 PositiveAssertionTypes::Integer,
             )
-            | (Self::More, PositiveAssertionTypes::Set, PositiveAssertionTypes::Set)
+            | (
+                Self::More,
+                PositiveAssertionTypes::Set,
+                PositiveAssertionTypes::Set,
+            )
             | (
                 Self::MoreEq,
                 PositiveAssertionTypes::Integer,
                 PositiveAssertionTypes::Integer,
             )
-            | (Self::MoreEq, PositiveAssertionTypes::Set, PositiveAssertionTypes::Set) =>
-                Ok(PositiveAssertionTypes::Boolean),
-            | (Self::Eq, PositiveAssertionTypes::Integer, PositiveAssertionTypes::Integer)
-            | (Self::Eq, PositiveAssertionTypes::Boolean, PositiveAssertionTypes::Boolean)
-            | (Self::Eq, PositiveAssertionTypes::PositiveElement, PositiveAssertionTypes::PositiveElement)
-            | (Self::Eq, PositiveAssertionTypes::Label, PositiveAssertionTypes::Label)
-            | (Self::Eq, PositiveAssertionTypes::String, PositiveAssertionTypes::String)
-            | (Self::Eq, PositiveAssertionTypes::Set, PositiveAssertionTypes::Set)
+            | (
+                Self::MoreEq,
+                PositiveAssertionTypes::Set,
+                PositiveAssertionTypes::Set,
+            ) => Ok(PositiveAssertionTypes::Boolean),
+            | (
+                Self::Eq,
+                PositiveAssertionTypes::Integer,
+                PositiveAssertionTypes::Integer,
+            )
+            | (
+                Self::Eq,
+                PositiveAssertionTypes::Boolean,
+                PositiveAssertionTypes::Boolean,
+            )
+            | (
+                Self::Eq,
+                PositiveAssertionTypes::PositiveElement,
+                PositiveAssertionTypes::PositiveElement,
+            )
+            | (
+                Self::Eq,
+                PositiveAssertionTypes::Label,
+                PositiveAssertionTypes::Label,
+            )
+            | (
+                Self::Eq,
+                PositiveAssertionTypes::String,
+                PositiveAssertionTypes::String,
+            )
+            | (
+                Self::Eq,
+                PositiveAssertionTypes::Set,
+                PositiveAssertionTypes::Set,
+            )
             | (
                 Self::NotEq,
                 PositiveAssertionTypes::Integer,
@@ -456,10 +545,21 @@ impl PositiveBinary {
                 PositiveAssertionTypes::PositiveElement,
                 PositiveAssertionTypes::PositiveElement,
             )
-            | (Self::NotEq, PositiveAssertionTypes::Label, PositiveAssertionTypes::Label)
-            | (Self::NotEq, PositiveAssertionTypes::String, PositiveAssertionTypes::String)
-            | (Self::NotEq, PositiveAssertionTypes::Set, PositiveAssertionTypes::Set) =>
-                Ok(PositiveAssertionTypes::Boolean),
+            | (
+                Self::NotEq,
+                PositiveAssertionTypes::Label,
+                PositiveAssertionTypes::Label,
+            )
+            | (
+                Self::NotEq,
+                PositiveAssertionTypes::String,
+                PositiveAssertionTypes::String,
+            )
+            | (
+                Self::NotEq,
+                PositiveAssertionTypes::Set,
+                PositiveAssertionTypes::Set,
+            ) => Ok(PositiveAssertionTypes::Boolean),
             | (
                 Self::Plus,
                 PositiveAssertionTypes::Integer,
@@ -475,10 +575,21 @@ impl PositiveBinary {
                 PositiveAssertionTypes::Integer,
                 PositiveAssertionTypes::Integer,
             ) => Ok(PositiveAssertionTypes::Integer),
-            | (Self::Plus, PositiveAssertionTypes::Set, PositiveAssertionTypes::Set)
-            | (Self::Minus, PositiveAssertionTypes::Set, PositiveAssertionTypes::Set)
-            | (Self::Times, PositiveAssertionTypes::Set, PositiveAssertionTypes::Set) =>
-                Ok(PositiveAssertionTypes::Set),
+            | (
+                Self::Plus,
+                PositiveAssertionTypes::Set,
+                PositiveAssertionTypes::Set,
+            )
+            | (
+                Self::Minus,
+                PositiveAssertionTypes::Set,
+                PositiveAssertionTypes::Set,
+            )
+            | (
+                Self::Times,
+                PositiveAssertionTypes::Set,
+                PositiveAssertionTypes::Set,
+            ) => Ok(PositiveAssertionTypes::Set),
             | (
                 Self::Exponential,
                 PositiveAssertionTypes::Integer,
@@ -499,16 +610,26 @@ impl PositiveBinary {
                 PositiveAssertionTypes::String,
                 PositiveAssertionTypes::String,
             ) => Ok(PositiveAssertionTypes::String),
-            | (Self::Concat, PositiveAssertionTypes::Set, PositiveAssertionTypes::PositiveElement) =>
-                Ok(PositiveAssertionTypes::Set),
+            | (
+                Self::Concat,
+                PositiveAssertionTypes::Set,
+                PositiveAssertionTypes::PositiveElement,
+            ) => Ok(PositiveAssertionTypes::Set),
             | (
                 Self::SubStr,
                 PositiveAssertionTypes::String,
                 PositiveAssertionTypes::String,
             ) => Ok(PositiveAssertionTypes::Integer),
-            | (Self::Min, PositiveAssertionTypes::Integer, PositiveAssertionTypes::Integer)
-            | (Self::Max, PositiveAssertionTypes::Integer, PositiveAssertionTypes::Integer) =>
-                Ok(PositiveAssertionTypes::Integer),
+            | (
+                Self::Min,
+                PositiveAssertionTypes::Integer,
+                PositiveAssertionTypes::Integer,
+            )
+            | (
+                Self::Max,
+                PositiveAssertionTypes::Integer,
+                PositiveAssertionTypes::Integer,
+            ) => Ok(PositiveAssertionTypes::Integer),
             | (
                 Self::CommonSubStr,
                 PositiveAssertionTypes::String,
@@ -567,7 +688,10 @@ impl TypeContext {
         }
     }
 
-    fn return_type(&mut self, ty: PositiveAssertionTypes) -> Result<(), String> {
+    fn return_type(
+        &mut self,
+        ty: PositiveAssertionTypes,
+    ) -> Result<(), String> {
         if let Some(ty_return) = self.return_ty {
             if ty_return == ty {
                 Ok(())
@@ -599,28 +723,28 @@ impl TypeContext {
                 self.data.insert(v.clone(), ty);
                 Ok(())
             },
-            | (PositiveVariable::Id(v), Some(q)) => match self.data.entry(v.clone()) {
-                | std::collections::hash_map::Entry::Vacant(_ve) =>
-                    Err(format!(
-                        "Variable {v:?} as no assignment while \
+            | (PositiveVariable::Id(v), Some(q)) =>
+                match self.data.entry(v.clone()) {
+                    | std::collections::hash_map::Entry::Vacant(_ve) =>
+                        Err(format!(
+                            "Variable {v:?} as no assignment while \
                                      trying to assign to qualification {q:?}, \
                                      assign first a value."
-                    )),
-                | std::collections::hash_map::Entry::Occupied(oe) => {
-                    match (oe.get(), q, ty) {
-                        | (
-                            PositiveAssertionTypes::Label,
-                            PositiveQualifier::Restricted(_),
-                            PositiveAssertionTypes::Set,
-                        ) => Ok(()),
-                        | (t, q, ty) => Err(format!(
-                            "Variable {v:?} has type {t:?}, \
+                        )),
+                    | std::collections::hash_map::Entry::Occupied(oe) =>
+                        match (oe.get(), q, ty) {
+                            | (
+                                PositiveAssertionTypes::Label,
+                                PositiveQualifier::Restricted(_),
+                                PositiveAssertionTypes::Set,
+                            ) => Ok(()),
+                            | (t, q, ty) => Err(format!(
+                                "Variable {v:?} has type {t:?}, \
                                              but was assigned with qualifier \
                                              {q:?} value with type {ty:?}."
-                        )),
-                    }
+                            )),
+                        },
                 },
-            },
             | (PositiveVariable::Special(s), None) =>
                 if s.type_of() == ty {
                     Ok(())
@@ -664,7 +788,8 @@ impl TypeContext {
         };
         match ty {
             | PositiveAssertionTypes::RangeSet => {
-                self.data.insert(v.clone(), PositiveAssertionTypes::PositiveElement);
+                self.data
+                    .insert(v.clone(), PositiveAssertionTypes::PositiveElement);
                 Ok(())
             },
             | PositiveAssertionTypes::RangeInteger => {
@@ -679,7 +804,10 @@ impl TypeContext {
         }
     }
 
-    fn get<S, G>(&self, v: &PositiveVariable<S>) -> Result<PositiveAssertionTypes, String>
+    fn get<S, G>(
+        &self,
+        v: &PositiveVariable<S>,
+    ) -> Result<PositiveAssertionTypes, String>
     where
         S: SpecialVariables<G>,
     {
@@ -720,7 +848,10 @@ impl<S> Context<S> {
                 self.data.insert(v.clone(), val);
                 Ok(())
             },
-            | (PositiveVariable::Id(v), Some(q)) => match self.data.entry(v.clone()) {
+            | (PositiveVariable::Id(v), Some(q)) => match self
+                .data
+                .entry(v.clone())
+            {
                 | std::collections::hash_map::Entry::Vacant(_ve) =>
                     Err(format!(
                         "Variable {v:?} as no assignment while \
@@ -769,15 +900,19 @@ impl<S> Context<S> {
         }
     }
 
-    fn get<G>(&self, v: &PositiveVariable<S>) -> Result<PositiveAssertReturnValue, String>
+    fn get<G>(
+        &self,
+        v: &PositiveVariable<S>,
+    ) -> Result<PositiveAssertReturnValue, String>
     where
         S: SpecialVariables<G>,
     {
         match v {
-            | PositiveVariable::Id(var) => self.data.get(var).cloned().ok_or(format!(
-                "Variable {v:?} used, but no value \
+            | PositiveVariable::Id(var) =>
+                self.data.get(var).cloned().ok_or(format!(
+                    "Variable {v:?} used, but no value \
                                     assigned."
-            )),
+                )),
             | PositiveVariable::Special(s) =>
                 self.special.get(s).cloned().ok_or(format!(
                     "Variable {v:?} used but no value \
@@ -811,10 +946,13 @@ impl PositiveAssertReturnValue {
                 Ok(PositiveAssertReturnValue::String(format!("{b}"))),
             | (PositiveAssertReturnValue::Integer(i), PositiveUnary::ToStr) =>
                 Ok(PositiveAssertReturnValue::String(format!("{i}"))),
-            | (PositiveAssertReturnValue::PositiveElement(el), PositiveUnary::ToStr) =>
-                Ok(PositiveAssertReturnValue::String(
-                    format!("{}", translator::Formatter::from(translator, &el))
-                )),
+            | (
+                PositiveAssertReturnValue::PositiveElement(el),
+                PositiveUnary::ToStr,
+            ) => Ok(PositiveAssertReturnValue::String(format!(
+                "{}",
+                translator::Formatter::from(translator, &el)
+            ))),
             | (
                 PositiveAssertReturnValue::Label(l),
                 PositiveUnary::Qualifier(PositiveQualifier::Label(q)),
@@ -826,30 +964,52 @@ impl PositiveAssertReturnValue {
             | (PositiveAssertReturnValue::String(s), PositiveUnary::ToEl) =>
                 Ok(PositiveAssertReturnValue::PositiveElement(
                     match s.chars().nth(0) {
-                        Some('+') => (translator.encode(s.chars().skip(1).collect::<String>()), element::IdState::Positive).into(),
-                        Some('-') => (translator.encode(s.chars().skip(1).collect::<String>()), element::IdState::Negative).into(),
-                        _ => { return Err(format!("Could not decode symbol from string {s}")); }
-                    }
+                        | Some('+') => (
+                            translator
+                                .encode(s.chars().skip(1).collect::<String>()),
+                            element::IdState::Positive,
+                        )
+                            .into(),
+                        | Some('-') => (
+                            translator
+                                .encode(s.chars().skip(1).collect::<String>()),
+                            element::IdState::Negative,
+                        )
+                            .into(),
+                        | _ => {
+                            return Err(format!(
+                                "Could not decode symbol from string {s}"
+                            ));
+                        },
+                    },
                 )),
             | (
                 PositiveAssertReturnValue::Edge(edge),
-                PositiveUnary::Qualifier(PositiveQualifier::Edge(QualifierEdge::Source)),
+                PositiveUnary::Qualifier(PositiveQualifier::Edge(
+                    QualifierEdge::Source,
+                )),
             ) => Ok(PositiveAssertReturnValue::Node(
                 graph.edge_endpoints(edge).unwrap().0,
             )),
             | (
                 PositiveAssertReturnValue::Edge(edge),
-                PositiveUnary::Qualifier(PositiveQualifier::Edge(QualifierEdge::Target)),
+                PositiveUnary::Qualifier(PositiveQualifier::Edge(
+                    QualifierEdge::Target,
+                )),
             ) => Ok(PositiveAssertReturnValue::Node(
                 graph.edge_endpoints(edge).unwrap().1,
             )),
             | (
                 PositiveAssertReturnValue::Node(node),
-                PositiveUnary::Qualifier(PositiveQualifier::Node(QualifierNode::Neighbours)),
+                PositiveUnary::Qualifier(PositiveQualifier::Node(
+                    QualifierNode::Neighbours,
+                )),
             ) => Ok(PositiveAssertReturnValue::Neighbours(node)),
             | (
                 PositiveAssertReturnValue::Node(node),
-                PositiveUnary::Qualifier(PositiveQualifier::Node(QualifierNode::System)),
+                PositiveUnary::Qualifier(PositiveQualifier::Node(
+                    QualifierNode::System,
+                )),
             ) => Ok(PositiveAssertReturnValue::System(
                 graph.node_weight(node).unwrap().clone(),
             )),
@@ -872,40 +1032,68 @@ impl PositiveAssertReturnValue {
     ) -> Result<PositiveAssertReturnValue, String> {
         use PositiveAssertReturnValue::*;
         Ok(match (b, self, other) {
-            | (PositiveBinary::And, Boolean(b1), Boolean(b2)) => Boolean(b1 && b2),
-            | (PositiveBinary::Or, Boolean(b1), Boolean(b2)) => Boolean(b1 || b2),
-            | (PositiveBinary::Xor, Boolean(b1), Boolean(b2)) => Boolean(b1 ^ b2),
+            | (PositiveBinary::And, Boolean(b1), Boolean(b2)) =>
+                Boolean(b1 && b2),
+            | (PositiveBinary::Or, Boolean(b1), Boolean(b2)) =>
+                Boolean(b1 || b2),
+            | (PositiveBinary::Xor, Boolean(b1), Boolean(b2)) =>
+                Boolean(b1 ^ b2),
             | (PositiveBinary::Xor, Set(s1), Set(s2)) =>
                 Set(s1.union(&s2).subtraction(&s1.intersection(&s2))),
-            | (PositiveBinary::Less, Integer(i1), Integer(i2)) => Boolean(i1 < i2),
+            | (PositiveBinary::Less, Integer(i1), Integer(i2)) =>
+                Boolean(i1 < i2),
             | (PositiveBinary::Less, Set(s1), Set(s2)) =>
                 Boolean(s1.is_subset(&s2) && !s2.is_subset(&s1)),
-            | (PositiveBinary::LessEq, Integer(i1), Integer(i2)) => Boolean(i1 <= i2),
-            | (PositiveBinary::LessEq, Set(s1), Set(s2)) => Boolean(s1.is_subset(&s2)),
-            | (PositiveBinary::More, Integer(i1), Integer(i2)) => Boolean(i1 > i2),
+            | (PositiveBinary::LessEq, Integer(i1), Integer(i2)) =>
+                Boolean(i1 <= i2),
+            | (PositiveBinary::LessEq, Set(s1), Set(s2)) =>
+                Boolean(s1.is_subset(&s2)),
+            | (PositiveBinary::More, Integer(i1), Integer(i2)) =>
+                Boolean(i1 > i2),
             | (PositiveBinary::More, Set(s1), Set(s2)) =>
                 Boolean(s2.is_subset(&s1) && !s1.is_subset(&s2)),
-            | (PositiveBinary::MoreEq, Integer(i1), Integer(i2)) => Boolean(i1 >= i2),
-            | (PositiveBinary::MoreEq, Set(s1), Set(s2)) => Boolean(s2.is_subset(&s1)),
-            | (PositiveBinary::Eq, Integer(i1), Integer(i2)) => Boolean(i1 == i2),
-            | (PositiveBinary::Eq, Boolean(b1), Boolean(b2)) => Boolean(b1 == b2),
-            | (PositiveBinary::Eq, PositiveElement(el1), PositiveElement(el2)) => Boolean(el1 == el2),
+            | (PositiveBinary::MoreEq, Integer(i1), Integer(i2)) =>
+                Boolean(i1 >= i2),
+            | (PositiveBinary::MoreEq, Set(s1), Set(s2)) =>
+                Boolean(s2.is_subset(&s1)),
+            | (PositiveBinary::Eq, Integer(i1), Integer(i2)) =>
+                Boolean(i1 == i2),
+            | (PositiveBinary::Eq, Boolean(b1), Boolean(b2)) =>
+                Boolean(b1 == b2),
+            | (
+                PositiveBinary::Eq,
+                PositiveElement(el1),
+                PositiveElement(el2),
+            ) => Boolean(el1 == el2),
             | (PositiveBinary::Eq, Label(l1), Label(l2)) => Boolean(l1 == l2),
             | (PositiveBinary::Eq, String(s1), String(s2)) => Boolean(s1 == s2),
-            | (PositiveBinary::Eq, Set(set1), Set(set2)) => Boolean(set1 == set2),
-            | (PositiveBinary::NotEq, Integer(i1), Integer(i2)) => Boolean(i1 != i2),
-            | (PositiveBinary::NotEq, Boolean(b1), Boolean(b2)) => Boolean(b1 != b2),
-            | (PositiveBinary::NotEq, PositiveElement(el1), PositiveElement(el2)) =>
-                Boolean(el1 != el2),
-            | (PositiveBinary::NotEq, Label(l1), Label(l2)) => Boolean(l1 != l2),
-            | (PositiveBinary::NotEq, String(s1), String(s2)) => Boolean(s1 != s2),
-            | (PositiveBinary::NotEq, Set(set1), Set(set2)) => Boolean(set1 != set2),
-            | (PositiveBinary::Plus, Integer(i1), Integer(i2)) => Integer(i1 + i2),
-            | (PositiveBinary::Plus, Set(set1), Set(set2)) => Set(set1.union(&set2)),
-            | (PositiveBinary::Minus, Integer(i1), Integer(i2)) => Integer(i1 - i2),
+            | (PositiveBinary::Eq, Set(set1), Set(set2)) =>
+                Boolean(set1 == set2),
+            | (PositiveBinary::NotEq, Integer(i1), Integer(i2)) =>
+                Boolean(i1 != i2),
+            | (PositiveBinary::NotEq, Boolean(b1), Boolean(b2)) =>
+                Boolean(b1 != b2),
+            | (
+                PositiveBinary::NotEq,
+                PositiveElement(el1),
+                PositiveElement(el2),
+            ) => Boolean(el1 != el2),
+            | (PositiveBinary::NotEq, Label(l1), Label(l2)) =>
+                Boolean(l1 != l2),
+            | (PositiveBinary::NotEq, String(s1), String(s2)) =>
+                Boolean(s1 != s2),
+            | (PositiveBinary::NotEq, Set(set1), Set(set2)) =>
+                Boolean(set1 != set2),
+            | (PositiveBinary::Plus, Integer(i1), Integer(i2)) =>
+                Integer(i1 + i2),
+            | (PositiveBinary::Plus, Set(set1), Set(set2)) =>
+                Set(set1.union(&set2)),
+            | (PositiveBinary::Minus, Integer(i1), Integer(i2)) =>
+                Integer(i1 - i2),
             | (PositiveBinary::Minus, Set(set1), Set(set2)) =>
                 Set(set1.subtraction(&set2)),
-            | (PositiveBinary::Times, Integer(i1), Integer(i2)) => Integer(i1 * i2),
+            | (PositiveBinary::Times, Integer(i1), Integer(i2)) =>
+                Integer(i1 * i2),
             | (PositiveBinary::Times, Set(set1), Set(set2)) =>
                 Set(set1.intersection(&set2)),
             | (PositiveBinary::Exponential, Integer(i1), Integer(i2)) =>
@@ -918,7 +1106,8 @@ impl PositiveAssertReturnValue {
                 Integer(i1.div_euclid(i2)),
             | (PositiveBinary::Reminder, Integer(i1), Integer(i2)) =>
                 Integer(i1.rem_euclid(i2)),
-            | (PositiveBinary::Concat, String(s1), String(s2)) => String(s1 + &s2),
+            | (PositiveBinary::Concat, String(s1), String(s2)) =>
+                String(s1 + &s2),
             | (PositiveBinary::Concat, Set(s), PositiveElement(e)) =>
                 Set(s.union(&set::PositiveSet::from([e]))),
             | (PositiveBinary::SubStr, String(s1), String(s2)) => {
@@ -931,8 +1120,10 @@ impl PositiveAssertReturnValue {
                 }
                 Integer(len)
             },
-            | (PositiveBinary::Min, Integer(i1), Integer(i2)) => Integer(i1.min(i2)),
-            | (PositiveBinary::Max, Integer(i1), Integer(i2)) => Integer(i1.max(i2)),
+            | (PositiveBinary::Min, Integer(i1), Integer(i2)) =>
+                Integer(i1.min(i2)),
+            | (PositiveBinary::Max, Integer(i1), Integer(i2)) =>
+                Integer(i1.max(i2)),
             | (PositiveBinary::CommonSubStr, String(s1), String(s2)) => {
                 let mut s = std::string::String::new();
                 for (p, c) in s1.chars().enumerate() {
@@ -1030,11 +1221,13 @@ where
     S: SpecialVariables<G>,
 {
     match exp {
-        | PositiveExpression::True | PositiveExpression::False => Ok(PositiveAssertionTypes::Boolean),
+        | PositiveExpression::True | PositiveExpression::False =>
+            Ok(PositiveAssertionTypes::Boolean),
         | PositiveExpression::Integer(_) => Ok(PositiveAssertionTypes::Integer),
         | PositiveExpression::Label(_) => Ok(PositiveAssertionTypes::Label),
         | PositiveExpression::Set(_) => Ok(PositiveAssertionTypes::Set),
-        | PositiveExpression::PositiveElement(_) => Ok(PositiveAssertionTypes::PositiveElement),
+        | PositiveExpression::PositiveElement(_) =>
+            Ok(PositiveAssertionTypes::PositiveElement),
         | PositiveExpression::String(_) => Ok(PositiveAssertionTypes::String),
         | PositiveExpression::Var(v) => c.get(v),
 
@@ -1062,8 +1255,10 @@ where
         | PositiveRange::IterateInRange(exp1, exp2) => {
             let type_exp1 = typecheck_expression(exp1, c)?;
             let type_exp2 = typecheck_expression(exp2, c)?;
-            if let (PositiveAssertionTypes::Integer, PositiveAssertionTypes::Integer) =
-                (type_exp1, type_exp2)
+            if let (
+                PositiveAssertionTypes::Integer,
+                PositiveAssertionTypes::Integer,
+            ) = (type_exp1, type_exp2)
             {
                 Ok(PositiveAssertionTypes::RangeInteger)
             } else {
@@ -1076,7 +1271,8 @@ where
         | PositiveRange::IterateOverSet(exp) => {
             let type_exp = typecheck_expression(exp, c)?;
             match type_exp {
-                | PositiveAssertionTypes::Set => Ok(PositiveAssertionTypes::RangeSet),
+                | PositiveAssertionTypes::Set =>
+                    Ok(PositiveAssertionTypes::RangeSet),
                 | PositiveAssertionTypes::RangeNeighbours =>
                     Ok(PositiveAssertionTypes::RangeNeighbours),
                 | _ => Err(format!(
@@ -1160,7 +1356,9 @@ where
             match val {
                 | PositiveAssertReturnValue::Set(set) => Ok(set
                     .into_iter()
-                    .map(|el| PositiveAssertReturnValue::PositiveElement(el.into()))
+                    .map(|el| {
+                        PositiveAssertReturnValue::PositiveElement(el.into())
+                    })
                     .collect::<Vec<_>>()
                     .into_iter()),
                 | PositiveAssertReturnValue::Neighbours(node) => Ok(graph
@@ -1201,13 +1399,20 @@ where
     S: SpecialVariables<G>,
 {
     match exp {
-        | PositiveExpression::True => Ok(PositiveAssertReturnValue::Boolean(true)),
-        | PositiveExpression::False => Ok(PositiveAssertReturnValue::Boolean(false)),
-        | PositiveExpression::Integer(i) => Ok(PositiveAssertReturnValue::Integer(*i)),
-        | PositiveExpression::Label(l) => Ok(PositiveAssertReturnValue::Label(*l.clone())),
-        | PositiveExpression::Set(set) => Ok(PositiveAssertReturnValue::Set(set.clone())),
-        | PositiveExpression::PositiveElement(el) => Ok(PositiveAssertReturnValue::PositiveElement(*el)),
-        | PositiveExpression::String(s) => Ok(PositiveAssertReturnValue::String(s.clone())),
+        | PositiveExpression::True =>
+            Ok(PositiveAssertReturnValue::Boolean(true)),
+        | PositiveExpression::False =>
+            Ok(PositiveAssertReturnValue::Boolean(false)),
+        | PositiveExpression::Integer(i) =>
+            Ok(PositiveAssertReturnValue::Integer(*i)),
+        | PositiveExpression::Label(l) =>
+            Ok(PositiveAssertReturnValue::Label(*l.clone())),
+        | PositiveExpression::Set(set) =>
+            Ok(PositiveAssertReturnValue::Set(set.clone())),
+        | PositiveExpression::PositiveElement(el) =>
+            Ok(PositiveAssertReturnValue::PositiveElement(*el)),
+        | PositiveExpression::String(s) =>
+            Ok(PositiveAssertReturnValue::String(s.clone())),
         | PositiveExpression::Var(var) => c.get(var),
         | PositiveExpression::Unary(u, exp) => {
             let val = execute_exp(exp, c, translator, graph)?;

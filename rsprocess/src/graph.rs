@@ -14,8 +14,8 @@ use super::translator;
 
 pub type SystemGraph = Graph<System, Label, Directed, u32>;
 
-pub type PositiveSystemGraph = Graph<PositiveSystem, PositiveLabel, Directed, u32>;
-
+pub type PositiveSystemGraph =
+    Graph<PositiveSystem, PositiveLabel, Directed, u32>;
 
 fn common_system_entities(graph: &SystemGraph) -> Set {
     graph

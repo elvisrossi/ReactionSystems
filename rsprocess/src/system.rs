@@ -705,14 +705,16 @@ impl System {
     }
 
     pub fn overwrite_context_elements(&mut self, new_context_elements: Set) {
-        self.context_elements = Rc::new(RefCell::new(Some(new_context_elements)));
+        self.context_elements =
+            Rc::new(RefCell::new(Some(new_context_elements)));
     }
 
     pub fn overwrite_product_elements(&mut self, new_product_elements: Set) {
         // since context_elements depend on product elements we make sure that
         // its computed to ensure consistent behaviour
         self.context_elements();
-        self.products_elements = Rc::new(RefCell::new(Some(new_product_elements)));
+        self.products_elements =
+            Rc::new(RefCell::new(Some(new_product_elements)));
     }
 }
 
@@ -1039,7 +1041,8 @@ impl From<System> for PositiveSystem {
         let new_available_entities =
             positive_entities.union(&negative_entities);
 
-        let new_reactions = Rc::new(PositiveReaction::from_reactions(value.reactions()));
+        let new_reactions =
+            Rc::new(PositiveReaction::from_reactions(value.reactions()));
         let new_context = value.context_process.into();
 
         Self::from(new_env, new_available_entities, new_context, new_reactions)
@@ -1071,14 +1074,22 @@ impl PositiveSystem {
             .collect::<PositiveSet>()
     }
 
-    pub fn overwrite_context_elements(&mut self, new_context_elements: PositiveSet) {
-        self.context_elements = Rc::new(RefCell::new(Some(new_context_elements)));
+    pub fn overwrite_context_elements(
+        &mut self,
+        new_context_elements: PositiveSet,
+    ) {
+        self.context_elements =
+            Rc::new(RefCell::new(Some(new_context_elements)));
     }
 
-    pub fn overwrite_product_elements(&mut self, new_product_elements: PositiveSet) {
+    pub fn overwrite_product_elements(
+        &mut self,
+        new_product_elements: PositiveSet,
+    ) {
         // since context_elements depend on product elements we make sure that
         // its computed to ensure consistent behaviour
         self.context_elements();
-        self.products_elements = Rc::new(RefCell::new(Some(new_product_elements)));
+        self.products_elements =
+            Rc::new(RefCell::new(Some(new_product_elements)));
     }
 }

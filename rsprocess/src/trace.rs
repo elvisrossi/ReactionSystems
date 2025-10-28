@@ -407,7 +407,8 @@ impl<
 
         while let Some(el) = elements.next() {
             if let Some(r) = enabled_reactions.next() {
-                let reaction_string = format!("{}", Formatter::from(translator, r));
+                let reaction_string =
+                    format!("{}", Formatter::from(translator, r));
                 let reaction_string = if reaction_string.is_empty() {
                     "( )"
                 } else {

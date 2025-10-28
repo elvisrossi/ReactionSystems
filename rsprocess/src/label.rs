@@ -88,7 +88,6 @@ impl BasicLabel for Label {
         &self.products
     }
 
-
     fn set_available_entities(&mut self, set: Self::Set) {
         self.available_entities = set;
     }
@@ -264,7 +263,6 @@ impl BasicLabel for PositiveLabel {
     fn products(&self) -> &Self::Set {
         &self.products
     }
-
 
     fn set_available_entities(&mut self, set: Self::Set) {
         self.available_entities = set;

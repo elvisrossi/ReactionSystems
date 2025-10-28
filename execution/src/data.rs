@@ -59,7 +59,6 @@ impl<'a> MapEdges<'a, System, Label, Directed, u32> for SystemGraph {
     }
 }
 
-
 /// Very inelegant way to provide our graph with a map method where the edges
 /// are mapped until the first error.
 pub trait PositiveMapEdges<'a, N: 'a, E, Ty, Ix>
@@ -71,16 +70,33 @@ where
         &self,
         edge_map: &assert::positive_relabel::PositiveAssert,
         translator: &mut translator::Translator,
-    ) -> Result<Graph<PositiveSystem, assert::positive_relabel::PositiveAssertReturnValue, Ty, Ix>, String>;
+    ) -> Result<
+        Graph<
+            PositiveSystem,
+            assert::positive_relabel::PositiveAssertReturnValue,
+            Ty,
+            Ix,
+        >,
+        String,
+    >;
 }
 
-impl<'a> PositiveMapEdges<'a, PositiveSystem, PositiveLabel, Directed, u32> for PositiveSystemGraph {
+impl<'a> PositiveMapEdges<'a, PositiveSystem, PositiveLabel, Directed, u32>
+    for PositiveSystemGraph
+{
     fn map_edges(
         &self,
         edge_map: &assert::positive_relabel::PositiveAssert,
         translator: &mut translator::Translator,
-    ) -> Result<Graph<PositiveSystem, assert::positive_relabel::PositiveAssertReturnValue, Directed, u32>, String>
-    {
+    ) -> Result<
+        Graph<
+            PositiveSystem,
+            assert::positive_relabel::PositiveAssertReturnValue,
+            Directed,
+            u32,
+        >,
+        String,
+    > {
         use petgraph::graph::EdgeIndex;
 
         let mut g = Graph::with_capacity(self.node_count(), self.edge_count());
@@ -109,16 +125,16 @@ impl<'a> PositiveMapEdges<'a, PositiveSystem, PositiveLabel, Directed, u32> for 
     }
 }
 
-
 /// Given a graph and a function that identifies nodes of the graph, merges
 /// nodes with the same identifier.
 pub fn grouping(
     graph: &mut Graph<System, Label>,
     group: &assert::grouping::Assert,
-    translator: &mut rsprocess::translator::Translator
+    translator: &mut rsprocess::translator::Translator,
 ) -> Result<(), String> {
     let mut buckets = std::collections::HashMap::new();
-    let mut leader: std::collections::HashMap<petgraph::prelude::NodeIndex, _> = std::collections::HashMap::new();
+    let mut leader: std::collections::HashMap<petgraph::prelude::NodeIndex, _> =
+        std::collections::HashMap::new();
 
     for node in graph.node_indices() {
         let val = group.execute(graph, &node, translator)?;
@@ -167,10 +183,11 @@ pub fn grouping(
 pub fn positive_grouping(
     graph: &mut Graph<PositiveSystem, PositiveLabel>,
     group: &assert::positive_grouping::PositiveAssert,
-    translator: &mut rsprocess::translator::Translator
+    translator: &mut rsprocess::translator::Translator,
 ) -> Result<(), String> {
     let mut buckets = std::collections::HashMap::new();
-    let mut leader: std::collections::HashMap<petgraph::prelude::NodeIndex, _> = std::collections::HashMap::new();
+    let mut leader: std::collections::HashMap<petgraph::prelude::NodeIndex, _> =
+        std::collections::HashMap::new();
 
     for node in graph.node_indices() {
         let val = group.execute(graph, &node, translator)?;
