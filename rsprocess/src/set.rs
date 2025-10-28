@@ -704,4 +704,8 @@ impl PositiveSet {
             .collect::<PositiveSet>()
             .union(self)
     }
+
+    pub fn elements(&self) -> Set {
+        self.iter().map(|el| *el.0).collect::<Vec<_>>().into()
+    }
 }
