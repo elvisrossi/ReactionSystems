@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::sync::Arc;
 
 use crate::element::IdState;
 use crate::reaction::{BasicReaction, PositiveReaction, Reaction};
@@ -95,10 +95,10 @@ fn slice_atoi() {
         elements,
         enabled_reactions,
 
-        reactions: Rc::new(reactions),
+        reactions: Arc::new(reactions),
         systems: vec![],
-        context_elements: Rc::new(context_elements),
-        products_elements: Rc::new(products_elements),
+        context_elements: Arc::new(context_elements),
+        products_elements: Arc::new(products_elements),
     };
 
     let marking = ["tbet"]
@@ -199,15 +199,15 @@ fn slice_positive_atoi() {
         .collect::<Vec<_>>();
 
         let system = System::from(
-            Rc::new(crate::environment::Environment::from([])),
+            Arc::new(crate::environment::Environment::from([])),
             Set::from([]),
             crate::process::Process::Nill,
-            Rc::new(reactions),
+            Arc::new(reactions),
         );
 
         let converted_system: PositiveSystem = system.into();
         let mut reactions =
-            Rc::try_unwrap(converted_system.reaction_rules).unwrap();
+            Arc::try_unwrap(converted_system.reaction_rules).unwrap();
         reactions.sort_by(|a, b| {
             a.reactants
                 .cmp(&b.reactants)
@@ -365,10 +365,10 @@ fn slice_positive_atoi() {
             elements,
             enabled_reactions,
 
-            reactions: Rc::new(reactions),
+            reactions: Arc::new(reactions),
             systems: vec![],
-            context_elements: Rc::new(context_elements),
-            products_elements: Rc::new(products_elements),
+            context_elements: Arc::new(context_elements),
+            products_elements: Arc::new(products_elements),
         };
 
     let marking = Into::<Set>::into(

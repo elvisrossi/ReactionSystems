@@ -1,11 +1,10 @@
 use super::set::PositiveSet;
 use super::system::BasicSystem;
 use crate::system::ExtensionsSystem;
+use std::sync::Arc;
 
 #[test]
 fn one_transition() {
-    use std::rc::Rc;
-
     use super::environment::Environment;
     use super::process::Process;
     use super::reaction::Reaction;
@@ -13,13 +12,13 @@ fn one_transition() {
     use super::system::{ExtensionsSystem, System};
 
     let system = System::from(
-        Rc::new(Environment::default()),
+        Arc::new(Environment::default()),
         Set::from([1, 2]),
         Process::EntitySet {
             entities:     Set::from([]),
-            next_process: Rc::new(Process::Nill),
+            next_process: Arc::new(Process::Nill),
         },
-        Rc::new(vec![Reaction::from(
+        Arc::new(vec![Reaction::from(
             Set::from([1]),
             Set::from([3]),
             Set::from([3]),
@@ -41,8 +40,6 @@ fn one_transition() {
 
 #[test]
 fn one_transition_2() {
-    use std::rc::Rc;
-
     use super::element::{IdState, PositiveType};
     use super::environment::PositiveEnvironment;
     use super::process::PositiveProcess;
@@ -51,7 +48,7 @@ fn one_transition_2() {
     use super::system::{ExtensionsSystem, PositiveSystem};
 
     let system = PositiveSystem::from(
-        Rc::new(PositiveEnvironment::default()),
+        Arc::new(PositiveEnvironment::default()),
         PositiveSet::from([
             (1, IdState::Positive),
             (2, IdState::Positive),
@@ -59,13 +56,13 @@ fn one_transition_2() {
         ]),
         PositiveProcess::WaitEntity {
             repeat: 2,
-            repeated_process: Rc::new(PositiveProcess::EntitySet {
+            repeated_process: Arc::new(PositiveProcess::EntitySet {
                 entities:     PositiveSet::default(),
-                next_process: Rc::new(PositiveProcess::Nill),
+                next_process: Arc::new(PositiveProcess::Nill),
             }),
-            next_process: Rc::new(PositiveProcess::Nill),
+            next_process: Arc::new(PositiveProcess::Nill),
         },
-        Rc::new(vec![
+        Arc::new(vec![
             PositiveReaction {
                 reactants: PositiveSet::from([
                     (1, IdState::Positive),
@@ -119,8 +116,6 @@ fn one_transition_2() {
 
 #[test]
 fn convertion() {
-    use std::rc::Rc;
-
     use super::environment::Environment;
     use super::process::Process;
     use super::reaction::Reaction;
@@ -128,13 +123,13 @@ fn convertion() {
     use super::system::{PositiveSystem, System};
 
     let system = System::from(
-        Rc::new(Environment::default()),
+        Arc::new(Environment::default()),
         Set::from([1, 2]),
         Process::EntitySet {
             entities:     Set::from([]),
-            next_process: Rc::new(Process::Nill),
+            next_process: Arc::new(Process::Nill),
         },
-        Rc::new(vec![Reaction::from(
+        Arc::new(vec![Reaction::from(
             Set::from([1]),
             Set::from([3]),
             Set::from([3]),
@@ -149,8 +144,6 @@ fn convertion() {
 
 #[test]
 fn traces_1() {
-    use std::rc::Rc;
-
     use super::environment::Environment;
     use super::process::Process;
     use super::reaction::Reaction;
@@ -158,48 +151,48 @@ fn traces_1() {
     use super::system::{ExtensionsSystem, System};
 
     let system = System::from(
-        Rc::new(Environment::from([
+        Arc::new(Environment::from([
             (100, Process::WaitEntity {
                 repeat: 2,
-                repeated_process: Rc::new(Process::EntitySet {
+                repeated_process: Arc::new(Process::EntitySet {
                     entities:     Set::from([1]),
-                    next_process: Rc::new(Process::Nill),
+                    next_process: Arc::new(Process::Nill),
                 }),
-                next_process: Rc::new(Process::Nill),
+                next_process: Arc::new(Process::Nill),
             }),
             (102, Process::WaitEntity {
                 repeat: 3,
-                repeated_process: Rc::new(Process::EntitySet {
+                repeated_process: Arc::new(Process::EntitySet {
                     entities:     Set::from([2]),
-                    next_process: Rc::new(Process::Nill),
+                    next_process: Arc::new(Process::Nill),
                 }),
-                next_process: Rc::new(Process::Nill),
+                next_process: Arc::new(Process::Nill),
             }),
             (103, Process::WaitEntity {
                 repeat: 4,
-                repeated_process: Rc::new(Process::EntitySet {
+                repeated_process: Arc::new(Process::EntitySet {
                     entities:     Set::from([3]),
-                    next_process: Rc::new(Process::Nill),
+                    next_process: Arc::new(Process::Nill),
                 }),
-                next_process: Rc::new(Process::Nill),
+                next_process: Arc::new(Process::Nill),
             }),
             (101, Process::Summation {
                 children: vec![
-                    Rc::new(Process::EntitySet {
+                    Arc::new(Process::EntitySet {
                         entities:     Set::from([10]),
-                        next_process: Rc::new(Process::RecursiveIdentifier {
+                        next_process: Arc::new(Process::RecursiveIdentifier {
                             identifier: 100,
                         }),
                     }),
-                    Rc::new(Process::EntitySet {
+                    Arc::new(Process::EntitySet {
                         entities:     Set::from([11]),
-                        next_process: Rc::new(Process::RecursiveIdentifier {
+                        next_process: Arc::new(Process::RecursiveIdentifier {
                             identifier: 102,
                         }),
                     }),
-                    Rc::new(Process::EntitySet {
+                    Arc::new(Process::EntitySet {
                         entities:     Set::from([11]),
-                        next_process: Rc::new(Process::RecursiveIdentifier {
+                        next_process: Arc::new(Process::RecursiveIdentifier {
                             identifier: 103,
                         }),
                     }),
@@ -208,7 +201,7 @@ fn traces_1() {
         ])),
         Set::from([1, 2]),
         Process::RecursiveIdentifier { identifier: 101 },
-        Rc::new(vec![
+        Arc::new(vec![
             Reaction::from(Set::from([1]), Set::from([3]), Set::from([3])),
             Reaction::from(Set::from([3]), Set::from([1]), Set::from([1])),
             Reaction::from(Set::from([2]), Set::default(), Set::from([4])),
@@ -237,8 +230,6 @@ fn traces_1() {
 
 #[test]
 fn traces_empty_env() {
-    use std::rc::Rc;
-
     use super::environment::Environment;
     use super::process::Process;
     use super::reaction::Reaction;
@@ -246,17 +237,17 @@ fn traces_empty_env() {
     use super::system::{ExtensionsSystem, System};
 
     let system = System::from(
-        Rc::new(Environment::from([])),
+        Arc::new(Environment::from([])),
         Set::from([1, 2]),
         Process::WaitEntity {
             repeat: 10,
-            repeated_process: Rc::new(Process::EntitySet {
+            repeated_process: Arc::new(Process::EntitySet {
                 entities:     Set::from([1, 2]),
-                next_process: Rc::new(Process::Nill),
+                next_process: Arc::new(Process::Nill),
             }),
-            next_process: Rc::new(Process::Nill),
+            next_process: Arc::new(Process::Nill),
         },
-        Rc::new(vec![
+        Arc::new(vec![
             Reaction::from(Set::from([1]), Set::from([3]), Set::from([3])),
             Reaction::from(Set::from([3]), Set::from([1]), Set::from([1])),
             Reaction::from(Set::from([2]), Set::default(), Set::from([4])),
@@ -270,8 +261,6 @@ fn traces_empty_env() {
 
 #[test]
 fn conversion_reactions() {
-    use std::rc::Rc;
-
     use super::element::IdState::*;
     use super::environment::Environment;
     use super::process::Process;
@@ -280,10 +269,10 @@ fn conversion_reactions() {
     use super::system::{PositiveSystem, System};
 
     let system = System::from(
-        Rc::new(Environment::from([])),
+        Arc::new(Environment::from([])),
         Set::from([1, 2]),
         Process::Nill,
-        Rc::new(vec![
+        Arc::new(vec![
             Reaction::from(Set::from([2]), Set::from([1, 3]), Set::from([5])),
             Reaction::from(Set::from([1, 2]), Set::from([3]), Set::from([5])),
         ]),
@@ -314,8 +303,6 @@ fn conversion_reactions() {
 
 #[test]
 fn conversion_entities() {
-    use std::rc::Rc;
-
     use super::element::IdState::*;
     use super::environment::Environment;
     use super::process::Process;
@@ -324,10 +311,10 @@ fn conversion_entities() {
     use super::system::{PositiveSystem, System};
 
     let system = System::from(
-        Rc::new(Environment::from([])),
+        Arc::new(Environment::from([])),
         Set::from([1, 2]),
         Process::Nill,
-        Rc::new(vec![
+        Arc::new(vec![
             Reaction::from(Set::from([2]), Set::from([1, 3]), Set::from([5])),
             Reaction::from(Set::from([1, 2]), Set::from([3]), Set::from([5])),
         ]),
@@ -348,8 +335,6 @@ fn conversion_entities() {
 
 #[test]
 fn slice_trace() {
-    use std::rc::Rc;
-
     use super::environment::Environment;
     use super::process::Process;
     use super::reaction::Reaction;
@@ -361,16 +346,16 @@ fn slice_trace() {
     let mut tr = |a| translator.encode(a);
 
     let system = System::from(
-        Rc::new(Environment::from([])),
+        Arc::new(Environment::from([])),
         Set::from([tr("a"), tr("b")]),
         Process::EntitySet {
             entities:     Set::from([tr("c")]),
-            next_process: Rc::new(Process::EntitySet {
+            next_process: Arc::new(Process::EntitySet {
                 entities:     Set::from([]),
-                next_process: Rc::new(Process::Nill),
+                next_process: Arc::new(Process::Nill),
             }),
         },
-        Rc::new(vec![Reaction::from(
+        Arc::new(vec![Reaction::from(
             Set::from([tr("a")]),
             Set::from([]),
             Set::from([tr("b")]),
@@ -387,8 +372,6 @@ fn slice_trace() {
 
 #[test]
 fn slice_trace_2() {
-    use std::rc::Rc;
-
     use super::environment::Environment;
     use super::process::Process;
     use super::reaction::Reaction;
@@ -400,16 +383,16 @@ fn slice_trace_2() {
     let mut tr = |a| translator.encode(a);
 
     let system = System::from(
-        Rc::new(Environment::from([])),
+        Arc::new(Environment::from([])),
         Set::from([tr("a"), tr("b")]),
         Process::EntitySet {
             entities:     Set::from([tr("c")]),
-            next_process: Rc::new(Process::EntitySet {
+            next_process: Arc::new(Process::EntitySet {
                 entities:     Set::from([]),
-                next_process: Rc::new(Process::Nill),
+                next_process: Arc::new(Process::Nill),
             }),
         },
-        Rc::new(vec![
+        Arc::new(vec![
             Reaction::from(
                 Set::from([tr("a")]),
                 Set::from([tr("b")]),

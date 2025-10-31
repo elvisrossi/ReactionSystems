@@ -1,7 +1,7 @@
 //! Module for helper structure for simulation
 
 use std::fmt::Debug;
-use std::rc::Rc;
+use std::sync::Arc;
 
 use super::label::{Label, PositiveLabel};
 use super::process::{BasicProcess, PositiveProcess, Process};
@@ -22,7 +22,7 @@ pub struct TransitionsIterator<
     Sys: BasicSystem<Set = S>,
     Proc: BasicProcess<Set = S>,
 > {
-    choices_iterator: std::vec::IntoIter<(Rc<S>, Rc<Proc>)>,
+    choices_iterator: std::vec::IntoIter<(Arc<S>, Arc<Proc>)>,
     system: &'a Sys,
 }
 
@@ -95,10 +95,10 @@ impl<'a> Iterator for TransitionsIterator<'a, Set, System, Process> {
             products.clone(),
         );
         let new_system = System::from(
-            Rc::clone(&self.system.delta),
+            Arc::clone(&self.system.delta),
             products,
             (*k).clone(),
-            Rc::clone(&self.system.reaction_rules),
+            Arc::clone(&self.system.reaction_rules),
         );
         Some((label, new_system))
     }
@@ -186,11 +186,11 @@ impl<'a> Iterator
             products.clone(),
         );
         let new_system = PositiveSystem::from(
-            Rc::clone(&self.system.delta),
+            Arc::clone(&self.system.delta),
             // products.add_unique(&self.system.negated_products_elements()),
             products,
             (*k).clone(),
-            Rc::clone(&self.system.reaction_rules),
+            Arc::clone(&self.system.reaction_rules),
         );
         Some((label, new_system))
     }
@@ -261,12 +261,12 @@ impl<'a> Iterator for TraceIterator<'a, Set, System, Process> {
             );
 
         let new_system = System::from(
-            Rc::clone(&self.system.delta),
+            Arc::clone(&self.system.delta),
             // all_products.add_unique(&self.system.
             // negated_products_elements()),
             all_products.clone(),
             (*k).clone(),
-            Rc::clone(&self.system.reaction_rules),
+            Arc::clone(&self.system.reaction_rules),
         );
 
         Some((
@@ -302,12 +302,12 @@ impl<'a> Iterator
             );
 
         let new_system = PositiveSystem::from(
-            Rc::clone(&self.system.delta),
+            Arc::clone(&self.system.delta),
             // all_products.add_unique(&self.system.
             // negated_products_elements()),
             all_products.clone(),
             (*k).clone(),
-            Rc::clone(&self.system.reaction_rules),
+            Arc::clone(&self.system.reaction_rules),
         );
 
         Some((

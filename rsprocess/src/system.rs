@@ -1,8 +1,7 @@
-use std::cell::RefCell;
 use std::collections::{HashMap, VecDeque};
 use std::fmt::Debug;
 use std::hash::Hash;
-use std::rc::Rc;
+use std::sync::{Arc, Mutex};
 
 use petgraph::graph::DiGraph;
 use serde::{Deserialize, Serialize};
@@ -80,7 +79,7 @@ pub trait ExtensionsSystem: BasicSystem {
 
     fn all_transitions(&self) -> Result<Vec<(Self::Label, Self)>, String>;
 
-    fn run(&self) -> Result<Vec<Rc<Self>>, String>;
+    fn run(&self) -> Result<Vec<Arc<Self>>, String>;
 
     fn digraph(&self) -> Result<DiGraph<Self, Self::Label>, String>;
 
@@ -139,10 +138,10 @@ impl<T: BasicSystem> ExtensionsSystem for T {
     }
 
     /// see oneRun, run, smartOneRunEK, smartRunEK
-    fn run(&self) -> Result<Vec<Rc<Self>>, String> {
-        let mut res = vec![Rc::new(self.clone())];
+    fn run(&self) -> Result<Vec<Arc<Self>>, String> {
+        let mut res = vec![Arc::new(self.clone())];
         while let Some((_, next_sys)) = res.last().unwrap().one_transition()? {
-            res.push(Rc::new(next_sys));
+            res.push(Arc::new(next_sys));
         }
         Ok(res)
     }
@@ -273,7 +272,7 @@ impl<T: BasicSystem> ExtensionsSystem for T {
         let mut n = n;
         let mut res: Vec<Trace<Self::Label, Self>> = vec![];
         let mut current_trace: Trace<Self::Label, Self> = Trace::default();
-        current_trace.push((None, Rc::new(sys)));
+        current_trace.push((None, Arc::new(sys)));
         let mut branch = vec![0];
         let mut depth = 0;
         let mut new_branch = true;
@@ -287,13 +286,13 @@ impl<T: BasicSystem> ExtensionsSystem for T {
                 if depth >= branch.len() {
                     branch.push(0);
                     current_trace.push((
-                        Some(Rc::new(current_label)),
-                        Rc::new(next_sys),
+                        Some(Arc::new(current_label)),
+                        Arc::new(next_sys),
                     ));
                 } else {
                     branch[depth] = 0;
                     current_trace[depth] =
-                        (Some(Rc::new(current_label)), Rc::new(next_sys));
+                        (Some(Arc::new(current_label)), Arc::new(next_sys));
                 }
                 new_branch = true;
             } else {
@@ -325,10 +324,10 @@ impl<T: BasicSystem> ExtensionsSystem for T {
     ) -> Result<SlicingTrace<Self::Set, Self::Reaction, Self>, String> {
         let mut trace = SlicingTrace::default();
 
-        trace.context_elements = Rc::new(self.context_elements());
-        trace.products_elements = Rc::new(self.products_elements());
-        trace.reactions = Rc::new(self.reactions().clone());
-        trace.systems.push(Rc::new(self.clone()));
+        trace.context_elements = Arc::new(self.context_elements());
+        trace.products_elements = Arc::new(self.products_elements());
+        trace.reactions = Arc::new(self.reactions().clone());
+        trace.systems.push(Arc::new(self.clone()));
         trace.elements.push(SlicingElement::from((
             Self::Set::default(),
             self.available_entities().clone(),
@@ -348,7 +347,7 @@ impl<T: BasicSystem> ExtensionsSystem for T {
         trace
             .enabled_reactions
             .push(EnabledReactions::from(enabled_reactions));
-        trace.systems.push(Rc::new(current.clone()));
+        trace.systems.push(Arc::new(current.clone()));
 
         loop {
             let t = current.to_slicing_iterator()?.next();
@@ -360,7 +359,7 @@ impl<T: BasicSystem> ExtensionsSystem for T {
                 trace
                     .enabled_reactions
                     .push(EnabledReactions::from(enabled_reactions));
-                trace.systems.push(Rc::new(current.clone()));
+                trace.systems.push(Arc::new(current.clone()));
             } else {
                 break;
             }
@@ -377,10 +376,10 @@ impl<T: BasicSystem> ExtensionsSystem for T {
     ) -> Result<SlicingTrace<Self::Set, Self::Reaction, Self>, String> {
         let mut trace = SlicingTrace::default();
 
-        trace.context_elements = Rc::new(self.context_elements());
-        trace.products_elements = Rc::new(self.products_elements());
-        trace.reactions = Rc::new(self.reactions().clone());
-        trace.systems.push(Rc::new(self.clone()));
+        trace.context_elements = Arc::new(self.context_elements());
+        trace.products_elements = Arc::new(self.products_elements());
+        trace.reactions = Arc::new(self.reactions().clone());
+        trace.systems.push(Arc::new(self.clone()));
         trace.elements.push(SlicingElement::from((
             Self::Set::default(),
             self.available_entities().clone(),
@@ -400,7 +399,7 @@ impl<T: BasicSystem> ExtensionsSystem for T {
         trace
             .enabled_reactions
             .push(EnabledReactions::from(enabled_reactions));
-        trace.systems.push(Rc::new(current.clone()));
+        trace.systems.push(Arc::new(current.clone()));
 
         let mut n = limit;
         loop {
@@ -416,7 +415,7 @@ impl<T: BasicSystem> ExtensionsSystem for T {
                 trace
                     .enabled_reactions
                     .push(EnabledReactions::from(enabled_reactions));
-                trace.systems.push(Rc::new(current.clone()));
+                trace.systems.push(Arc::new(current.clone()));
             } else {
                 break;
             }
@@ -541,13 +540,13 @@ where
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct System {
-    pub delta: Rc<Environment>,
+    pub delta: Arc<Environment>,
     pub available_entities: Set,
     pub context_process: Process,
-    pub reaction_rules: Rc<Vec<Reaction>>,
+    pub reaction_rules: Arc<Vec<Reaction>>,
 
-    context_elements:  Rc<RefCell<Option<Set>>>,
-    products_elements: Rc<RefCell<Option<Set>>>,
+    context_elements:  Arc<Mutex<Option<Set>>>,
+    products_elements: Arc<Mutex<Option<Set>>>,
 }
 
 impl BasicSystem for System {
@@ -589,7 +588,7 @@ impl BasicSystem for System {
     }
 
     fn context_elements(&self) -> Self::Set {
-        let mut c = self.context_elements.borrow_mut();
+        let mut c = self.context_elements.lock().unwrap();
         if c.is_some() {
             c.as_ref().unwrap().clone()
         } else {
@@ -605,7 +604,7 @@ impl BasicSystem for System {
     }
 
     fn products_elements(&self) -> Self::Set {
-        let mut p = self.products_elements.borrow_mut();
+        let mut p = self.products_elements.lock().unwrap();
         if p.is_some() {
             p.as_ref().unwrap().clone()
         } else {
@@ -649,13 +648,13 @@ impl Hash for System {
 impl Default for System {
     fn default() -> Self {
         Self {
-            delta: Rc::new(Environment::default()),
+            delta: Arc::new(Environment::default()),
             available_entities: Set::default(),
             context_process: Process::Nill,
-            reaction_rules: Rc::new(Vec::default()),
+            reaction_rules: Arc::new(Vec::default()),
 
-            context_elements:  Rc::new(RefCell::new(None)),
-            products_elements: Rc::new(RefCell::new(None)),
+            context_elements:  Arc::new(Mutex::new(None)),
+            products_elements: Arc::new(Mutex::new(None)),
         }
     }
 }
@@ -688,25 +687,25 @@ impl PrintableWithTranslator for System {
 
 impl System {
     pub fn from(
-        delta: Rc<Environment>,
+        delta: Arc<Environment>,
         available_entities: Set,
         context_process: Process,
-        reaction_rules: Rc<Vec<Reaction>>,
+        reaction_rules: Arc<Vec<Reaction>>,
     ) -> System {
         System {
-            delta: Rc::clone(&delta),
+            delta: Arc::clone(&delta),
             available_entities,
             context_process,
-            reaction_rules: Rc::clone(&reaction_rules),
+            reaction_rules: Arc::clone(&reaction_rules),
 
-            context_elements: Rc::new(RefCell::new(None)),
-            products_elements: Rc::new(RefCell::new(None)),
+            context_elements: Arc::new(Mutex::new(None)),
+            products_elements: Arc::new(Mutex::new(None)),
         }
     }
 
     pub fn overwrite_context_elements(&mut self, new_context_elements: Set) {
         self.context_elements =
-            Rc::new(RefCell::new(Some(new_context_elements)));
+            Arc::new(Mutex::new(Some(new_context_elements)));
     }
 
     pub fn overwrite_product_elements(&mut self, new_product_elements: Set) {
@@ -714,7 +713,7 @@ impl System {
         // its computed to ensure consistent behaviour
         self.context_elements();
         self.products_elements =
-            Rc::new(RefCell::new(Some(new_product_elements)));
+            Arc::new(Mutex::new(Some(new_product_elements)));
     }
 }
 
@@ -861,13 +860,13 @@ impl System {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct PositiveSystem {
-    pub delta: Rc<PositiveEnvironment>,
+    pub delta: Arc<PositiveEnvironment>,
     pub available_entities: PositiveSet,
     pub context_process: PositiveProcess,
-    pub reaction_rules: Rc<Vec<PositiveReaction>>,
+    pub reaction_rules: Arc<Vec<PositiveReaction>>,
 
-    context_elements:  Rc<RefCell<Option<PositiveSet>>>,
-    products_elements: Rc<RefCell<Option<PositiveSet>>>,
+    context_elements:  Arc<Mutex<Option<PositiveSet>>>,
+    products_elements: Arc<Mutex<Option<PositiveSet>>>,
 }
 
 impl BasicSystem for PositiveSystem {
@@ -910,7 +909,7 @@ impl BasicSystem for PositiveSystem {
     }
 
     fn context_elements(&self) -> Self::Set {
-        let mut c = self.context_elements.borrow_mut();
+        let mut c = self.context_elements.lock().unwrap();
         if c.is_some() {
             c.as_ref().unwrap().clone()
         } else {
@@ -929,7 +928,7 @@ impl BasicSystem for PositiveSystem {
     }
 
     fn products_elements(&self) -> Self::Set {
-        let mut p = self.products_elements.borrow_mut();
+        let mut p = self.products_elements.lock().unwrap();
         if p.is_some() {
             p.as_ref().unwrap().clone()
         } else {
@@ -976,13 +975,13 @@ impl Hash for PositiveSystem {
 impl Default for PositiveSystem {
     fn default() -> Self {
         Self {
-            delta: Rc::new(PositiveEnvironment::default()),
+            delta: Arc::new(PositiveEnvironment::default()),
             available_entities: PositiveSet::default(),
             context_process: PositiveProcess::default(),
-            reaction_rules: Rc::new(Vec::default()),
+            reaction_rules: Arc::new(Vec::default()),
 
-            context_elements:  Rc::new(RefCell::new(None)),
-            products_elements: Rc::new(RefCell::new(None)),
+            context_elements:  Arc::new(Mutex::new(None)),
+            products_elements: Arc::new(Mutex::new(None)),
         }
     }
 }
@@ -1020,7 +1019,7 @@ impl From<System> for PositiveSystem {
     /// all reactions that contains el in the products.
     /// Should never fail.
     fn from(value: System) -> Self {
-        let new_env = Rc::new((&*value.delta).into());
+        let new_env = Arc::new((&*value.delta).into());
         let positive_entities =
             value.available_entities.to_positive_set(IdState::Positive);
 
@@ -1042,7 +1041,7 @@ impl From<System> for PositiveSystem {
             positive_entities.union(&negative_entities);
 
         let new_reactions =
-            Rc::new(PositiveReaction::from_reactions(value.reactions()));
+            Arc::new(PositiveReaction::from_reactions(value.reactions()));
         let new_context = value.context_process.into();
 
         Self::from(new_env, new_available_entities, new_context, new_reactions)
@@ -1051,19 +1050,19 @@ impl From<System> for PositiveSystem {
 
 impl PositiveSystem {
     pub fn from(
-        delta: Rc<PositiveEnvironment>,
+        delta: Arc<PositiveEnvironment>,
         available_entities: PositiveSet,
         context_process: PositiveProcess,
-        reaction_rules: Rc<Vec<PositiveReaction>>,
+        reaction_rules: Arc<Vec<PositiveReaction>>,
     ) -> Self {
         Self {
-            delta: Rc::clone(&delta),
+            delta: Arc::clone(&delta),
             available_entities,
             context_process,
-            reaction_rules: Rc::clone(&reaction_rules),
+            reaction_rules: Arc::clone(&reaction_rules),
 
-            context_elements: Rc::new(RefCell::new(None)),
-            products_elements: Rc::new(RefCell::new(None)),
+            context_elements: Arc::new(Mutex::new(None)),
+            products_elements: Arc::new(Mutex::new(None)),
         }
     }
 
@@ -1079,7 +1078,7 @@ impl PositiveSystem {
         new_context_elements: PositiveSet,
     ) {
         self.context_elements =
-            Rc::new(RefCell::new(Some(new_context_elements)));
+            Arc::new(Mutex::new(Some(new_context_elements)));
     }
 
     pub fn overwrite_product_elements(
@@ -1090,6 +1089,6 @@ impl PositiveSystem {
         // its computed to ensure consistent behaviour
         self.context_elements();
         self.products_elements =
-            Rc::new(RefCell::new(Some(new_product_elements)));
+            Arc::new(Mutex::new(Some(new_product_elements)));
     }
 }

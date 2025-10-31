@@ -236,6 +236,9 @@ impl Set {
         reactants: &[Set],
         inhibitors: &[Set],
     ) -> Result<Vec<PositiveSet>, String> {
+        if reactants.is_empty() && inhibitors.is_empty() {
+            return Ok(vec![])
+        }
         if reactants.len() != inhibitors.len() {
             return Err(format!(
                 "Different length inputs supplied to create \
@@ -256,6 +259,26 @@ impl Set {
                 r, i
             ));
         }
+        // if we encounter a reaction with no reactants or inhibitors what do we
+        // do? do we report an error or remove the two sets? here we have
+        // choosen return an error.
+        if let Some((r, i)) = reactants
+            .iter()
+            .zip(inhibitors.iter())
+            .find(|(sr, si)| sr.is_empty() && si.is_empty())
+        {
+            return Err(format!(
+                "Reaction with no reactants and no inhibitors: \
+                 reactants: {:?}, inhibitors: {:?}",
+                r, i
+            ));
+        }
+        // code to instead remove the offending sets:
+        // let (reactants, inhibitors): (Vec<_>, Vec<_>) =
+        //     reactants.iter()
+        //     .zip(inhibitors.iter())
+        //     .filter(|(sr, si)| !sr.is_empty() || !si.is_empty())
+        //     .unzip();
 
         // generate all valid combinations, keeping track of invalid ones (where
         // one simbol is both positive and negative)

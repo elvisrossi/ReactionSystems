@@ -1,5 +1,5 @@
 use std::fmt::Debug;
-use std::rc::Rc;
+use std::sync::Arc;
 
 use super::process::{BasicProcess, PositiveProcess, Process};
 use super::set::{BasicSet, PositiveSet, Set};
@@ -12,7 +12,7 @@ where
     type Process: BasicProcess;
 
     fn append(&mut self, other: &mut Self);
-    fn replace(&mut self, other: Rc<Self::Process>);
+    fn replace(&mut self, other: Arc<Self::Process>);
     fn shuffle(&mut self, choices: Self);
 }
 
@@ -20,7 +20,7 @@ where
 
 #[derive(Clone, Debug, Default)]
 pub struct Choices {
-    context_moves: Vec<(Rc<Set>, Rc<Process>)>,
+    context_moves: Vec<(Arc<Set>, Arc<Process>)>,
 }
 
 impl BasicChoices for Choices {
@@ -30,11 +30,11 @@ impl BasicChoices for Choices {
         self.context_moves.append(&mut a.context_moves);
     }
 
-    fn replace(&mut self, a: Rc<Self::Process>) {
+    fn replace(&mut self, a: Arc<Self::Process>) {
         self.context_moves = self
             .context_moves
             .iter_mut()
-            .map(|(c1, _)| (Rc::clone(c1), Rc::clone(&a)))
+            .map(|(c1, _)| (Arc::clone(c1), Arc::clone(&a)))
             .collect::<Vec<_>>();
     }
 
@@ -51,8 +51,8 @@ impl BasicChoices for Choices {
                 for item_self in &self.context_moves {
                     for item_choices in &choices.context_moves {
                         new_self.push((
-                            Rc::new(item_self.0.union(&item_choices.0)),
-                            Rc::new(item_self.1.concat(&item_choices.1)),
+                            Arc::new(item_self.0.union(&item_choices.0)),
+                            Arc::new(item_self.1.concat(&item_choices.1)),
                         ));
                     }
                 }
@@ -63,13 +63,13 @@ impl BasicChoices for Choices {
 }
 
 impl Choices {
-    fn iter(&self) -> std::slice::Iter<'_, (Rc<Set>, Rc<Process>)> {
+    fn iter(&self) -> std::slice::Iter<'_, (Arc<Set>, Arc<Process>)> {
         self.context_moves.iter()
     }
 }
 
 impl IntoIterator for Choices {
-    type Item = (Rc<Set>, Rc<Process>);
+    type Item = (Arc<Set>, Arc<Process>);
     type IntoIter = std::vec::IntoIter<Self::Item>;
 
     fn into_iter(self) -> Self::IntoIter {
@@ -77,24 +77,24 @@ impl IntoIterator for Choices {
     }
 }
 
-impl<const N: usize> From<[(Rc<Set>, Rc<Process>); N]> for Choices {
-    fn from(arr: [(Rc<Set>, Rc<Process>); N]) -> Self {
+impl<const N: usize> From<[(Arc<Set>, Arc<Process>); N]> for Choices {
+    fn from(arr: [(Arc<Set>, Arc<Process>); N]) -> Self {
         Choices {
             context_moves: arr.to_vec(),
         }
     }
 }
 
-impl From<&[(Rc<Set>, Rc<Process>)]> for Choices {
-    fn from(arr: &[(Rc<Set>, Rc<Process>)]) -> Self {
+impl From<&[(Arc<Set>, Arc<Process>)]> for Choices {
+    fn from(arr: &[(Arc<Set>, Arc<Process>)]) -> Self {
         Choices {
             context_moves: arr.to_vec(),
         }
     }
 }
 
-impl From<Vec<(Rc<Set>, Rc<Process>)>> for Choices {
-    fn from(arr: Vec<(Rc<Set>, Rc<Process>)>) -> Self {
+impl From<Vec<(Arc<Set>, Arc<Process>)>> for Choices {
+    fn from(arr: Vec<(Arc<Set>, Arc<Process>)>) -> Self {
         Choices { context_moves: arr }
     }
 }
@@ -132,7 +132,7 @@ impl PrintableWithTranslator for Choices {
 
 #[derive(Clone, Debug, Default)]
 pub struct PositiveChoices {
-    context_moves: Vec<(Rc<PositiveSet>, Rc<PositiveProcess>)>,
+    context_moves: Vec<(Arc<PositiveSet>, Arc<PositiveProcess>)>,
 }
 
 impl BasicChoices for PositiveChoices {
@@ -142,11 +142,11 @@ impl BasicChoices for PositiveChoices {
         self.context_moves.append(&mut a.context_moves);
     }
 
-    fn replace(&mut self, a: Rc<Self::Process>) {
+    fn replace(&mut self, a: Arc<Self::Process>) {
         self.context_moves = self
             .context_moves
             .iter_mut()
-            .map(|(c1, _)| (Rc::clone(c1), Rc::clone(&a)))
+            .map(|(c1, _)| (Arc::clone(c1), Arc::clone(&a)))
             .collect::<Vec<_>>();
     }
 
@@ -163,8 +163,8 @@ impl BasicChoices for PositiveChoices {
                 for item_self in &self.context_moves {
                     for item_choices in &choices.context_moves {
                         new_self.push((
-                            Rc::new(item_self.0.union(&item_choices.0)),
-                            Rc::new(item_self.1.concat(&item_choices.1)),
+                            Arc::new(item_self.0.union(&item_choices.0)),
+                            Arc::new(item_self.1.concat(&item_choices.1)),
                         ));
                     }
                 }
@@ -175,7 +175,7 @@ impl BasicChoices for PositiveChoices {
 }
 
 impl IntoIterator for PositiveChoices {
-    type Item = (Rc<PositiveSet>, Rc<PositiveProcess>);
+    type Item = (Arc<PositiveSet>, Arc<PositiveProcess>);
     type IntoIter = std::vec::IntoIter<Self::Item>;
 
     fn into_iter(self) -> Self::IntoIter {
@@ -215,31 +215,31 @@ impl PrintableWithTranslator for PositiveChoices {
 impl PositiveChoices {
     fn iter(
         &self,
-    ) -> std::slice::Iter<'_, (Rc<PositiveSet>, Rc<PositiveProcess>)> {
+    ) -> std::slice::Iter<'_, (Arc<PositiveSet>, Arc<PositiveProcess>)> {
         self.context_moves.iter()
     }
 }
 
-impl<const N: usize> From<[(Rc<PositiveSet>, Rc<PositiveProcess>); N]>
+impl<const N: usize> From<[(Arc<PositiveSet>, Arc<PositiveProcess>); N]>
     for PositiveChoices
 {
-    fn from(arr: [(Rc<PositiveSet>, Rc<PositiveProcess>); N]) -> Self {
+    fn from(arr: [(Arc<PositiveSet>, Arc<PositiveProcess>); N]) -> Self {
         Self {
             context_moves: arr.to_vec(),
         }
     }
 }
 
-impl From<&[(Rc<PositiveSet>, Rc<PositiveProcess>)]> for PositiveChoices {
-    fn from(arr: &[(Rc<PositiveSet>, Rc<PositiveProcess>)]) -> Self {
+impl From<&[(Arc<PositiveSet>, Arc<PositiveProcess>)]> for PositiveChoices {
+    fn from(arr: &[(Arc<PositiveSet>, Arc<PositiveProcess>)]) -> Self {
         Self {
             context_moves: arr.to_vec(),
         }
     }
 }
 
-impl From<Vec<(Rc<PositiveSet>, Rc<PositiveProcess>)>> for PositiveChoices {
-    fn from(arr: Vec<(Rc<PositiveSet>, Rc<PositiveProcess>)>) -> Self {
+impl From<Vec<(Arc<PositiveSet>, Arc<PositiveProcess>)>> for PositiveChoices {
+    fn from(arr: Vec<(Arc<PositiveSet>, Arc<PositiveProcess>)>) -> Self {
         Self { context_moves: arr }
     }
 }

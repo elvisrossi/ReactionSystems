@@ -1,6 +1,6 @@
 //! Module that holds useful presets for interacting with other modules.
 use std::io::prelude::*;
-use std::rc::Rc;
+use std::sync::Arc;
 use std::{env, fs, io};
 
 use petgraph::Graph;
@@ -719,17 +719,17 @@ pub fn dot(
     edge_color: graph::EdgeColor,
 ) -> Result<String, String> {
     if let Some(graph) = &system.graph {
-        let rc_translator = Rc::new(system.translator.clone());
+        let rc_translator = Arc::new(system.translator.clone());
         let modified_graph = graph.map(
-            node_display.generate(Rc::clone(&rc_translator), graph),
-            edge_display.generate(Rc::clone(&rc_translator), graph),
+            node_display.generate(Arc::clone(&rc_translator), graph),
+            edge_display.generate(Arc::clone(&rc_translator), graph),
         );
 
-        let graph = Rc::new(graph.to_owned());
+        let graph = Arc::new(graph.to_owned());
 
         let node_formatter = node_color
-            .generate(Rc::clone(&graph), system.translator.encode_not_mut("*"));
-        let edge_formatter = edge_color.generate(Rc::clone(&graph));
+            .generate(Arc::clone(&graph), system.translator.encode_not_mut("*"));
+        let edge_formatter = edge_color.generate(Arc::clone(&graph));
 
         let dot = dot::Dot::with_attr_getters(
             &modified_graph,
@@ -751,11 +751,11 @@ pub fn graphml(
     edge_display: graph::EdgeDisplay,
 ) -> Result<String, String> {
     if let Some(graph) = &system.graph {
-        let rc_translator = Rc::new(system.translator.to_owned());
+        let rc_translator = Arc::new(system.translator.to_owned());
 
         // map each value to the corresponding value we want to display
         let modified_graph = graph.map(
-            node_display.generate(Rc::clone(&rc_translator), graph),
+            node_display.generate(Arc::clone(&rc_translator), graph),
             edge_display.generate(rc_translator, graph),
         );
 

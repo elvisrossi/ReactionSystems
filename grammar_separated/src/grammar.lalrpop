@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::sync::Arc;
 use std::str::FromStr;
 use lalrpop_util::ParseError;
 
@@ -245,7 +245,7 @@ PositiveReaction: reaction::PositiveReaction = {
 pub Context: process::Process = {
     <t: Separated_Empty<"[", ContextProcess, ",", "]">> =>
         process::Process::NondeterministicChoice{
-            children: t.into_iter().map(Rc::new).collect::<Vec<_>>()
+            children: t.into_iter().map(Arc::new).collect::<Vec<_>>()
         }
 };
 
@@ -253,22 +253,22 @@ ContextProcess: process::Process = {
     "nill" => process::Process::Nill,
 
     <c: Set> "." <k: ContextProcess> =>
-        process::Process::EntitySet{ entities: c, next_process: Rc::new(k) },
+        process::Process::EntitySet{ entities: c, next_process: Arc::new(k) },
 
     "(" <k: ContextProcess>  ")" => k,
 
     "(" <k: Separated<ContextProcess, "+">> ")" =>
         process::Process::Summation{
-            children: k.into_iter().map(Rc::new).collect::<Vec<_>>()
+            children: k.into_iter().map(Arc::new).collect::<Vec<_>>()
         },
 
     "?" <r: Reaction> "?" "." <k: ContextProcess> =>
-        process::Process::Guarded{ reaction: r, next_process: Rc::new(k) },
+        process::Process::Guarded{ reaction: r, next_process: Arc::new(k) },
 
     "<" <n: Num> "," <k1: ContextProcess> ">" "." <k: ContextProcess> =>
         process::Process::WaitEntity{ repeat: n,
-                                      repeated_process: Rc::new(k1),
-                                      next_process: Rc::new(k) },
+                                      repeated_process: Arc::new(k1),
+                                      next_process: Arc::new(k) },
 
     <identifier: LiteralProcess> =>
         process::Process::RecursiveIdentifier{
@@ -279,7 +279,7 @@ ContextProcess: process::Process = {
 pub PositiveContext: process::PositiveProcess = {
     <t: Separated_Empty<"[", PositiveContextProcess, ",", "]">> =>
         process::PositiveProcess::NondeterministicChoice{
-            children: t.into_iter().map(Rc::new).collect::<Vec<_>>()
+            children: t.into_iter().map(Arc::new).collect::<Vec<_>>()
         }
 };
 
@@ -287,22 +287,22 @@ PositiveContextProcess: process::PositiveProcess = {
     "nill" => process::PositiveProcess::Nill,
 
     <c: PositiveSet> "." <k: PositiveContextProcess> =>
-        process::PositiveProcess::EntitySet{ entities: c, next_process: Rc::new(k) },
+        process::PositiveProcess::EntitySet{ entities: c, next_process: Arc::new(k) },
 
     "(" <k: PositiveContextProcess>  ")" => k,
 
     "(" <k: Separated<PositiveContextProcess, "+">> ")" =>
         process::PositiveProcess::Summation{
-            children: k.into_iter().map(Rc::new).collect::<Vec<_>>()
+            children: k.into_iter().map(Arc::new).collect::<Vec<_>>()
         },
 
     "?" <r: PositiveReaction> "?" "." <k: PositiveContextProcess> =>
-        process::PositiveProcess::Guarded{ reaction: r, next_process: Rc::new(k) },
+        process::PositiveProcess::Guarded{ reaction: r, next_process: Arc::new(k) },
 
     "<" <n: Num> "," <k1: PositiveContextProcess> ">" "." <k: PositiveContextProcess> =>
         process::PositiveProcess::WaitEntity{ repeat: n,
-                                              repeated_process: Rc::new(k1),
-                                              next_process: Rc::new(k) },
+                                              repeated_process: Arc::new(k1),
+                                              next_process: Arc::new(k) },
 
     <identifier: LiteralProcess> =>
         process::PositiveProcess::RecursiveIdentifier{
@@ -367,7 +367,7 @@ pub System: system::System = {
         => system::System::from(delta.into(),
                                 available_entities,
                                 context_process,
-                                Rc::new(reaction_rules))
+                                Arc::new(reaction_rules))
 }
 
 // experiment

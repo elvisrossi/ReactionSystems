@@ -2,7 +2,7 @@ use std::cmp;
 use std::collections::{BTreeMap, HashSet};
 use std::fmt::Debug;
 use std::hash::Hash;
-use std::rc::Rc;
+use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 
@@ -304,8 +304,8 @@ impl BasicEnvironment for Environment {
                 entities,
                 next_process,
             } => Ok(Choices::from([(
-                Rc::new(entities.clone()),
-                Rc::clone(next_process),
+                Arc::new(entities.clone()),
+                Arc::clone(next_process),
             )])),
             | Process::Guarded {
                 reaction,
@@ -313,8 +313,8 @@ impl BasicEnvironment for Environment {
             } =>
                 if reaction.enabled(current_entities) {
                     Ok(Choices::from([(
-                        Rc::new(reaction.products.clone()),
-                        Rc::clone(next_process),
+                        Arc::new(reaction.products.clone()),
+                        Arc::clone(next_process),
                     )]))
                 } else {
                     Ok(Choices::default())
@@ -331,7 +331,7 @@ impl BasicEnvironment for Environment {
             } if *repeat == 1 => {
                 let mut choices1 =
                     self.unfold(repeated_process, current_entities)?;
-                choices1.replace(Rc::clone(next_process));
+                choices1.replace(Arc::clone(next_process));
                 Ok(choices1)
             },
             | Process::WaitEntity {
@@ -341,10 +341,10 @@ impl BasicEnvironment for Environment {
             } => {
                 let mut choices1 =
                     self.unfold(repeated_process, current_entities)?;
-                choices1.replace(Rc::new(Process::WaitEntity {
+                choices1.replace(Arc::new(Process::WaitEntity {
                     repeat: (*repeat - 1),
-                    repeated_process: Rc::clone(repeated_process),
-                    next_process: Rc::clone(next_process),
+                    repeated_process: Arc::clone(repeated_process),
+                    next_process: Arc::clone(next_process),
                 }));
                 Ok(choices1)
             },
@@ -364,8 +364,8 @@ impl BasicEnvironment for Environment {
                 // short-circuits with try_fold.
                 if children.is_empty() {
                     Ok(Choices::from(vec![(
-                        Rc::new(Set::default()),
-                        Rc::new(Process::Nill),
+                        Arc::new(Set::default()),
+                        Arc::new(Process::Nill),
                     )]))
                 } else {
                     children.iter().try_fold(
@@ -670,8 +670,8 @@ impl BasicEnvironment for PositiveEnvironment {
                 entities,
                 next_process,
             } => Ok(Self::Choices::from([(
-                Rc::new(entities.clone()),
-                Rc::clone(next_process),
+                Arc::new(entities.clone()),
+                Arc::clone(next_process),
             )])),
             | PositiveProcess::Guarded {
                 reaction,
@@ -679,8 +679,8 @@ impl BasicEnvironment for PositiveEnvironment {
             } =>
                 if reaction.enabled(entities) {
                     Ok(Self::Choices::from([(
-                        Rc::new(reaction.products.clone()),
-                        Rc::clone(next_process),
+                        Arc::new(reaction.products.clone()),
+                        Arc::clone(next_process),
                     )]))
                 } else {
                     Ok(Self::Choices::default())
@@ -696,7 +696,7 @@ impl BasicEnvironment for PositiveEnvironment {
                 next_process,
             } if *repeat == 1 => {
                 let mut choices1 = self.unfold(repeated_process, entities)?;
-                choices1.replace(Rc::clone(next_process));
+                choices1.replace(Arc::clone(next_process));
                 Ok(choices1)
             },
             | PositiveProcess::WaitEntity {
@@ -705,10 +705,10 @@ impl BasicEnvironment for PositiveEnvironment {
                 next_process,
             } => {
                 let mut choices1 = self.unfold(repeated_process, entities)?;
-                choices1.replace(Rc::new(PositiveProcess::WaitEntity {
+                choices1.replace(Arc::new(PositiveProcess::WaitEntity {
                     repeat: (*repeat - 1),
-                    repeated_process: Rc::clone(repeated_process),
-                    next_process: Rc::clone(next_process),
+                    repeated_process: Arc::clone(repeated_process),
+                    next_process: Arc::clone(next_process),
                 }));
                 Ok(choices1)
             },
@@ -729,8 +729,8 @@ impl BasicEnvironment for PositiveEnvironment {
                 // short-circuits with try_fold.
                 if children.is_empty() {
                     Ok(Self::Choices::from(vec![(
-                        Rc::new(Self::Set::default()),
-                        Rc::new(Self::Process::default()),
+                        Arc::new(Self::Set::default()),
+                        Arc::new(Self::Process::default()),
                     )]))
                 } else {
                     children.iter().try_fold(

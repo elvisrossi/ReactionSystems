@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 use std::fmt::Debug;
 use std::hash::Hash;
-use std::rc::Rc;
+use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 
@@ -40,22 +40,22 @@ pub enum Process {
     },
     EntitySet {
         entities:     Set,
-        next_process: Rc<Process>,
+        next_process: Arc<Process>,
     },
     Guarded {
         reaction:     Reaction,
-        next_process: Rc<Process>,
+        next_process: Arc<Process>,
     },
     WaitEntity {
         repeat: i64,
-        repeated_process: Rc<Process>,
-        next_process: Rc<Process>,
+        repeated_process: Arc<Process>,
+        next_process: Arc<Process>,
     },
     Summation {
-        children: Vec<Rc<Process>>,
+        children: Vec<Arc<Process>>,
     },
     NondeterministicChoice {
-        children: Vec<Rc<Process>>,
+        children: Vec<Arc<Process>>,
     },
 }
 
@@ -74,13 +74,13 @@ impl BasicProcess for Process {
             | (Self::NondeterministicChoice { children }, new)
             | (new, Self::NondeterministicChoice { children }) => {
                 let mut new_children = children.clone();
-                new_children.push(Rc::new(new.clone()));
+                new_children.push(Arc::new(new.clone()));
                 Self::NondeterministicChoice {
                     children: new_children,
                 }
             },
             | (_, _) => Self::NondeterministicChoice {
-                children: vec![Rc::new(self.clone()), Rc::new(new.clone())],
+                children: vec![Arc::new(self.clone()), Arc::new(new.clone())],
             },
         }
     }
@@ -255,22 +255,22 @@ pub enum PositiveProcess {
     },
     EntitySet {
         entities:     PositiveSet,
-        next_process: Rc<PositiveProcess>,
+        next_process: Arc<PositiveProcess>,
     },
     Guarded {
         reaction:     PositiveReaction,
-        next_process: Rc<PositiveProcess>,
+        next_process: Arc<PositiveProcess>,
     },
     WaitEntity {
         repeat: i64,
-        repeated_process: Rc<PositiveProcess>,
-        next_process: Rc<PositiveProcess>,
+        repeated_process: Arc<PositiveProcess>,
+        next_process: Arc<PositiveProcess>,
     },
     Summation {
-        children: Vec<Rc<PositiveProcess>>,
+        children: Vec<Arc<PositiveProcess>>,
     },
     NondeterministicChoice {
-        children: Vec<Rc<PositiveProcess>>,
+        children: Vec<Arc<PositiveProcess>>,
     },
 }
 
@@ -289,13 +289,13 @@ impl BasicProcess for PositiveProcess {
             | (Self::NondeterministicChoice { children }, new)
             | (new, Self::NondeterministicChoice { children }) => {
                 let mut new_children = children.clone();
-                new_children.push(Rc::new(new.clone()));
+                new_children.push(Arc::new(new.clone()));
                 Self::NondeterministicChoice {
                     children: new_children,
                 }
             },
             | (_, _) => Self::NondeterministicChoice {
-                children: vec![Rc::new(self.clone()), Rc::new(new.clone())],
+                children: vec![Arc::new(self.clone()), Arc::new(new.clone())],
             },
         }
     }
@@ -467,7 +467,7 @@ impl From<&Process> for PositiveProcess {
                 next_process,
             } => Self::EntitySet {
                 entities:     entities.to_positive_set(IdState::Positive),
-                next_process: Rc::new((&**next_process).into()),
+                next_process: Arc::new((&**next_process).into()),
             },
             | Process::RecursiveIdentifier { identifier } =>
                 Self::RecursiveIdentifier {
@@ -492,7 +492,7 @@ impl From<&Process> for PositiveProcess {
                             .products
                             .to_positive_set(IdState::Positive),
                     },
-                    next_process: Rc::new((&**next_process).into()),
+                    next_process: Arc::new((&**next_process).into()),
                 },
             | Process::WaitEntity {
                 repeat,
@@ -500,20 +500,20 @@ impl From<&Process> for PositiveProcess {
                 next_process,
             } => Self::WaitEntity {
                 repeat: *repeat,
-                repeated_process: Rc::new((&**repeated_process).into()),
-                next_process: Rc::new((&**next_process).into()),
+                repeated_process: Arc::new((&**repeated_process).into()),
+                next_process: Arc::new((&**next_process).into()),
             },
             | Process::Summation { children } => Self::Summation {
                 children: children
                     .iter()
-                    .map(|c| Rc::new((&**c).into()))
+                    .map(|c| Arc::new((&**c).into()))
                     .collect(),
             },
             | Process::NondeterministicChoice { children } =>
                 Self::NondeterministicChoice {
                     children: children
                         .iter()
-                        .map(|c| Rc::new((&**c).into()))
+                        .map(|c| Arc::new((&**c).into()))
                         .collect(),
                 },
         }

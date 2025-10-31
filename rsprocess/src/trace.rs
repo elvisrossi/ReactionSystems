@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 use std::ops::{Index, IndexMut};
-use std::rc::Rc;
+use std::sync::Arc;
 use std::slice::SliceIndex;
 
 use serde::{Deserialize, Serialize};
@@ -10,7 +10,7 @@ use crate::set::{BasicSet, PositiveSet, Set};
 use crate::system::{BasicSystem, PositiveSystem, System};
 use crate::translator::{Formatter, PrintableWithTranslator};
 
-type TraceElement<L, Sys> = (Option<Rc<L>>, Rc<Sys>);
+type TraceElement<L, Sys> = (Option<Arc<L>>, Arc<Sys>);
 
 #[derive(Clone, Default)]
 pub struct Trace<L, Sys> {
@@ -197,11 +197,11 @@ pub struct SlicingTrace<S, R, Sys> {
     pub elements: Vec<SlicingElement<S>>,
     pub enabled_reactions: Vec<EnabledReactions>,
 
-    pub reactions: Rc<Vec<R>>,
-    pub systems:   Vec<Rc<Sys>>,
+    pub reactions: Arc<Vec<R>>,
+    pub systems:   Vec<Arc<Sys>>,
 
-    pub context_elements:  Rc<S>,
-    pub products_elements: Rc<S>,
+    pub context_elements:  Arc<S>,
+    pub products_elements: Arc<S>,
 }
 
 impl<S: Default, R, Sys> Default for SlicingTrace<S, R, Sys> {
@@ -209,10 +209,10 @@ impl<S: Default, R, Sys> Default for SlicingTrace<S, R, Sys> {
         Self {
             elements: Vec::default(),
             enabled_reactions: Vec::default(),
-            reactions: Rc::new(Vec::default()),
+            reactions: Arc::new(Vec::default()),
             systems: Vec::default(),
-            context_elements: Rc::new(S::default()),
-            products_elements: Rc::new(S::default()),
+            context_elements: Arc::new(S::default()),
+            products_elements: Arc::new(S::default()),
         }
     }
 }
@@ -278,10 +278,10 @@ impl SlicingTrace<Set, Reaction, System> {
         let new_trace = Self {
             elements: reversed_elements,
             enabled_reactions: reversed_enabled_reactions,
-            reactions: Rc::clone(&self.reactions),
+            reactions: Arc::clone(&self.reactions),
             systems: self.systems.to_vec(),
-            context_elements: Rc::clone(&self.context_elements),
-            products_elements: Rc::clone(&self.products_elements),
+            context_elements: Arc::clone(&self.context_elements),
+            products_elements: Arc::clone(&self.products_elements),
         };
 
         Ok(new_trace)
@@ -340,10 +340,10 @@ impl SlicingTrace<PositiveSet, PositiveReaction, PositiveSystem> {
         let new_trace = Self {
             elements: reversed_elements,
             enabled_reactions: reversed_enabled_reactions,
-            reactions: Rc::clone(&self.reactions),
+            reactions: Arc::clone(&self.reactions),
             systems: self.systems.to_vec(),
-            context_elements: Rc::clone(&self.context_elements),
-            products_elements: Rc::clone(&self.products_elements),
+            context_elements: Arc::clone(&self.context_elements),
+            products_elements: Arc::clone(&self.products_elements),
         };
 
         Ok(new_trace)

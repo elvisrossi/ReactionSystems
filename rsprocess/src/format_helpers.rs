@@ -1,5 +1,5 @@
 pub mod graph_map_nodes_ty_from {
-    use std::rc::Rc;
+    use std::sync::Arc;
 
     use super::super::set::{BasicSet, Set};
     use super::super::system::System;
@@ -13,13 +13,13 @@ pub mod graph_map_nodes_ty_from {
     }
 
     pub fn format_hide(
-        _translator: Rc<translator::Translator>,
+        _translator: Arc<translator::Translator>,
     ) -> Box<GraphMapNodesFnTy> {
         Box::new(|_, _| String::new())
     }
 
     pub fn format_entities(
-        translator: Rc<translator::Translator>,
+        translator: Arc<translator::Translator>,
     ) -> Box<GraphMapNodesFnTy> {
         Box::new(move |_, node: &System| {
             format!(
@@ -33,7 +33,7 @@ pub mod graph_map_nodes_ty_from {
     }
 
     pub fn format_mask_entities(
-        translator: Rc<translator::Translator>,
+        translator: Arc<translator::Translator>,
         mask: Set,
     ) -> Box<GraphMapNodesFnTy> {
         Box::new(move |_, node: &System| {
@@ -46,7 +46,7 @@ pub mod graph_map_nodes_ty_from {
     }
 
     pub fn format_exclude_entities(
-        translator: Rc<translator::Translator>,
+        translator: Arc<translator::Translator>,
         mask: Set,
     ) -> Box<GraphMapNodesFnTy> {
         Box::new(move |_, node: &System| {
@@ -59,7 +59,7 @@ pub mod graph_map_nodes_ty_from {
     }
 
     pub fn format_context(
-        translator: Rc<translator::Translator>,
+        translator: Arc<translator::Translator>,
     ) -> Box<GraphMapNodesFnTy> {
         Box::new(move |_, node: &System| {
             format!(
@@ -71,7 +71,7 @@ pub mod graph_map_nodes_ty_from {
 }
 
 pub mod graph_map_edges_ty_from {
-    use std::rc::Rc;
+    use std::sync::Arc;
 
     use super::super::label::Label;
     use super::super::set::{BasicSet, Set};
@@ -81,14 +81,14 @@ pub mod graph_map_edges_ty_from {
         dyn Fn(petgraph::prelude::EdgeIndex, &'a Label) -> String + 'a;
 
     pub fn format_string<'a>(
-        _translator: Rc<translator::Translator>,
+        _translator: Arc<translator::Translator>,
         s: String,
     ) -> Box<GraphMapEdgesFnTy<'a>> {
         Box::new(move |_, _| s.clone())
     }
 
     pub fn format_hide<'a>(
-        _translator: Rc<translator::Translator>,
+        _translator: Arc<translator::Translator>,
     ) -> Box<GraphMapEdgesFnTy<'a>> {
         Box::new(|_, _| String::new())
     }
@@ -101,7 +101,7 @@ pub mod graph_map_edges_ty_from {
 	  $common:expr,
 	  $default:expr ) => {
             pub fn $name<'a>(
-                translator: Rc<translator::Translator>,
+                translator: Arc<translator::Translator>,
                 $mask_name: Option<Set>,
                 $common_name: Option<Set>,
             ) -> Box<GraphMapEdgesFnTy<'a>> {
@@ -235,7 +235,7 @@ pub mod graph_map_edges_ty_from {
 }
 
 pub mod node_formatter {
-    use std::rc::Rc;
+    use std::sync::Arc;
 
     use petgraph::visit::IntoNodeReferences;
     use petgraph::{Directed, Graph};
@@ -252,7 +252,7 @@ pub mod node_formatter {
     ) -> Option<String>;
 
     pub fn format_nill(
-        original_graph: Rc<SystemGraph>,
+        original_graph: Arc<SystemGraph>,
         color: String,
         _star: Option<IdType>,
     ) -> Box<RSformatNodeTy> {
@@ -267,7 +267,7 @@ pub mod node_formatter {
     }
 
     pub fn format_recursive_identifier(
-        original_graph: Rc<SystemGraph>,
+        original_graph: Arc<SystemGraph>,
         color: String,
         star: Option<IdType>,
         s: IdType,
@@ -286,7 +286,7 @@ pub mod node_formatter {
     }
 
     pub fn format_entity_set(
-        original_graph: Rc<SystemGraph>,
+        original_graph: Arc<SystemGraph>,
         color: String,
         _star: Option<IdType>,
         ot: OperationType,
@@ -306,7 +306,7 @@ pub mod node_formatter {
     }
 
     pub fn format_non_deterministic_choice(
-        original_graph: Rc<SystemGraph>,
+        original_graph: Arc<SystemGraph>,
         color: String,
         _star: Option<IdType>,
     ) -> Box<RSformatNodeTy> {
@@ -323,7 +323,7 @@ pub mod node_formatter {
     }
 
     pub fn format_summation(
-        original_graph: Rc<SystemGraph>,
+        original_graph: Arc<SystemGraph>,
         color: String,
         _star: Option<IdType>,
     ) -> Box<RSformatNodeTy> {
@@ -339,7 +339,7 @@ pub mod node_formatter {
     }
 
     pub fn format_wait_entity(
-        original_graph: Rc<SystemGraph>,
+        original_graph: Arc<SystemGraph>,
         color: String,
         _star: Option<IdType>,
     ) -> Box<RSformatNodeTy> {
@@ -359,7 +359,7 @@ pub mod node_formatter {
     }
 
     pub fn format_entities_conditional(
-        original_graph: Rc<SystemGraph>,
+        original_graph: Arc<SystemGraph>,
         color: String,
         _star: Option<IdType>,
         ot: OperationType,
@@ -377,7 +377,7 @@ pub mod node_formatter {
 }
 
 pub mod edge_formatter {
-    use std::rc::Rc;
+    use std::sync::Arc;
 
     use petgraph::visit::{EdgeRef, IntoEdgeReferences};
     use petgraph::{Directed, Graph};
@@ -392,7 +392,7 @@ pub mod edge_formatter {
     ) -> Option<String>;
 
     pub fn format_entities(
-        original_graph: Rc<SystemGraph>,
+        original_graph: Arc<SystemGraph>,
         color: String,
         ot: OperationType,
         set: Set,
@@ -408,7 +408,7 @@ pub mod edge_formatter {
     }
 
     pub fn format_context(
-        original_graph: Rc<SystemGraph>,
+        original_graph: Arc<SystemGraph>,
         color: String,
         ot: OperationType,
         set: Set,
@@ -424,7 +424,7 @@ pub mod edge_formatter {
     }
 
     pub fn format_t(
-        original_graph: Rc<SystemGraph>,
+        original_graph: Arc<SystemGraph>,
         color: String,
         ot: OperationType,
         set: Set,
@@ -440,7 +440,7 @@ pub mod edge_formatter {
     }
 
     pub fn format_reactants(
-        original_graph: Rc<SystemGraph>,
+        original_graph: Arc<SystemGraph>,
         color: String,
         ot: OperationType,
         set: Set,
@@ -456,7 +456,7 @@ pub mod edge_formatter {
     }
 
     pub fn format_reactants_absent(
-        original_graph: Rc<SystemGraph>,
+        original_graph: Arc<SystemGraph>,
         color: String,
         ot: OperationType,
         set: Set,
@@ -472,7 +472,7 @@ pub mod edge_formatter {
     }
 
     pub fn format_inhibitors(
-        original_graph: Rc<SystemGraph>,
+        original_graph: Arc<SystemGraph>,
         color: String,
         ot: OperationType,
         set: Set,
@@ -488,7 +488,7 @@ pub mod edge_formatter {
     }
 
     pub fn format_inhibitors_present(
-        original_graph: Rc<SystemGraph>,
+        original_graph: Arc<SystemGraph>,
         color: String,
         ot: OperationType,
         set: Set,
@@ -504,7 +504,7 @@ pub mod edge_formatter {
     }
 
     pub fn format_products(
-        original_graph: Rc<SystemGraph>,
+        original_graph: Arc<SystemGraph>,
         color: String,
         ot: OperationType,
         set: Set,
@@ -525,7 +525,7 @@ pub mod edge_formatter {
 // -----------------------------------------------------------------------------
 
 pub mod positive_graph_map_nodes_ty_from {
-    use std::rc::Rc;
+    use std::sync::Arc;
 
     use super::super::element::IdState;
     use super::super::set::{BasicSet, Set};
@@ -540,13 +540,13 @@ pub mod positive_graph_map_nodes_ty_from {
     }
 
     pub fn format_hide(
-        _translator: Rc<translator::Translator>,
+        _translator: Arc<translator::Translator>,
     ) -> Box<PositiveGraphMapNodesFnTy> {
         Box::new(|_, _| String::new())
     }
 
     pub fn format_entities(
-        translator: Rc<translator::Translator>,
+        translator: Arc<translator::Translator>,
     ) -> Box<PositiveGraphMapNodesFnTy> {
         Box::new(move |_, node: &PositiveSystem| {
             format!(
@@ -560,7 +560,7 @@ pub mod positive_graph_map_nodes_ty_from {
     }
 
     pub fn format_mask_entities(
-        translator: Rc<translator::Translator>,
+        translator: Arc<translator::Translator>,
         mask: Set,
     ) -> Box<PositiveGraphMapNodesFnTy> {
         Box::new(move |_, node: &PositiveSystem| {
@@ -575,7 +575,7 @@ pub mod positive_graph_map_nodes_ty_from {
     }
 
     pub fn format_exclude_entities(
-        translator: Rc<translator::Translator>,
+        translator: Arc<translator::Translator>,
         mask: Set,
     ) -> Box<PositiveGraphMapNodesFnTy> {
         Box::new(move |_, node: &PositiveSystem| {
@@ -591,7 +591,7 @@ pub mod positive_graph_map_nodes_ty_from {
     }
 
     pub fn format_context(
-        translator: Rc<translator::Translator>,
+        translator: Arc<translator::Translator>,
     ) -> Box<PositiveGraphMapNodesFnTy> {
         Box::new(move |_, node: &PositiveSystem| {
             format!(
@@ -603,7 +603,7 @@ pub mod positive_graph_map_nodes_ty_from {
 }
 
 pub mod positive_graph_map_edges_ty_from {
-    use std::rc::Rc;
+    use std::sync::Arc;
 
     use super::super::element::IdState;
     use super::super::label::PositiveLabel;
@@ -614,14 +614,14 @@ pub mod positive_graph_map_edges_ty_from {
         dyn Fn(petgraph::prelude::EdgeIndex, &'a PositiveLabel) -> String + 'a;
 
     pub fn format_string<'a>(
-        _translator: Rc<translator::Translator>,
+        _translator: Arc<translator::Translator>,
         s: String,
     ) -> Box<PositiveGraphMapEdgesFnTy<'a>> {
         Box::new(move |_, _| s.clone())
     }
 
     pub fn format_hide<'a>(
-        _translator: Rc<translator::Translator>,
+        _translator: Arc<translator::Translator>,
     ) -> Box<PositiveGraphMapEdgesFnTy<'a>> {
         Box::new(|_, _| String::new())
     }
@@ -634,7 +634,7 @@ pub mod positive_graph_map_edges_ty_from {
 	  $common:expr,
 	  $default:expr ) => {
             pub fn $name<'a>(
-                translator: Rc<translator::Translator>,
+                translator: Arc<translator::Translator>,
                 $mask_name: Option<Set>,
                 $common_name: Option<Set>,
             ) -> Box<PositiveGraphMapEdgesFnTy<'a>> {
@@ -812,7 +812,7 @@ pub mod positive_graph_map_edges_ty_from {
 }
 
 pub mod positive_node_formatter {
-    use std::rc::Rc;
+    use std::sync::Arc;
 
     use petgraph::visit::IntoNodeReferences;
     use petgraph::{Directed, Graph};
@@ -829,7 +829,7 @@ pub mod positive_node_formatter {
     ) -> Option<String>;
 
     pub fn format_nill(
-        original_graph: Rc<PositiveSystemGraph>,
+        original_graph: Arc<PositiveSystemGraph>,
         color: String,
         _star: Option<IdType>,
     ) -> Box<RSformatNodeTy> {
@@ -844,7 +844,7 @@ pub mod positive_node_formatter {
     }
 
     pub fn format_recursive_identifier(
-        original_graph: Rc<PositiveSystemGraph>,
+        original_graph: Arc<PositiveSystemGraph>,
         color: String,
         star: Option<IdType>,
         s: IdType,
@@ -866,7 +866,7 @@ pub mod positive_node_formatter {
     }
 
     pub fn format_entity_set(
-        original_graph: Rc<PositiveSystemGraph>,
+        original_graph: Arc<PositiveSystemGraph>,
         color: String,
         _star: Option<IdType>,
         ot: OperationType,
@@ -886,7 +886,7 @@ pub mod positive_node_formatter {
     }
 
     pub fn format_non_deterministic_choice(
-        original_graph: Rc<PositiveSystemGraph>,
+        original_graph: Arc<PositiveSystemGraph>,
         color: String,
         _star: Option<IdType>,
     ) -> Box<RSformatNodeTy> {
@@ -903,7 +903,7 @@ pub mod positive_node_formatter {
     }
 
     pub fn format_summation(
-        original_graph: Rc<PositiveSystemGraph>,
+        original_graph: Arc<PositiveSystemGraph>,
         color: String,
         _star: Option<IdType>,
     ) -> Box<RSformatNodeTy> {
@@ -920,7 +920,7 @@ pub mod positive_node_formatter {
     }
 
     pub fn format_wait_entity(
-        original_graph: Rc<PositiveSystemGraph>,
+        original_graph: Arc<PositiveSystemGraph>,
         color: String,
         _star: Option<IdType>,
     ) -> Box<RSformatNodeTy> {
@@ -940,7 +940,7 @@ pub mod positive_node_formatter {
     }
 
     pub fn format_entities_conditional(
-        original_graph: Rc<PositiveSystemGraph>,
+        original_graph: Arc<PositiveSystemGraph>,
         color: String,
         _star: Option<IdType>,
         ot: OperationType,
@@ -958,7 +958,7 @@ pub mod positive_node_formatter {
 }
 
 pub mod positive_edge_formatter {
-    use std::rc::Rc;
+    use std::sync::Arc;
 
     use petgraph::visit::{EdgeRef, IntoEdgeReferences};
     use petgraph::{Directed, Graph};
@@ -973,7 +973,7 @@ pub mod positive_edge_formatter {
     ) -> Option<String>;
 
     pub fn format_entities(
-        original_graph: Rc<PositiveSystemGraph>,
+        original_graph: Arc<PositiveSystemGraph>,
         color: String,
         ot: OperationType,
         set: Set,
@@ -989,7 +989,7 @@ pub mod positive_edge_formatter {
     }
 
     pub fn format_context(
-        original_graph: Rc<PositiveSystemGraph>,
+        original_graph: Arc<PositiveSystemGraph>,
         color: String,
         ot: OperationType,
         set: Set,
@@ -1005,7 +1005,7 @@ pub mod positive_edge_formatter {
     }
 
     pub fn format_t(
-        original_graph: Rc<PositiveSystemGraph>,
+        original_graph: Arc<PositiveSystemGraph>,
         color: String,
         ot: OperationType,
         set: Set,
@@ -1021,7 +1021,7 @@ pub mod positive_edge_formatter {
     }
 
     pub fn format_reactants(
-        original_graph: Rc<PositiveSystemGraph>,
+        original_graph: Arc<PositiveSystemGraph>,
         color: String,
         ot: OperationType,
         set: Set,
@@ -1037,7 +1037,7 @@ pub mod positive_edge_formatter {
     }
 
     pub fn format_reactants_absent(
-        original_graph: Rc<PositiveSystemGraph>,
+        original_graph: Arc<PositiveSystemGraph>,
         color: String,
         ot: OperationType,
         set: Set,
@@ -1053,7 +1053,7 @@ pub mod positive_edge_formatter {
     }
 
     pub fn format_inhibitors(
-        original_graph: Rc<PositiveSystemGraph>,
+        original_graph: Arc<PositiveSystemGraph>,
         color: String,
         ot: OperationType,
         set: Set,
@@ -1069,7 +1069,7 @@ pub mod positive_edge_formatter {
     }
 
     pub fn format_inhibitors_present(
-        original_graph: Rc<PositiveSystemGraph>,
+        original_graph: Arc<PositiveSystemGraph>,
         color: String,
         ot: OperationType,
         set: Set,
@@ -1085,7 +1085,7 @@ pub mod positive_edge_formatter {
     }
 
     pub fn format_products(
-        original_graph: Rc<PositiveSystemGraph>,
+        original_graph: Arc<PositiveSystemGraph>,
         color: String,
         ot: OperationType,
         set: Set,

@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::sync::Arc;
 use std::str::FromStr;
 use lalrpop_util::ParseError;
 
@@ -263,30 +263,30 @@ Context: process::Process = {
         process::Process::NondeterministicChoice{ children: t }
 };
 
-Boxed_CTX_process: Rc<process::Process> = {
-    <t: CTX_process> => Rc::new(t)
+Boxed_CTX_process: Arc<process::Process> = {
+    <t: CTX_process> => Arc::new(t)
 }
 
 CTX_process: process::Process = {
     "nill" => process::Process::Nill,
 
     <c: Set_of_entities> "." <k: CTX_process> =>
-        process::Process::EntitySet{ entities: c, next_process: Rc::new(k) },
+        process::Process::EntitySet{ entities: c, next_process: Arc::new(k) },
 
     "(" <k: CTX_process>  ")" => k,
 
     "(" <k: Separated<CTX_process, "+">> ")" =>
         process::Process::Summation{
-                children: k.into_iter().map(Rc::new).collect::<Vec<_>>()
+                children: k.into_iter().map(Arc::new).collect::<Vec<_>>()
         },
 
     "?" <r: Reaction> "?" "." <k: CTX_process> =>
-        process::Process::Guarded{ reaction: r, next_process: Rc::new(k) },
+        process::Process::Guarded{ reaction: r, next_process: Arc::new(k) },
 
     "<" <n: Num> "," <k1: CTX_process> ">" "." <k: CTX_process> =>
         process::Process::WaitEntity{ repeat: n,
-                               repeated_process: Rc::new(k1),
-                               next_process: Rc::new(k) },
+                               repeated_process: Arc::new(k1),
+                               next_process: Arc::new(k) },
 
     <identifier: LiteralProcess> =>
         process::Process::RecursiveIdentifier{
@@ -726,7 +726,7 @@ System: system::System = {
         => system::System::from(delta.into(),
                                 available_entities,
                                 context_process,
-                                Rc::new(reaction_rules))
+                                Arc::new(reaction_rules))
 }
 
 // experiment

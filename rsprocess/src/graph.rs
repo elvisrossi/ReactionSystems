@@ -1,6 +1,6 @@
 //! Definitions for generating graphs from a simulation.
 
-use std::rc::Rc;
+use std::sync::Arc;
 
 use petgraph::visit::{IntoEdgeReferences, IntoNodeReferences};
 use petgraph::{Directed, Graph};
@@ -222,8 +222,8 @@ type PositiveGraphMapNodesFnTy<'a> =
 impl NodeDisplayBase {
     fn match_node_display<'a>(
         &self,
-        common_entities: Rc<Set>,
-        translator: Rc<translator::Translator>,
+        common_entities: Arc<Set>,
+        translator: Arc<translator::Translator>,
     ) -> Box<GraphMapNodesFnTy<'a>> {
         use super::format_helpers::graph_map_nodes_ty_from::*;
 
@@ -247,8 +247,8 @@ impl NodeDisplayBase {
 
     fn positive_match_node_display<'a>(
         &self,
-        common_entities: Rc<Set>,
-        translator: Rc<translator::Translator>,
+        common_entities: Arc<Set>,
+        translator: Arc<translator::Translator>,
     ) -> Box<PositiveGraphMapNodesFnTy<'a>> {
         use super::format_helpers::positive_graph_map_nodes_ty_from::*;
 
@@ -284,21 +284,21 @@ impl NodeDisplay {
 
     pub fn generate<'a>(
         self,
-        translator: Rc<translator::Translator>,
+        translator: Arc<translator::Translator>,
         current_graph: &SystemGraph,
     ) -> Box<GraphMapNodesFnTy<'a>> {
         let common_entities = if self.contains_uncommon() {
-            Rc::new(common_system_entities(current_graph))
+            Arc::new(common_system_entities(current_graph))
         } else {
-            Rc::new(Set::default())
+            Arc::new(Set::default())
         };
 
         Box::new(move |i, n| {
             let mut accumulator = String::new();
             for b in &self.base {
                 let f = b.match_node_display(
-                    Rc::clone(&common_entities),
-                    Rc::clone(&translator),
+                    Arc::clone(&common_entities),
+                    Arc::clone(&translator),
                 );
 
                 accumulator.push_str(&(f)(i, n));
@@ -309,21 +309,21 @@ impl NodeDisplay {
 
     pub fn generate_positive<'a>(
         self,
-        translator: Rc<translator::Translator>,
+        translator: Arc<translator::Translator>,
         current_graph: &PositiveSystemGraph,
     ) -> Box<PositiveGraphMapNodesFnTy<'a>> {
         let common_entities = if self.contains_uncommon() {
-            Rc::new(positive_common_system_entities(current_graph))
+            Arc::new(positive_common_system_entities(current_graph))
         } else {
-            Rc::new(Set::default())
+            Arc::new(Set::default())
         };
 
         Box::new(move |i, n| {
             let mut accumulator = String::new();
             for b in &self.base {
                 let f = b.positive_match_node_display(
-                    Rc::clone(&common_entities),
-                    Rc::clone(&translator),
+                    Arc::clone(&common_entities),
+                    Arc::clone(&translator),
                 );
 
                 accumulator.push_str(&(f)(i, n));
@@ -396,7 +396,7 @@ struct CommonEntities {
 impl EdgeDisplayBase {
     fn match_edge_display<'a>(
         &'a self,
-        translator: Rc<translator::Translator>,
+        translator: Arc<translator::Translator>,
         common: CommonEntities,
     ) -> Box<GraphMapEdgesFnTy<'a>> {
         use super::format_helpers::graph_map_edges_ty_from::*;
@@ -501,7 +501,7 @@ impl EdgeDisplayBase {
 
     fn positive_match_edge_display<'a>(
         &'a self,
-        translator: Rc<translator::Translator>,
+        translator: Arc<translator::Translator>,
         common: CommonEntities,
     ) -> Box<PositiveGraphMapEdgesFnTy<'a>> {
         use super::format_helpers::positive_graph_map_edges_ty_from::*;
@@ -679,7 +679,7 @@ impl EdgeDisplay {
 
     pub fn generate<'a>(
         self,
-        translator: Rc<translator::Translator>,
+        translator: Arc<translator::Translator>,
         current_graph: &SystemGraph,
     ) -> Box<GraphMapEdgesFnTy<'a>> {
         // create the structure for common entities if required
@@ -715,7 +715,7 @@ impl EdgeDisplay {
             let mut accumulator = String::new();
             for b in &self.base {
                 let f = b
-                    .match_edge_display(Rc::clone(&translator), common.clone());
+                    .match_edge_display(Arc::clone(&translator), common.clone());
                 accumulator.push_str(&(f)(i, n));
             }
             accumulator
@@ -724,7 +724,7 @@ impl EdgeDisplay {
 
     pub fn generate_positive<'a>(
         self,
-        translator: Rc<translator::Translator>,
+        translator: Arc<translator::Translator>,
         current_graph: &PositiveSystemGraph,
     ) -> Box<PositiveGraphMapEdgesFnTy<'a>> {
         // create the structure for common entities if required
@@ -764,7 +764,7 @@ impl EdgeDisplay {
             let mut accumulator = String::new();
             for b in &self.base {
                 let f = b.positive_match_edge_display(
-                    Rc::clone(&translator),
+                    Arc::clone(&translator),
                     common.clone(),
                 );
                 accumulator.push_str(&(f)(i, n));
@@ -856,17 +856,17 @@ impl NodeColorConditional {
     fn match_node_color_conditional<'a>(
         &self,
         color: &'a String,
-        original_graph: Rc<SystemGraph>,
+        original_graph: Arc<SystemGraph>,
         star: Option<IdType>,
     ) -> Box<RSformatNodeTyOpt<'a>> {
         use super::format_helpers::node_formatter::*;
         match self {
             | Self::ContextConditional(ContextColorConditional::Nill) =>
-                format_nill(Rc::clone(&original_graph), color.to_string(), star),
+                format_nill(Arc::clone(&original_graph), color.to_string(), star),
             | Self::ContextConditional(
                 ContextColorConditional::RecursiveIdentifier(s),
             ) => format_recursive_identifier(
-                Rc::clone(&original_graph),
+                Arc::clone(&original_graph),
                 color.to_string(),
                 star,
                 *s,
@@ -875,7 +875,7 @@ impl NodeColorConditional {
                 ot,
                 set,
             )) => format_entity_set(
-                Rc::clone(&original_graph),
+                Arc::clone(&original_graph),
                 color.to_string(),
                 star,
                 *ot,
@@ -884,25 +884,25 @@ impl NodeColorConditional {
             | Self::ContextConditional(
                 ContextColorConditional::NonDeterministicChoice,
             ) => format_non_deterministic_choice(
-                Rc::clone(&original_graph),
+                Arc::clone(&original_graph),
                 color.to_string(),
                 star,
             ),
             | Self::ContextConditional(ContextColorConditional::Summation) =>
                 format_summation(
-                    Rc::clone(&original_graph),
+                    Arc::clone(&original_graph),
                     color.to_string(),
                     star,
                 ),
             | Self::ContextConditional(ContextColorConditional::WaitEntity) =>
                 format_wait_entity(
-                    Rc::clone(&original_graph),
+                    Arc::clone(&original_graph),
                     color.to_string(),
                     star,
                 ),
             | Self::EntitiesConditional(ot, set) =>
                 format_entities_conditional(
-                    Rc::clone(&original_graph),
+                    Arc::clone(&original_graph),
                     color.to_string(),
                     star,
                     *ot,
@@ -914,17 +914,17 @@ impl NodeColorConditional {
     fn match_positive_node_color_conditional<'a>(
         &self,
         color: &'a String,
-        original_graph: Rc<PositiveSystemGraph>,
+        original_graph: Arc<PositiveSystemGraph>,
         star: Option<IdType>,
     ) -> Box<RSformatNodeTyOpt<'a>> {
         use super::format_helpers::positive_node_formatter::*;
         match self {
             | Self::ContextConditional(ContextColorConditional::Nill) =>
-                format_nill(Rc::clone(&original_graph), color.to_string(), star),
+                format_nill(Arc::clone(&original_graph), color.to_string(), star),
             | Self::ContextConditional(
                 ContextColorConditional::RecursiveIdentifier(s),
             ) => format_recursive_identifier(
-                Rc::clone(&original_graph),
+                Arc::clone(&original_graph),
                 color.to_string(),
                 star,
                 *s,
@@ -933,7 +933,7 @@ impl NodeColorConditional {
                 ot,
                 set,
             )) => format_entity_set(
-                Rc::clone(&original_graph),
+                Arc::clone(&original_graph),
                 color.to_string(),
                 star,
                 *ot,
@@ -942,25 +942,25 @@ impl NodeColorConditional {
             | Self::ContextConditional(
                 ContextColorConditional::NonDeterministicChoice,
             ) => format_non_deterministic_choice(
-                Rc::clone(&original_graph),
+                Arc::clone(&original_graph),
                 color.to_string(),
                 star,
             ),
             | Self::ContextConditional(ContextColorConditional::Summation) =>
                 format_summation(
-                    Rc::clone(&original_graph),
+                    Arc::clone(&original_graph),
                     color.to_string(),
                     star,
                 ),
             | Self::ContextConditional(ContextColorConditional::WaitEntity) =>
                 format_wait_entity(
-                    Rc::clone(&original_graph),
+                    Arc::clone(&original_graph),
                     color.to_string(),
                     star,
                 ),
             | Self::EntitiesConditional(ot, set) =>
                 format_entities_conditional(
-                    Rc::clone(&original_graph),
+                    Arc::clone(&original_graph),
                     color.to_string(),
                     star,
                     *ot,
@@ -973,14 +973,14 @@ impl NodeColorConditional {
 impl NodeColor {
     pub fn generate<'a>(
         self,
-        original_graph: Rc<SystemGraph>,
+        original_graph: Arc<SystemGraph>,
         star: Option<IdType>,
     ) -> Box<RSformatNodeTy<'a>> {
         Box::new(move |i, n| {
             for (rule, color) in &self.conditionals {
                 let f = rule.match_node_color_conditional(
                     color,
-                    Rc::clone(&original_graph),
+                    Arc::clone(&original_graph),
                     star,
                 );
 
@@ -994,14 +994,14 @@ impl NodeColor {
 
     pub fn generate_positive<'a>(
         self,
-        original_graph: Rc<PositiveSystemGraph>,
+        original_graph: Arc<PositiveSystemGraph>,
         star: Option<IdType>,
     ) -> Box<RSformatNodeTy<'a>> {
         Box::new(move |i, n| {
             for (rule, color) in &self.conditionals {
                 let f = rule.match_positive_node_color_conditional(
                     color,
-                    Rc::clone(&original_graph),
+                    Arc::clone(&original_graph),
                     star,
                 );
 
@@ -1053,54 +1053,54 @@ impl EdgeColorConditional {
     fn match_edge_color_conditional<'a>(
         &'a self,
         color: &'a String,
-        original_graph: Rc<SystemGraph>,
+        original_graph: Arc<SystemGraph>,
     ) -> Box<RSformatEdgeTyOpt<'a>> {
         use super::format_helpers::edge_formatter::*;
         match self {
             | Self::Entities(ot, set) => format_entities(
-                Rc::clone(&original_graph),
+                Arc::clone(&original_graph),
                 color.to_string(),
                 *ot,
                 set.clone(),
             ),
             | Self::Context(ot, set) => format_context(
-                Rc::clone(&original_graph),
+                Arc::clone(&original_graph),
                 color.to_string(),
                 *ot,
                 set.clone(),
             ),
             | Self::T(ot, set) => format_t(
-                Rc::clone(&original_graph),
+                Arc::clone(&original_graph),
                 color.to_string(),
                 *ot,
                 set.clone(),
             ),
             | Self::Reactants(ot, set) => format_reactants(
-                Rc::clone(&original_graph),
+                Arc::clone(&original_graph),
                 color.to_string(),
                 *ot,
                 set.clone(),
             ),
             | Self::ReactantsAbsent(ot, set) => format_reactants_absent(
-                Rc::clone(&original_graph),
+                Arc::clone(&original_graph),
                 color.to_string(),
                 *ot,
                 set.clone(),
             ),
             | Self::Inhibitors(ot, set) => format_inhibitors(
-                Rc::clone(&original_graph),
+                Arc::clone(&original_graph),
                 color.to_string(),
                 *ot,
                 set.clone(),
             ),
             | Self::InhibitorsPresent(ot, set) => format_inhibitors_present(
-                Rc::clone(&original_graph),
+                Arc::clone(&original_graph),
                 color.to_string(),
                 *ot,
                 set.clone(),
             ),
             | Self::Products(ot, set) => format_products(
-                Rc::clone(&original_graph),
+                Arc::clone(&original_graph),
                 color.to_string(),
                 *ot,
                 set.clone(),
@@ -1111,55 +1111,55 @@ impl EdgeColorConditional {
     fn match_positive_edge_color_conditional<'a>(
         &'a self,
         color: &'a String,
-        original_graph: Rc<PositiveSystemGraph>,
+        original_graph: Arc<PositiveSystemGraph>,
     ) -> Box<RSformatEdgeTyOpt<'a>> {
         use super::format_helpers::positive_edge_formatter::*;
 
         match self {
             | Self::Entities(ot, set) => format_entities(
-                Rc::clone(&original_graph),
+                Arc::clone(&original_graph),
                 color.to_string(),
                 *ot,
                 set.clone(),
             ),
             | Self::Context(ot, set) => format_context(
-                Rc::clone(&original_graph),
+                Arc::clone(&original_graph),
                 color.to_string(),
                 *ot,
                 set.clone(),
             ),
             | Self::T(ot, set) => format_t(
-                Rc::clone(&original_graph),
+                Arc::clone(&original_graph),
                 color.to_string(),
                 *ot,
                 set.clone(),
             ),
             | Self::Reactants(ot, set) => format_reactants(
-                Rc::clone(&original_graph),
+                Arc::clone(&original_graph),
                 color.to_string(),
                 *ot,
                 set.clone(),
             ),
             | Self::ReactantsAbsent(ot, set) => format_reactants_absent(
-                Rc::clone(&original_graph),
+                Arc::clone(&original_graph),
                 color.to_string(),
                 *ot,
                 set.clone(),
             ),
             | Self::Inhibitors(ot, set) => format_inhibitors(
-                Rc::clone(&original_graph),
+                Arc::clone(&original_graph),
                 color.to_string(),
                 *ot,
                 set.clone(),
             ),
             | Self::InhibitorsPresent(ot, set) => format_inhibitors_present(
-                Rc::clone(&original_graph),
+                Arc::clone(&original_graph),
                 color.to_string(),
                 *ot,
                 set.clone(),
             ),
             | Self::Products(ot, set) => format_products(
-                Rc::clone(&original_graph),
+                Arc::clone(&original_graph),
                 color.to_string(),
                 *ot,
                 set.clone(),
@@ -1171,13 +1171,13 @@ impl EdgeColorConditional {
 impl EdgeColor {
     pub fn generate<'a>(
         self,
-        original_graph: Rc<SystemGraph>,
+        original_graph: Arc<SystemGraph>,
     ) -> Box<RSformatEdgeTy<'a>> {
         Box::new(move |i, n| {
             for (rule, color) in &self.conditionals {
                 let f = rule.match_edge_color_conditional(
                     color,
-                    Rc::clone(&original_graph),
+                    Arc::clone(&original_graph),
                 );
 
                 if let Some(s) = (f)(i, n) {
@@ -1190,13 +1190,13 @@ impl EdgeColor {
 
     pub fn generate_positive<'a>(
         self,
-        original_graph: Rc<PositiveSystemGraph>,
+        original_graph: Arc<PositiveSystemGraph>,
     ) -> Box<RSformatEdgeTy<'a>> {
         Box::new(move |i, n| {
             for (rule, color) in &self.conditionals {
                 let f = rule.match_positive_edge_color_conditional(
                     color,
-                    Rc::clone(&original_graph),
+                    Arc::clone(&original_graph),
                 );
 
                 if let Some(s) = (f)(i, n) {
