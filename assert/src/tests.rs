@@ -1274,7 +1274,7 @@ fn for_8() {
 
 #[test]
 fn nodes() {
-    use std::rc::Rc;
+    use std::sync::Arc;
 
     use environment::Environment;
     use label::Label;
@@ -1321,10 +1321,10 @@ fn nodes() {
     let mut graph = petgraph::Graph::new();
     let node_1 = graph.add_node(System::default());
     let node_2 = graph.add_node(System::from(
-        Rc::new(Environment::default()),
+        Arc::new(Environment::default()),
         Set::from([2]),
         Process::Nill,
-        Rc::new(vec![]),
+        Arc::new(vec![]),
     ));
     let edge = graph.add_edge(node_1, node_2, Label::default());
 

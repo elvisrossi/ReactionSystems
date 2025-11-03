@@ -32,8 +32,9 @@ where
 
 // -----------------------------------------------------------------------------
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 pub enum Process {
+    #[default]
     Nill,
     RecursiveIdentifier {
         identifier: IdType,
@@ -152,12 +153,6 @@ impl BasicProcess for Process {
     }
 }
 
-impl Default for Process {
-    fn default() -> Self {
-        Self::Nill
-    }
-}
-
 impl PrintableWithTranslator for Process {
     fn print(
         &self,
@@ -247,8 +242,9 @@ impl PrintableWithTranslator for Process {
 
 // -----------------------------------------------------------------------------
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 pub enum PositiveProcess {
+    #[default]
     Nill,
     RecursiveIdentifier {
         identifier: IdType,
@@ -362,12 +358,6 @@ impl BasicProcess for PositiveProcess {
             }
         }
         None
-    }
-}
-
-impl Default for PositiveProcess {
-    fn default() -> Self {
-        Self::Nill
     }
 }
 
