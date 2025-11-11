@@ -702,7 +702,7 @@ where
         "{}",
         // bisimilarity::bisimilarity_kanellakis_smolka::bisimilarity(&&a, &&b)
         // bisimilarity::bisimilarity_paige_tarjan::bisimilarity_ignore_labels(&&a, &&b)
-        bisimilarity::bisimilarity_paige_tarkan::bisimilarity(&&a, &&b)
+        bisimilarity::bisimilarity_paige_tarjan::bisimilarity(&&a, &&b)
     ))
 }
 

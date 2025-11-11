@@ -1,4 +1,4 @@
-use super::bisimilarity_paige_tarkan::{
+use super::bisimilarity_paige_tarjan::{
     bisimilarity, bisimilarity_ignore_labels,
 };
 

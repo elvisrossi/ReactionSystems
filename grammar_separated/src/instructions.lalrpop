@@ -456,26 +456,3 @@ pub ColorEdge: graph::EdgeColor = {
 }
 
 // -----------------------------------------------------------------------------
-
-// pub GraphSaveOptions: presets::GraphSaveOptions = {
-//     "Dot"
-//           "|"? <s_node: SeparatorNode>
-//           "|" <s_edge: SeparatorEdge>
-//           "|" <c_node: ColorNode>
-//           "|" <c_edge: ColorEdge>
-//           ">" <so: SaveOptions> =>
-//         presets::GraphSaveOptions::Dot { node_display: s_node,
-//                                          edge_display: s_edge,
-//                                          node_color:   c_node,
-//                                          edge_color:   c_edge,
-//                                          so },
-//     "GraphML"
-//           "|"? <s_node: SeparatorNode>
-//           "|" <s_edge: SeparatorEdge>
-//           ">" <so: SaveOptions> =>
-//         presets::GraphSaveOptions::GraphML { node_display: s_node,
-//                                              edge_display: s_edge,
-//                                              so },
-//     "Serialize" "(" <path: Path> ")" =>
-//         presets::GraphSaveOptions::Serialize { path },
-// }
