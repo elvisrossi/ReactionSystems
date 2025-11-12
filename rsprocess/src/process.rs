@@ -32,7 +32,9 @@ where
 
 // -----------------------------------------------------------------------------
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, Default,
+)]
 pub enum Process {
     #[default]
     Nill,
@@ -242,7 +244,9 @@ impl PrintableWithTranslator for Process {
 
 // -----------------------------------------------------------------------------
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, Default,
+)]
 pub enum PositiveProcess {
     #[default]
     Nill,

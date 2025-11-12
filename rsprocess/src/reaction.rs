@@ -316,15 +316,14 @@ impl Reaction {
     pub fn into_positive_reactions(
         reactions: &[Self],
     ) -> Vec<PositiveReaction> {
-        let reactions =
-            reactions.iter()
+        let reactions = reactions
+            .iter()
             .filter(|r| !r.reactants.is_empty() || !r.inhibitors.is_empty())
             .cloned()
             .collect::<Vec<Self>>();
 
         let mut res = vec![];
         let old_reactions = &reactions;
-
 
         let all_products = Reaction::all_products(old_reactions);
         for el in all_products {

@@ -714,8 +714,10 @@ impl EdgeDisplay {
         Box::new(move |i, n| {
             let mut accumulator = String::new();
             for b in &self.base {
-                let f = b
-                    .match_edge_display(Arc::clone(&translator), common.clone());
+                let f = b.match_edge_display(
+                    Arc::clone(&translator),
+                    common.clone(),
+                );
                 accumulator.push_str(&(f)(i, n));
             }
             accumulator
@@ -862,7 +864,11 @@ impl NodeColorConditional {
         use super::format_helpers::node_formatter::*;
         match self {
             | Self::ContextConditional(ContextColorConditional::Nill) =>
-                format_nill(Arc::clone(&original_graph), color.to_string(), star),
+                format_nill(
+                    Arc::clone(&original_graph),
+                    color.to_string(),
+                    star,
+                ),
             | Self::ContextConditional(
                 ContextColorConditional::RecursiveIdentifier(s),
             ) => format_recursive_identifier(
@@ -920,7 +926,11 @@ impl NodeColorConditional {
         use super::format_helpers::positive_node_formatter::*;
         match self {
             | Self::ContextConditional(ContextColorConditional::Nill) =>
-                format_nill(Arc::clone(&original_graph), color.to_string(), star),
+                format_nill(
+                    Arc::clone(&original_graph),
+                    color.to_string(),
+                    star,
+                ),
             | Self::ContextConditional(
                 ContextColorConditional::RecursiveIdentifier(s),
             ) => format_recursive_identifier(

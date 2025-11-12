@@ -1,7 +1,8 @@
+use std::sync::Arc;
+
 use super::set::PositiveSet;
 use super::system::BasicSystem;
 use crate::system::ExtensionsSystem;
-use std::sync::Arc;
 
 #[test]
 fn one_transition() {

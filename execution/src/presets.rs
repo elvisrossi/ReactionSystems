@@ -727,8 +727,10 @@ pub fn dot(
 
         let graph = Arc::new(graph.to_owned());
 
-        let node_formatter = node_color
-            .generate(Arc::clone(&graph), system.translator.encode_not_mut("*"));
+        let node_formatter = node_color.generate(
+            Arc::clone(&graph),
+            system.translator.encode_not_mut("*"),
+        );
         let edge_formatter = edge_color.generate(Arc::clone(&graph));
 
         let dot = dot::Dot::with_attr_getters(

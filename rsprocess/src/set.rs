@@ -237,7 +237,7 @@ impl Set {
         inhibitors: &[Set],
     ) -> Result<Vec<PositiveSet>, String> {
         if reactants.is_empty() && inhibitors.is_empty() {
-            return Ok(vec![])
+            return Ok(vec![]);
         }
         if reactants.len() != inhibitors.len() {
             return Err(format!(

@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 use std::ops::{Index, IndexMut};
-use std::sync::Arc;
 use std::slice::SliceIndex;
+use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 
