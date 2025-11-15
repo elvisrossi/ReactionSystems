@@ -463,6 +463,7 @@ AssertQualifierSystem: relabel::QualifierSystem = {
 AssertQualifierEdge: relabel::QualifierEdge = {
     "source" => relabel::QualifierEdge::Source,
     "target" => relabel::QualifierEdge::Target,
+    "label"  => relabel::QualifierEdge::Label,
 }
 
 AssertQualifierNode: relabel::QualifierNode = {
@@ -647,6 +648,7 @@ GroupQualifierSystem: grouping::QualifierSystem = {
 GroupQualifierEdge: grouping::QualifierEdge = {
     "source" => grouping::QualifierEdge::Source,
     "target" => grouping::QualifierEdge::Target,
+    "label"  => grouping::QualifierEdge::Label,
 }
 
 #[inline]
