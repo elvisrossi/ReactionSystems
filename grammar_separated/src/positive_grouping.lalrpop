@@ -256,6 +256,7 @@ GroupQualifierSystem: positive_grouping::QualifierSystem = {
 GroupQualifierEdge: positive_grouping::QualifierEdge = {
     "source" => positive_grouping::QualifierEdge::Source,
     "target" => positive_grouping::QualifierEdge::Target,
+    "label"  => positive_grouping::QualifierEdge::Label,
 }
 
 GroupQualifierNode: positive_grouping::QualifierNode = {

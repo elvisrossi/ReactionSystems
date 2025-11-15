@@ -130,6 +130,7 @@ pub enum QualifierSystem {
 pub enum QualifierEdge {
     Source,
     Target,
+    Label,
 }
 
 #[derive(Clone, Copy, Serialize, Deserialize, Hash)]
@@ -334,9 +335,17 @@ impl PositiveUnary {
             | (Self::ToEl, PositiveAssertionTypes::String) =>
                 Ok(PositiveAssertionTypes::PositiveElement),
             | (
-                Self::Qualifier(PositiveQualifier::Edge(_)),
+                Self::Qualifier(PositiveQualifier::Edge(QualifierEdge::Source)),
                 PositiveAssertionTypes::Edge,
             ) => Ok(PositiveAssertionTypes::Node),
+            | (
+                Self::Qualifier(PositiveQualifier::Edge(QualifierEdge::Target)),
+                PositiveAssertionTypes::Edge,
+            ) => Ok(PositiveAssertionTypes::Node),
+            | (
+                Self::Qualifier(PositiveQualifier::Edge(QualifierEdge::Label)),
+                PositiveAssertionTypes::Edge,
+            ) => Ok(PositiveAssertionTypes::Label),
             | (
                 Self::Qualifier(PositiveQualifier::Node(
                     QualifierNode::Neighbours,
@@ -998,6 +1007,14 @@ impl PositiveAssertReturnValue {
                 )),
             ) => Ok(PositiveAssertReturnValue::Node(
                 graph.edge_endpoints(edge).unwrap().1,
+            )),
+            | (
+                PositiveAssertReturnValue::Edge(edge),
+                PositiveUnary::Qualifier(PositiveQualifier::Edge(
+                    QualifierEdge::Label,
+                )),
+            ) => Ok(PositiveAssertReturnValue::Label(
+                graph[edge].clone(),
             )),
             | (
                 PositiveAssertReturnValue::Node(node),

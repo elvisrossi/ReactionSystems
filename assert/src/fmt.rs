@@ -181,6 +181,7 @@ impl fmt::Debug for QualifierEdge {
         match self {
             | Self::Source => write!(f, "source"),
             | Self::Target => write!(f, "target"),
+            | Self::Label => write!(f, "label"),
         }
     }
 }

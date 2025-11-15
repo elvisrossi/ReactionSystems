@@ -255,6 +255,7 @@ AssertQualifierSystem: positive_relabel::QualifierSystem = {
 AssertQualifierEdge: positive_relabel::QualifierEdge = {
     "source" => positive_relabel::QualifierEdge::Source,
     "target" => positive_relabel::QualifierEdge::Target,
+    "label"  => positive_relabel::QualifierEdge::Label,
 }
 
 AssertQualifierNode: positive_relabel::QualifierNode = {

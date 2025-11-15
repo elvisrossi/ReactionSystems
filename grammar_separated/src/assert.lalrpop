@@ -251,6 +251,7 @@ AssertQualifierSystem: relabel::QualifierSystem = {
 AssertQualifierEdge: relabel::QualifierEdge = {
     "source" => relabel::QualifierEdge::Source,
     "target" => relabel::QualifierEdge::Target,
+    "label"  => relabel::QualifierEdge::Label,
 }
 
 AssertQualifierNode: relabel::QualifierNode = {

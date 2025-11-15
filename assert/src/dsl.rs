@@ -114,6 +114,7 @@ pub enum QualifierSystem {
 pub enum QualifierEdge {
     Source,
     Target,
+    Label,
 }
 
 #[derive(Clone, Copy, Serialize, Deserialize, Hash)]
@@ -304,8 +305,12 @@ impl Unary {
             ) => Ok(AssertionTypes::Set),
             | (Self::ToEl, AssertionTypes::String) =>
                 Ok(AssertionTypes::Element),
-            | (Self::Qualifier(Qualifier::Edge(_)), AssertionTypes::Edge) =>
+            | (Self::Qualifier(Qualifier::Edge(QualifierEdge::Source)), AssertionTypes::Edge) =>
                 Ok(AssertionTypes::Node),
+            | (Self::Qualifier(Qualifier::Edge(QualifierEdge::Target)), AssertionTypes::Edge) =>
+                Ok(AssertionTypes::Node),
+            | (Self::Qualifier(Qualifier::Edge(QualifierEdge::Label)), AssertionTypes::Edge) =>
+                Ok(AssertionTypes::Label),
             | (
                 Self::Qualifier(Qualifier::Node(QualifierNode::Neighbours)),
                 AssertionTypes::Node,
@@ -838,6 +843,12 @@ impl AssertReturnValue {
                 Unary::Qualifier(Qualifier::Edge(QualifierEdge::Target)),
             ) => Ok(AssertReturnValue::Node(
                 graph.edge_endpoints(edge).unwrap().1,
+            )),
+            | (
+                AssertReturnValue::Edge(edge),
+                Unary::Qualifier(Qualifier::Edge(QualifierEdge::Label)),
+            ) => Ok(AssertReturnValue::Label(
+                graph[edge].clone()
             )),
             | (
                 AssertReturnValue::Node(node),

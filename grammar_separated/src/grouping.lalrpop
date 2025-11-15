@@ -252,6 +252,7 @@ GroupQualifierSystem: grouping::QualifierSystem = {
 GroupQualifierEdge: grouping::QualifierEdge = {
     "source" => grouping::QualifierEdge::Source,
     "target" => grouping::QualifierEdge::Target,
+    "label"  => grouping::QualifierEdge::Label,
 }
 
 GroupQualifierNode: grouping::QualifierNode = {
