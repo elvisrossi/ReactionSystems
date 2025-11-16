@@ -16,6 +16,7 @@ pub mod trace;
 pub mod dot;
 pub mod frequency;
 pub mod graph;
+pub mod graph_fmt;
 pub mod serialize;
 pub mod transitions;
 
