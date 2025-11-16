@@ -700,9 +700,9 @@ where
             .map_edges(edge_relabeler, &mut system_b.translator)?;
     Ok(format!(
         "{}",
-        // bisimilarity::bisimilarity_kanellakis_smolka::bisimilarity(&&a, &&b)
-        // bisimilarity::bisimilarity_paige_tarjan::bisimilarity_ignore_labels(&&a, &&b)
-        bisimilarity::bisimilarity_paige_tarjan::bisimilarity(&&a, &&b)
+        // bisimilarity::kanellakis_smolka::bisimilarity(&&a, &&b)
+        // bisimilarity::paige_tarjan::bisimilarity_ignore_labels(&&a, &&b)
+        bisimilarity::paige_tarjan::bisimilarity(&&a, &&b)
     ))
 }
 

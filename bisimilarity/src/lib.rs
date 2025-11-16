@@ -1,8 +1,8 @@
-pub mod bisimilarity_kanellakis_smolka;
-pub mod bisimilarity_paige_tarjan;
+pub mod kanellakis_smolka;
+pub mod paige_tarjan;
 
 #[cfg(test)]
-mod test_kenallakis_smolka;
+mod kenallakis_smolka_test;
 
 #[cfg(test)]
-mod test_paige_tarjan;
+mod paige_tarjan_test;

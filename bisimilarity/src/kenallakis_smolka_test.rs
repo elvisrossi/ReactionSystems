@@ -1,9 +1,7 @@
-use super::bisimilarity_paige_tarjan::{
-    bisimilarity, bisimilarity_ignore_labels,
-};
+use super::kanellakis_smolka::bisimilarity;
 
 #[test]
-fn identity_paige_tarjan() {
+fn identity_kanellakis_smolka() {
     use petgraph::Graph;
     let mut graph_a = Graph::new();
 
@@ -11,12 +9,11 @@ fn identity_paige_tarjan() {
     let node_a_2 = graph_a.add_node(2);
     graph_a.add_edge(node_a_1, node_a_2, 1);
 
-    assert!(bisimilarity(&&graph_a, &&graph_a));
-    assert!(bisimilarity_ignore_labels(&&graph_a, &&graph_a))
+    assert!(bisimilarity(&&graph_a, &&graph_a))
 }
 
 #[test]
-fn identity_paige_tarjan_2() {
+fn identity_kanellakis_smolka_2() {
     use petgraph::Graph;
     let mut graph_a = Graph::new();
 
@@ -38,12 +35,11 @@ fn identity_paige_tarjan_2() {
     graph_a.add_edge(node_a_8, node_a_7, 3);
     graph_a.add_edge(node_a_8, node_a_8, 3);
 
-    assert!(bisimilarity(&&graph_a, &&graph_a));
-    assert!(bisimilarity_ignore_labels(&&graph_a, &&graph_a))
+    assert!(bisimilarity(&&graph_a, &&graph_a))
 }
 
 #[test]
-fn identity_different_weights_paige_tarjan() {
+fn identity_different_weights_kanellakis_smolka() {
     use petgraph::Graph;
     let mut graph_a = Graph::new();
 
@@ -57,12 +53,11 @@ fn identity_different_weights_paige_tarjan() {
     let node_b_2 = graph_b.add_node(2);
     graph_b.add_edge(node_b_1, node_b_2, 2);
 
-    assert!(!bisimilarity(&&graph_a, &&graph_b));
-    assert!(bisimilarity_ignore_labels(&&graph_a, &&graph_b))
+    assert!(!bisimilarity(&&graph_a, &&graph_b))
 }
 
 #[test]
-fn not_bisimilar_paige_tarjan() {
+fn not_bisimilar_kanellakis_smolka() {
     use petgraph::Graph;
     let mut graph_a = Graph::new();
 
@@ -78,12 +73,11 @@ fn not_bisimilar_paige_tarjan() {
     let node_b_3 = graph_b.add_node(3);
     graph_b.add_edge(node_b_1, node_b_3, 2);
 
-    assert!(!bisimilarity(&&graph_a, &&graph_b));
-    assert!(bisimilarity_ignore_labels(&&graph_a, &&graph_b))
+    assert!(!bisimilarity(&&graph_a, &&graph_b))
 }
 
 #[test]
-fn not_bisimilar_paige_tarjan_2() {
+fn not_bisimilar_kanellakis_smolka_2() {
     use petgraph::Graph;
     let mut graph_a = Graph::new();
 
@@ -115,12 +109,11 @@ fn not_bisimilar_paige_tarjan_2() {
     let node_b_4 = graph_b.add_node(4);
     graph_b.add_edge(node_b_3, node_b_4, 2);
 
-    assert!(!bisimilarity(&&graph_a, &&graph_b));
-    assert!(!bisimilarity_ignore_labels(&&graph_a, &&graph_b))
+    assert!(!bisimilarity(&&graph_a, &&graph_b))
 }
 
 #[test]
-fn not_bisimilar_paige_tarjan_3() {
+fn not_bisimilar_kanellakis_smolka_3() {
     use petgraph::Graph;
     let mut graph_b = Graph::new();
 
@@ -141,12 +134,11 @@ fn not_bisimilar_paige_tarjan_3() {
     graph_c.add_edge(node_c_1, node_c_3, 2);
     graph_c.add_edge(node_c_2, node_c_3, 2);
 
-    assert!(!bisimilarity(&&graph_b, &&graph_c));
-    assert!(!bisimilarity_ignore_labels(&&graph_b, &&graph_c))
+    assert!(!bisimilarity(&&graph_b, &&graph_c))
 }
 
 #[test]
-fn bisimilar_paige_tarjan() {
+fn bisimilar_kanellakis_smolka() {
     use petgraph::Graph;
     let mut graph_b = Graph::new();
 
@@ -174,12 +166,11 @@ fn bisimilar_paige_tarjan() {
     let node_c_7 = graph_c.add_node(7);
     graph_c.add_edge(node_c_6, node_c_7, 2);
 
-    assert!(bisimilarity(&&graph_b, &&graph_c));
-    assert!(bisimilarity_ignore_labels(&&graph_b, &&graph_c))
+    assert!(bisimilarity(&&graph_b, &&graph_c))
 }
 
 #[test]
-fn bisimilar_paige_tarjan_2() {
+fn bisimilar_kanellakis_smolka_2() {
     use petgraph::Graph;
     let mut graph_a = Graph::new();
 
@@ -198,6 +189,5 @@ fn bisimilar_paige_tarjan_2() {
     graph_b.add_edge(node_b_1, node_b_2, 1);
     graph_b.add_edge(node_b_2, node_b_2, 2);
 
-    assert!(bisimilarity(&&graph_a, &&graph_b));
-    assert!(bisimilarity_ignore_labels(&&graph_a, &&graph_b))
+    assert!(bisimilarity(&&graph_a, &&graph_b))
 }
