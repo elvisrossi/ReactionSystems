@@ -211,6 +211,7 @@ impl Reaction {
             .fold(Set::default(), |acc, r| acc.union(&r.products))
     }
 
+    /// Returns all reactions that have a certain product
     pub fn all_reactions_with_product<'a>(
         reactions: &'a [Self],
         el: &IdType,
@@ -238,7 +239,8 @@ impl BasicReaction for PositiveReaction {
     type Set = PositiveSet;
 
     fn enabled(&self, state: &Self::Set) -> bool {
-        self.reactants.is_subset(state)
+        self.reactants.has_positives(state)
+        // self.reactants.is_subset(state)
     }
 
     fn compute_step(&self, state: &Self::Set) -> Option<&Self::Set> {
@@ -281,6 +283,8 @@ impl PositiveReaction {
         }
     }
 
+    /// Creates a Positive Reaction from the positive reactants and negative
+    /// inhibitors that produces positive products.
     pub fn create(reactants: Set, inhibitors: Set, products: Set) -> Self {
         Self {
             reactants: reactants
@@ -290,7 +294,7 @@ impl PositiveReaction {
         }
     }
 
-    /// returns the reactants that are equal
+    /// Returns the reactants that are equal
     pub fn differ_only_one_element(&self, other: &Self) -> Option<PositiveSet> {
         if self.products != other.products {
             return None;
@@ -334,9 +338,10 @@ impl Reaction {
                     r.reactants.clone(),
                     r.inhibitors.clone(),
                     Set::from([el]),
-                ))
+                ));
             }
             tmp.sort_by(|r1, r2| r1.reactants.cmp(&r2.reactants));
+            tmp.dedup();
 
             // remove reactions with only one element of opposite state
             // as intersection (same product ```el```)
@@ -344,6 +349,7 @@ impl Reaction {
             while pos > 0 {
                 if let Some(intersection) =
                     tmp[pos].differ_only_one_element(&tmp[pos - 1])
+                // && !intersection.is_empty()
                 {
                     tmp[pos - 1].reactants = intersection;
                     tmp.remove(pos);
@@ -364,6 +370,7 @@ impl Reaction {
                 })
             }
         }
+
         res
     }
 }

@@ -328,7 +328,6 @@ fn conversion_entities() {
         PositiveSet::from([
             (1, Positive),
             (2, Positive),
-            (3, Negative),
             (5, Negative)
         ])
     );

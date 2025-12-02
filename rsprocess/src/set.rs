@@ -352,8 +352,12 @@ impl Set {
                     },
                 }
             }
+
             t
         };
+
+        t.sort();
+        t.dedup();
 
         // minimization
         // remove sets that contain other sets
@@ -682,6 +686,20 @@ impl PositiveSet {
         )
     }
 
+    pub fn inverted_mask(&self, other: &Self) -> Self {
+        Self::from_iter(
+            self.iter()
+                .filter(|el| {
+                    !other.contains(&PositiveType::from((
+                        *el.0,
+                        IdState::Positive
+                    ))
+                    )
+                })
+                .map(|el| (*el.0, *el.1))
+        )
+    }
+
     fn remove_elements(&mut self, other: Vec<IdType>) {
         for element in other {
             self.identifiers.remove(&element);
@@ -703,7 +721,7 @@ impl PositiveSet {
         self_copy.is_empty()
     }
 
-    // Returns only the positive entities.
+    /// Returns only the positive entities.
     pub fn positives(&self) -> Self {
         self.iter()
             .filter(|el| *el.1 == IdState::Positive)
@@ -711,7 +729,7 @@ impl PositiveSet {
             .collect::<PositiveSet>()
     }
 
-    // Returns only the negative entities.
+    /// Returns only the negative entities.
     pub fn negatives(&self) -> Self {
         self.iter()
             .filter(|el| *el.1 == IdState::Negative)
@@ -719,6 +737,7 @@ impl PositiveSet {
             .collect::<PositiveSet>()
     }
 
+    /// Adds only the elements not in self that are in other.
     pub fn add_unique(&self, other: &Self) -> Self {
         other
             .iter()
@@ -730,5 +749,28 @@ impl PositiveSet {
 
     pub fn elements(&self) -> Set {
         self.iter().map(|el| *el.0).collect::<Vec<_>>().into()
+    }
+
+    pub fn has_positives(&self, state: &Self) -> bool {
+        self.iter()
+            .all(|a| {
+                if *a.1 == IdState::Positive {
+                    state.contains(&PositiveType::from(a))
+                } else {
+                    !state.contains(&PositiveType::from((*a.0, IdState::Positive)))
+                }
+            })
+    }
+
+    fn has_element(&self, el: &PositiveType) -> bool {
+        self.identifiers.contains_key(&el.id)
+    }
+
+    pub fn push_unique(&self, other: &Self) -> Self {
+        self.union(
+            &other.iter().filter(|el| {
+                !self.has_element(&PositiveType::from(*el))
+            }).map(|el| (*el.0, *el.1)).collect::<Vec<_>>().into()
+        )
     }
 }

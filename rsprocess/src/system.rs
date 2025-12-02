@@ -715,6 +715,26 @@ impl System {
         self.products_elements =
             Arc::new(Mutex::new(Some(new_product_elements)));
     }
+
+    pub fn precomputed_context_elements(&mut self, new_context_elements: Option<Set>) {
+        if let Some(nce) = new_context_elements {
+            self.overwrite_context_elements(nce);
+        }
+    }
+
+    pub fn precomputed_product_elements(&mut self, new_product_elements: Option<Set>) {
+        if let Some(npe) = new_product_elements {
+            self.overwrite_product_elements(npe);
+        }
+    }
+
+    pub fn direct_get_product_elements(&self) -> Option<Set> {
+        self.products_elements.lock().unwrap().clone()
+    }
+
+    pub fn direct_get_context_elements(&self) -> Option<Set> {
+        self.context_elements.lock().unwrap().clone()
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -1005,7 +1025,7 @@ impl PrintableWithTranslator for PositiveSystem {
             if it.peek().is_none() {
                 write!(f, "{}", Formatter::from(translator, el))?;
             } else {
-                write!(f, "{}, ", Formatter::from(translator, el))?;
+                writeln!(f, "{},", Formatter::from(translator, el))?;
             }
         }
         write!(f, "]\n]")
@@ -1023,22 +1043,25 @@ impl From<System> for PositiveSystem {
         let positive_entities =
             value.available_entities.to_positive_set(IdState::Positive);
 
-        let negative_entities = value
-            .context_process
-            .all_elements()
-            .union(&value.environment().all_elements())
-            .union(&value.reactions().iter().fold(
-                Set::default(),
-                |acc: Set, el| {
-                    acc.union(&el.inhibitors)
-                        .union(&el.products)
-                        .union(&el.reactants)
-                },
-            ))
-            .subtraction(&value.available_entities)
+        // let negative_entities = value
+        //     .context_process
+        //     .all_elements()
+        //     .union(&value.environment().all_elements())
+        //     .union(&value.reactions().iter().fold(
+        //         Set::default(),
+        //         |acc: Set, el| {
+        //             acc.union(&el.inhibitors)
+        //                 .union(&el.products)
+        //                 .union(&el.reactants)
+        //         },
+        //     ))
+        //     .subtraction(&value.available_entities)
+        //     .to_positive_set(IdState::Negative);
+        let negative_entities =
+            value.products_elements()
             .to_positive_set(IdState::Negative);
         let new_available_entities =
-            positive_entities.union(&negative_entities);
+            positive_entities.add_unique(&negative_entities);
 
         let new_reactions =
             Arc::new(PositiveReaction::from_reactions(value.reactions()));
@@ -1090,5 +1113,25 @@ impl PositiveSystem {
         self.context_elements();
         self.products_elements =
             Arc::new(Mutex::new(Some(new_product_elements)));
+    }
+
+    pub fn precomputed_context_elements(&mut self, new_context_elements: Option<PositiveSet>) {
+        if let Some(nce) = new_context_elements {
+            self.overwrite_context_elements(nce);
+        }
+    }
+
+    pub fn precomputed_product_elements(&mut self, new_product_elements: Option<PositiveSet>) {
+        if let Some(npe) = new_product_elements {
+            self.overwrite_product_elements(npe);
+        }
+    }
+
+    pub fn direct_get_product_elements(&self) -> Option<PositiveSet> {
+        self.products_elements.lock().unwrap().clone()
+    }
+
+    pub fn direct_get_context_elements(&self) -> Option<PositiveSet> {
+        self.context_elements.lock().unwrap().clone()
     }
 }

@@ -323,7 +323,7 @@ impl SlicingTrace<PositiveSet, PositiveReaction, PositiveSystem> {
                     reversed_elements[reverse_i].context.push(
                         &self.reactions[*r]
                             .reactants()
-                            .mask(&self.context_elements),
+                            .inverted_mask(&self.products_elements),
                     );
                     reversed_elements[reverse_i].reaction_products.push(
                         &self.reactions[*r]
@@ -361,45 +361,6 @@ impl<
         f: &mut std::fmt::Formatter,
         translator: &crate::translator::Translator,
     ) -> std::fmt::Result {
-        // let mut systems = self.systems.iter().peekable();
-        // writeln!(f, "Systems:")?;
-        // while let Some(system) = systems.next() {
-        //     if systems.peek().is_some() {
-        //         write!(f, "{} --> ", Formatter::from(translator,
-        // &**system))?;     } else {
-        //         writeln!(f, "{}", Formatter::from(translator, &**system))?;
-        //     }
-        // }
-
-        let mut reactions = self.reactions.iter().enumerate().peekable();
-        writeln!(f, "Reactions:")?;
-        while let Some((pos, reaction)) = reactions.next() {
-            if reactions.peek().is_some() {
-                writeln!(
-                    f,
-                    "\t({pos}) {},",
-                    Formatter::from(translator, reaction)
-                )?;
-            } else {
-                writeln!(
-                    f,
-                    "\t({pos}) {}.",
-                    Formatter::from(translator, reaction)
-                )?;
-            }
-        }
-
-        writeln!(
-            f,
-            "Context Elements: {}",
-            Formatter::from(translator, &*self.context_elements)
-        )?;
-        writeln!(
-            f,
-            "Product Elements: {}",
-            Formatter::from(translator, &*self.products_elements)
-        )?;
-
         writeln!(f, "Trace:")?;
 
         let mut elements = self.elements.iter().peekable();
@@ -439,6 +400,45 @@ impl<
                 writeln!(f, "{}", Formatter::from(translator, el))?;
             }
         }
+
+        // let mut systems = self.systems.iter().peekable();
+        // writeln!(f, "Systems:")?;
+        // while let Some(system) = systems.next() {
+        //     if systems.peek().is_some() {
+        //         write!(f, "{} --> ", Formatter::from(translator,
+        // &**system))?;     } else {
+        //         writeln!(f, "{}", Formatter::from(translator, &**system))?;
+        //     }
+        // }
+
+        let mut reactions = self.reactions.iter().enumerate().peekable();
+        writeln!(f, "Reactions:")?;
+        while let Some((pos, reaction)) = reactions.next() {
+            if reactions.peek().is_some() {
+                writeln!(
+                    f,
+                    "\t({pos}) {},",
+                    Formatter::from(translator, reaction)
+                )?;
+            } else {
+                writeln!(
+                    f,
+                    "\t({pos}) {}.",
+                    Formatter::from(translator, reaction)
+                )?;
+            }
+        }
+
+        writeln!(
+            f,
+            "Context Elements: {}",
+            Formatter::from(translator, &*self.context_elements)
+        )?;
+        writeln!(
+            f,
+            "Product Elements: {}",
+            Formatter::from(translator, &*self.products_elements)
+        )?;
 
         Ok(())
     }

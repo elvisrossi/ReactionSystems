@@ -84,22 +84,25 @@ impl<'a> Iterator for TransitionsIterator<'a, Set, System, Process> {
             },
         );
 
-        let label = Label::from(
+        let label = Label::create(
             self.system.available_entities.clone(),
             (*c).clone(),
-            t,
             reactants,
             reactants_absent,
             inhibitors,
             inhibitors_present,
             products.clone(),
         );
-        let new_system = System::from(
+        let mut new_system = System::from(
             Arc::clone(&self.system.delta),
             products,
             (*k).clone(),
             Arc::clone(&self.system.reaction_rules),
         );
+
+        new_system.precomputed_context_elements(self.system.direct_get_context_elements());
+        new_system.precomputed_product_elements(self.system.direct_get_product_elements());
+
         Some((label, new_system))
     }
 }
@@ -136,6 +139,7 @@ impl<'a> Iterator
     fn next(&mut self) -> Option<Self::Item> {
         let (c, k) = self.choices_iterator.next()?;
         let t = self.system.available_entities.union(c.as_ref());
+
         let (
             reactants,
             reactants_absent,
@@ -175,23 +179,26 @@ impl<'a> Iterator
             },
         );
 
-        let label = PositiveLabel::from(
+        let label = PositiveLabel::create(
             self.system.available_entities.clone(),
             (*c).clone(),
-            t,
             reactants,
             reactants_absent,
             inhibitors,
             inhibitors_present,
             products.clone(),
         );
-        let new_system = PositiveSystem::from(
+        let mut new_system = PositiveSystem::from(
             Arc::clone(&self.system.delta),
-            // products.add_unique(&self.system.negated_products_elements()),
-            products,
+            products.push_unique(&self.system.negated_products_elements()),
+            // products,
             (*k).clone(),
             Arc::clone(&self.system.reaction_rules),
         );
+
+        new_system.precomputed_context_elements(self.system.direct_get_context_elements());
+        new_system.precomputed_product_elements(self.system.direct_get_product_elements());
+
         Some((label, new_system))
     }
 }
@@ -260,7 +267,7 @@ impl<'a> Iterator for TraceIterator<'a, Set, System, Process> {
                 },
             );
 
-        let new_system = System::from(
+        let mut new_system = System::from(
             Arc::clone(&self.system.delta),
             // all_products.add_unique(&self.system.
             // negated_products_elements()),
@@ -268,6 +275,9 @@ impl<'a> Iterator for TraceIterator<'a, Set, System, Process> {
             (*k).clone(),
             Arc::clone(&self.system.reaction_rules),
         );
+
+        new_system.precomputed_context_elements(self.system.direct_get_context_elements());
+        new_system.precomputed_product_elements(self.system.direct_get_product_elements());
 
         Some((
             context.as_ref().clone(),
@@ -285,8 +295,7 @@ impl<'a> Iterator
 
     fn next(&mut self) -> Option<Self::Item> {
         let (context, k) = self.choices_iterator.next()?;
-        let total_entities =
-            self.system.available_entities().union(context.as_ref());
+        let total_entities = self.system.available_entities().union(context.as_ref());
 
         let (enabled_reaction_positions, all_products) =
             self.system.reactions().iter().enumerate().fold(
@@ -301,14 +310,16 @@ impl<'a> Iterator
                 },
             );
 
-        let new_system = PositiveSystem::from(
+        let mut new_system = PositiveSystem::from(
             Arc::clone(&self.system.delta),
-            // all_products.add_unique(&self.system.
-            // negated_products_elements()),
-            all_products.clone(),
+            all_products.push_unique(&self.system.negated_products_elements()),
+            // all_products.clone(),
             (*k).clone(),
             Arc::clone(&self.system.reaction_rules),
         );
+
+        new_system.precomputed_context_elements(self.system.direct_get_context_elements());
+        new_system.precomputed_product_elements(self.system.direct_get_product_elements());
 
         Some((
             context.as_ref().clone(),
