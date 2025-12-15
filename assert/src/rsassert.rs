@@ -145,7 +145,8 @@ impl dsl::Assert<EdgeRelablerInput> {
                     .into()),
             | dsl::AssertionTypes::RangeInteger
             | dsl::AssertionTypes::RangeSet
-            | dsl::AssertionTypes::RangeNeighbours =>
+            | dsl::AssertionTypes::RangeNeighbours
+            | dsl::AssertionTypes::RangeContexts =>
                 Err(format!("Returned type {ty:?} is not a valid return type.")),
         }
     }
@@ -320,7 +321,8 @@ impl dsl::Assert<NodeRelablerInput> {
                     .into()),
             | dsl::AssertionTypes::RangeInteger
             | dsl::AssertionTypes::RangeSet
-            | dsl::AssertionTypes::RangeNeighbours =>
+            | dsl::AssertionTypes::RangeNeighbours
+            | dsl::AssertionTypes::RangeContexts =>
                 Err(format!("Returned type {ty:?} is not a valid return type.")),
         }
     }

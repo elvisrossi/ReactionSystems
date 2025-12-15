@@ -716,13 +716,19 @@ impl System {
             Arc::new(Mutex::new(Some(new_product_elements)));
     }
 
-    pub fn precomputed_context_elements(&mut self, new_context_elements: Option<Set>) {
+    pub fn precomputed_context_elements(
+        &mut self,
+        new_context_elements: Option<Set>,
+    ) {
         if let Some(nce) = new_context_elements {
             self.overwrite_context_elements(nce);
         }
     }
 
-    pub fn precomputed_product_elements(&mut self, new_product_elements: Option<Set>) {
+    pub fn precomputed_product_elements(
+        &mut self,
+        new_product_elements: Option<Set>,
+    ) {
         if let Some(npe) = new_product_elements {
             self.overwrite_product_elements(npe);
         }
@@ -1058,8 +1064,7 @@ impl From<System> for PositiveSystem {
         //     .subtraction(&value.available_entities)
         //     .to_positive_set(IdState::Negative);
         let negative_entities =
-            value.products_elements()
-            .to_positive_set(IdState::Negative);
+            value.products_elements().to_positive_set(IdState::Negative);
         let new_available_entities =
             positive_entities.add_unique(&negative_entities);
 
@@ -1115,13 +1120,19 @@ impl PositiveSystem {
             Arc::new(Mutex::new(Some(new_product_elements)));
     }
 
-    pub fn precomputed_context_elements(&mut self, new_context_elements: Option<PositiveSet>) {
+    pub fn precomputed_context_elements(
+        &mut self,
+        new_context_elements: Option<PositiveSet>,
+    ) {
         if let Some(nce) = new_context_elements {
             self.overwrite_context_elements(nce);
         }
     }
 
-    pub fn precomputed_product_elements(&mut self, new_product_elements: Option<PositiveSet>) {
+    pub fn precomputed_product_elements(
+        &mut self,
+        new_product_elements: Option<PositiveSet>,
+    ) {
         if let Some(npe) = new_product_elements {
             self.overwrite_product_elements(npe);
         }

@@ -692,11 +692,10 @@ impl PositiveSet {
                 .filter(|el| {
                     !other.contains(&PositiveType::from((
                         *el.0,
-                        IdState::Positive
-                    ))
-                    )
+                        IdState::Positive,
+                    )))
                 })
-                .map(|el| (*el.0, *el.1))
+                .map(|el| (*el.0, *el.1)),
         )
     }
 
@@ -752,14 +751,13 @@ impl PositiveSet {
     }
 
     pub fn has_positives(&self, state: &Self) -> bool {
-        self.iter()
-            .all(|a| {
-                if *a.1 == IdState::Positive {
-                    state.contains(&PositiveType::from(a))
-                } else {
-                    !state.contains(&PositiveType::from((*a.0, IdState::Positive)))
-                }
-            })
+        self.iter().all(|a| {
+            if *a.1 == IdState::Positive {
+                state.contains(&PositiveType::from(a))
+            } else {
+                !state.contains(&PositiveType::from((*a.0, IdState::Positive)))
+            }
+        })
     }
 
     fn has_element(&self, el: &PositiveType) -> bool {
@@ -768,9 +766,12 @@ impl PositiveSet {
 
     pub fn push_unique(&self, other: &Self) -> Self {
         self.union(
-            &other.iter().filter(|el| {
-                !self.has_element(&PositiveType::from(*el))
-            }).map(|el| (*el.0, *el.1)).collect::<Vec<_>>().into()
+            &other
+                .iter()
+                .filter(|el| !self.has_element(&PositiveType::from(*el)))
+                .map(|el| (*el.0, *el.1))
+                .collect::<Vec<_>>()
+                .into(),
         )
     }
 }

@@ -325,11 +325,7 @@ fn conversion_entities() {
 
     assert_eq!(
         entities,
-        PositiveSet::from([
-            (1, Positive),
-            (2, Positive),
-            (5, Negative)
-        ])
+        PositiveSet::from([(1, Positive), (2, Positive), (5, Negative)])
     );
 }
 

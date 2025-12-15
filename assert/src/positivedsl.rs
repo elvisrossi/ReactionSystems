@@ -1013,9 +1013,7 @@ impl PositiveAssertReturnValue {
                 PositiveUnary::Qualifier(PositiveQualifier::Edge(
                     QualifierEdge::Label,
                 )),
-            ) => Ok(PositiveAssertReturnValue::Label(
-                graph[edge].clone(),
-            )),
+            ) => Ok(PositiveAssertReturnValue::Label(graph[edge].clone())),
             | (
                 PositiveAssertReturnValue::Node(node),
                 PositiveUnary::Qualifier(PositiveQualifier::Node(

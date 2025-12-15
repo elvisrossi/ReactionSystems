@@ -111,6 +111,27 @@ pub enum QualifierSystem {
 }
 
 #[derive(Clone, Copy, Serialize, Deserialize, Hash)]
+pub enum QualifierContext {
+    IsNill,
+    IsIdentifier,
+    IsSet,
+    IsGuarded,
+    IsRepeated,
+    IsSummation,
+    IsNondeterministicChoice,
+
+    GetIdentifier,
+    GetSet,
+    GetGuardReactants,
+    GetGuardInhibitors,
+    GetGuardProducts,
+    GetRepeatedCounter,
+    GetRepeatedProcess,
+
+    GetNextProcesses,
+}
+
+#[derive(Clone, Copy, Serialize, Deserialize, Hash)]
 pub enum QualifierEdge {
     Source,
     Target,
@@ -126,6 +147,7 @@ pub enum QualifierNode {
 #[derive(Clone, Copy, Serialize, Deserialize, Hash)]
 pub enum Qualifier {
     System(QualifierSystem),
+    Context(QualifierContext),
     Label(QualifierLabel),
     Restricted(QualifierRestricted),
     Edge(QualifierEdge),
@@ -171,6 +193,7 @@ pub(super) enum AssertionTypes {
     RangeInteger,
     RangeSet,
     RangeNeighbours,
+    RangeContexts,
 
     Node,
     Edge,
@@ -189,6 +212,7 @@ pub enum AssertReturnValue {
     Neighbours(petgraph::graph::NodeIndex),
     System(system::System),
     Context(process::Process),
+    RangeContext(process::Process),
 }
 
 // -----------------------------------------------------------------------------
@@ -264,6 +288,123 @@ impl QualifierSystem {
     }
 }
 
+impl QualifierContext {
+    pub(super) fn get(&self, l: &process::Process) -> AssertReturnValue {
+        use process::Process::*;
+        match self {
+            | Self::IsNill => AssertReturnValue::Boolean(matches!(l, Nill)),
+            | Self::IsIdentifier =>
+                AssertReturnValue::Boolean(matches!(l, RecursiveIdentifier {
+                    identifier: _,
+                })),
+            | Self::IsSet =>
+                AssertReturnValue::Boolean(matches!(l, EntitySet {
+                    entities:     _,
+                    next_process: _,
+                })),
+            | Self::IsGuarded =>
+                AssertReturnValue::Boolean(matches!(l, Guarded {
+                    reaction:     _,
+                    next_process: _,
+                })),
+            | Self::IsRepeated =>
+                AssertReturnValue::Boolean(matches!(l, WaitEntity {
+                    repeat: _,
+                    repeated_process: _,
+                    next_process: _,
+                })),
+            | Self::IsSummation =>
+                AssertReturnValue::Boolean(matches!(l, Summation {
+                    children: _,
+                })),
+            | Self::IsNondeterministicChoice => AssertReturnValue::Boolean(
+                matches!(l, NondeterministicChoice { children: _ }),
+            ),
+
+            | Self::GetIdentifier => AssertReturnValue::Element(
+                if let RecursiveIdentifier { identifier } = l {
+                    *identifier
+                } else {
+                    0
+                },
+            ),
+            | Self::GetSet => AssertReturnValue::Set(
+                if let EntitySet {
+                    entities,
+                    next_process: _,
+                } = l
+                {
+                    entities.clone()
+                } else {
+                    Default::default()
+                },
+            ),
+            | Self::GetGuardReactants => AssertReturnValue::Set(
+                if let Guarded {
+                    reaction,
+                    next_process: _,
+                } = l
+                {
+                    reaction.reactants.clone()
+                } else {
+                    Default::default()
+                },
+            ),
+            | Self::GetGuardInhibitors => AssertReturnValue::Set(
+                if let Guarded {
+                    reaction,
+                    next_process: _,
+                } = l
+                {
+                    reaction.inhibitors.clone()
+                } else {
+                    Default::default()
+                },
+            ),
+            | Self::GetGuardProducts => AssertReturnValue::Set(
+                if let Guarded {
+                    reaction,
+                    next_process: _,
+                } = l
+                {
+                    reaction.products.clone()
+                } else {
+                    Default::default()
+                },
+            ),
+            | Self::GetRepeatedCounter => AssertReturnValue::Integer(
+                if let WaitEntity {
+                    repeat,
+                    repeated_process: _,
+                    next_process: _,
+                } = l
+                {
+                    *repeat
+                } else {
+                    0
+                },
+            ),
+            | Self::GetRepeatedProcess => {
+                AssertReturnValue::Context(
+                    if let WaitEntity {
+                        repeat: _,
+                        repeated_process,
+                        next_process: _,
+                    } = l
+                    {
+                        (**repeated_process).clone()
+                    } else {
+                        Default::default() // nill
+                    },
+                )
+            },
+
+            | Self::GetNextProcesses =>
+                AssertReturnValue::RangeContext(l.clone()),
+        }
+    }
+}
+
 impl Unary {
     pub(super) fn is_prefix(&self) -> bool {
         match self {
@@ -305,12 +446,18 @@ impl Unary {
             ) => Ok(AssertionTypes::Set),
             | (Self::ToEl, AssertionTypes::String) =>
                 Ok(AssertionTypes::Element),
-            | (Self::Qualifier(Qualifier::Edge(QualifierEdge::Source)), AssertionTypes::Edge) =>
-                Ok(AssertionTypes::Node),
-            | (Self::Qualifier(Qualifier::Edge(QualifierEdge::Target)), AssertionTypes::Edge) =>
-                Ok(AssertionTypes::Node),
-            | (Self::Qualifier(Qualifier::Edge(QualifierEdge::Label)), AssertionTypes::Edge) =>
-                Ok(AssertionTypes::Label),
+            | (
+                Self::Qualifier(Qualifier::Edge(QualifierEdge::Source)),
+                AssertionTypes::Edge,
+            ) => Ok(AssertionTypes::Node),
+            | (
+                Self::Qualifier(Qualifier::Edge(QualifierEdge::Target)),
+                AssertionTypes::Edge,
+            ) => Ok(AssertionTypes::Node),
+            | (
+                Self::Qualifier(Qualifier::Edge(QualifierEdge::Label)),
+                AssertionTypes::Edge,
+            ) => Ok(AssertionTypes::Label),
             | (
                 Self::Qualifier(Qualifier::Node(QualifierNode::Neighbours)),
                 AssertionTypes::Node,
@@ -340,6 +487,90 @@ impl Unary {
                 Self::Qualifier(Qualifier::System(QualifierSystem::Context)),
                 AssertionTypes::System,
             ) => Ok(AssertionTypes::Context),
+            | (
+                Self::Qualifier(Qualifier::Context(QualifierContext::IsNill)),
+                AssertionTypes::Context,
+            ) => Ok(AssertionTypes::Boolean),
+            | (
+                Self::Qualifier(Qualifier::Context(
+                    QualifierContext::IsIdentifier,
+                )),
+                AssertionTypes::Context,
+            ) => Ok(AssertionTypes::Boolean),
+            | (
+                Self::Qualifier(Qualifier::Context(QualifierContext::IsSet)),
+                AssertionTypes::Context,
+            ) => Ok(AssertionTypes::Boolean),
+            | (
+                Self::Qualifier(Qualifier::Context(
+                    QualifierContext::IsGuarded,
+                )),
+                AssertionTypes::Context,
+            ) => Ok(AssertionTypes::Boolean),
+            | (
+                Self::Qualifier(Qualifier::Context(
+                    QualifierContext::IsRepeated,
+                )),
+                AssertionTypes::Context,
+            ) => Ok(AssertionTypes::Boolean),
+            | (
+                Self::Qualifier(Qualifier::Context(
+                    QualifierContext::IsSummation,
+                )),
+                AssertionTypes::Context,
+            ) => Ok(AssertionTypes::Boolean),
+            | (
+                Self::Qualifier(Qualifier::Context(
+                    QualifierContext::IsNondeterministicChoice,
+                )),
+                AssertionTypes::Context,
+            ) => Ok(AssertionTypes::Boolean),
+            | (
+                Self::Qualifier(Qualifier::Context(
+                    QualifierContext::GetIdentifier,
+                )),
+                AssertionTypes::Context,
+            ) => Ok(AssertionTypes::Element),
+            | (
+                Self::Qualifier(Qualifier::Context(QualifierContext::GetSet)),
+                AssertionTypes::Context,
+            ) => Ok(AssertionTypes::Set),
+            | (
+                Self::Qualifier(Qualifier::Context(
+                    QualifierContext::GetGuardReactants,
+                )),
+                AssertionTypes::Context,
+            ) => Ok(AssertionTypes::Set),
+            | (
+                Self::Qualifier(Qualifier::Context(
+                    QualifierContext::GetGuardInhibitors,
+                )),
+                AssertionTypes::Context,
+            ) => Ok(AssertionTypes::Set),
+            | (
+                Self::Qualifier(Qualifier::Context(
+                    QualifierContext::GetGuardProducts,
+                )),
+                AssertionTypes::Context,
+            ) => Ok(AssertionTypes::Set),
+            | (
+                Self::Qualifier(Qualifier::Context(
+                    QualifierContext::GetRepeatedCounter,
+                )),
+                AssertionTypes::Context,
+            ) => Ok(AssertionTypes::Integer),
+            | (
+                Self::Qualifier(Qualifier::Context(
+                    QualifierContext::GetRepeatedProcess,
+                )),
+                AssertionTypes::Context,
+            ) => Ok(AssertionTypes::Context),
+            | (
+                Self::Qualifier(Qualifier::Context(
+                    QualifierContext::GetNextProcesses,
+                )),
+                AssertionTypes::Context,
+            ) => Ok(AssertionTypes::RangeContexts),
             | (
                 Self::Qualifier(Qualifier::Node(QualifierNode::System)),
                 AssertionTypes::Node,
@@ -680,6 +911,10 @@ impl TypeContext {
                 self.data.insert(v.clone(), AssertionTypes::Edge);
                 Ok(())
             },
+            | AssertionTypes::RangeContexts => {
+                self.data.insert(v.clone(), AssertionTypes::Context);
+                Ok(())
+            },
             | _ => Err(format!("Range has incorrect type {ty:?}.")),
         }
     }
@@ -847,9 +1082,7 @@ impl AssertReturnValue {
             | (
                 AssertReturnValue::Edge(edge),
                 Unary::Qualifier(Qualifier::Edge(QualifierEdge::Label)),
-            ) => Ok(AssertReturnValue::Label(
-                graph[edge].clone()
-            )),
+            ) => Ok(AssertReturnValue::Label(graph[edge].clone())),
             | (
                 AssertReturnValue::Node(node),
                 Unary::Qualifier(Qualifier::Node(QualifierNode::Neighbours)),
@@ -864,6 +1097,10 @@ impl AssertReturnValue {
                 AssertReturnValue::System(sys),
                 Unary::Qualifier(Qualifier::System(q)),
             ) => Ok(q.get(&sys)),
+            | (
+                AssertReturnValue::Context(c),
+                Unary::Qualifier(Qualifier::Context(q)),
+            ) => Ok(q.get(&c)),
             | (val, u) => Err(format!(
                 "Incompatible unary operation {u:?} on value \
 			     {val:?}."
@@ -1086,6 +1323,8 @@ where
                 | AssertionTypes::Set => Ok(AssertionTypes::RangeSet),
                 | AssertionTypes::RangeNeighbours =>
                     Ok(AssertionTypes::RangeNeighbours),
+                | AssertionTypes::RangeContexts =>
+                    Ok(AssertionTypes::RangeContexts),
                 | _ => Err(format!(
                     "Expressions in range is not a set or \
 				  neighbours of a node, but is: {type_exp:?}."
@@ -1175,6 +1414,46 @@ where
                     .map(|x| AssertReturnValue::Edge(x.id()))
                     .collect::<Vec<_>>()
                     .into_iter()),
+                | AssertReturnValue::RangeContext(ctxs) => {
+                    use process::Process::*;
+                    Ok(match ctxs {
+                        | Nill => vec![].into_iter(),
+                        | RecursiveIdentifier { identifier: _ } =>
+                            vec![].into_iter(),
+                        | EntitySet {
+                            entities: _,
+                            next_process,
+                        } => vec![AssertReturnValue::Context(
+                            (*next_process).clone(),
+                        )]
+                        .into_iter(),
+                        | Guarded {
+                            reaction: _,
+                            next_process,
+                        } => vec![AssertReturnValue::Context(
+                            (*next_process).clone(),
+                        )]
+                        .into_iter(),
+                        | WaitEntity {
+                            repeat: _,
+                            repeated_process,
+                            next_process: _,
+                        } => vec![AssertReturnValue::Context(
+                            (*repeated_process).clone(),
+                        )]
+                        .into_iter(),
+                        | Summation { children } => children
+                            .iter()
+                            .map(|c| AssertReturnValue::Context((**c).clone()))
+                            .collect::<Vec<_>>()
+                            .into_iter(),
+                        | NondeterministicChoice { children } => children
+                            .iter()
+                            .map(|c| AssertReturnValue::Context((**c).clone()))
+                            .collect::<Vec<_>>()
+                            .into_iter(),
+                    })
+                },
                 | _ => Err(format!("{val:?} is not a set in for cycle.")),
             }
         },

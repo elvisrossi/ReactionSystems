@@ -9,8 +9,17 @@ my %structure = (
     Reactions => (),
     );
 
-open FILE, $ARGV[0] or die $!;
-my @data = <FILE>;
+my $in;
+
+if ($#ARGV >= 0){
+    unless (open($in,  "<", $ARGV[0])){
+      die "could not open $ARGV[0] for reading.";
+    }
+} else {
+    $in  = *STDIN;
+}
+
+my @data = <$in>;
 my $data = "@data";
 
 $data =~ /myentities\(\[([^\]]*)\]\)/s;

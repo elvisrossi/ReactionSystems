@@ -100,8 +100,12 @@ impl<'a> Iterator for TransitionsIterator<'a, Set, System, Process> {
             Arc::clone(&self.system.reaction_rules),
         );
 
-        new_system.precomputed_context_elements(self.system.direct_get_context_elements());
-        new_system.precomputed_product_elements(self.system.direct_get_product_elements());
+        new_system.precomputed_context_elements(
+            self.system.direct_get_context_elements(),
+        );
+        new_system.precomputed_product_elements(
+            self.system.direct_get_product_elements(),
+        );
 
         Some((label, new_system))
     }
@@ -196,8 +200,12 @@ impl<'a> Iterator
             Arc::clone(&self.system.reaction_rules),
         );
 
-        new_system.precomputed_context_elements(self.system.direct_get_context_elements());
-        new_system.precomputed_product_elements(self.system.direct_get_product_elements());
+        new_system.precomputed_context_elements(
+            self.system.direct_get_context_elements(),
+        );
+        new_system.precomputed_product_elements(
+            self.system.direct_get_product_elements(),
+        );
 
         Some((label, new_system))
     }
@@ -276,8 +284,12 @@ impl<'a> Iterator for TraceIterator<'a, Set, System, Process> {
             Arc::clone(&self.system.reaction_rules),
         );
 
-        new_system.precomputed_context_elements(self.system.direct_get_context_elements());
-        new_system.precomputed_product_elements(self.system.direct_get_product_elements());
+        new_system.precomputed_context_elements(
+            self.system.direct_get_context_elements(),
+        );
+        new_system.precomputed_product_elements(
+            self.system.direct_get_product_elements(),
+        );
 
         Some((
             context.as_ref().clone(),
@@ -295,7 +307,8 @@ impl<'a> Iterator
 
     fn next(&mut self) -> Option<Self::Item> {
         let (context, k) = self.choices_iterator.next()?;
-        let total_entities = self.system.available_entities().union(context.as_ref());
+        let total_entities =
+            self.system.available_entities().union(context.as_ref());
 
         let (enabled_reaction_positions, all_products) =
             self.system.reactions().iter().enumerate().fold(
@@ -318,8 +331,12 @@ impl<'a> Iterator
             Arc::clone(&self.system.reaction_rules),
         );
 
-        new_system.precomputed_context_elements(self.system.direct_get_context_elements());
-        new_system.precomputed_product_elements(self.system.direct_get_product_elements());
+        new_system.precomputed_context_elements(
+            self.system.direct_get_context_elements(),
+        );
+        new_system.precomputed_product_elements(
+            self.system.direct_get_product_elements(),
+        );
 
         Some((
             context.as_ref().clone(),
