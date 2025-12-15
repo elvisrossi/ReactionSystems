@@ -30,7 +30,7 @@ match {
     "SystemEntities", "[", "\"", "]", "^", "^^", "edge", "else", "empty",
     "entities", "false", "for", "if", "in", "label", "length", "let",
     "neighbours", "node", "not", "rand", "return", "source", "system", "target",
-    "then", "toel", "tostr", "true", "{", "||", "}",
+    "then", "toel", "tostr", "true", "tuple", "{", "||", "}", "first", "second",
 } else {
     r"[0-9]+" => NUMBER
 } else {
@@ -227,6 +227,8 @@ GroupUnarySuffix: grouping::Unary = {
     "length" => grouping::Unary::Length,
     "tostr" => grouping::Unary::ToStr,
     "toel" => grouping::Unary::ToEl,
+    "first" => grouping::Unary::First,
+    "second" => grouping::Unary::Second,
 
     #[precedence(level="1")]
     <q: GroupQualifier> => grouping::Unary::Qualifier(q),
@@ -317,4 +319,5 @@ GroupBinaryPrefix: grouping::Binary = {
     "min" => grouping::Binary::Min,
     "max" => grouping::Binary::Max,
     "commonsubstr" => grouping::Binary::CommonSubStr,
+    "tuple" => grouping::Binary::Tuple,
 }

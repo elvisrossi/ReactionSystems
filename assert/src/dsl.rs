@@ -83,6 +83,10 @@ pub enum Unary {
     Length,
     ToStr,
     ToEl,
+
+    First,
+    Second,
+
     Qualifier(Qualifier),
 }
 
@@ -172,6 +176,7 @@ pub enum Binary {
     Quotient,
     Reminder,
     Concat,
+    Tuple,
 
     SubStr,
     Min,
@@ -179,11 +184,12 @@ pub enum Binary {
     CommonSubStr,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub(super) enum AssertionTypes {
     Boolean,
     Integer,
     String,
+    Tuple((Box<AssertionTypes>, Box<AssertionTypes>)),
     Label,
     Set,
     Element,
@@ -204,6 +210,7 @@ pub enum AssertReturnValue {
     Boolean(bool),
     Integer(IntegerType),
     String(String),
+    Tuple((Box<AssertReturnValue>, Box<AssertReturnValue>)),
     Label(label::Label),
     Set(set::Set),
     Element(element::IdType),
@@ -409,6 +416,8 @@ impl Unary {
     pub(super) fn is_prefix(&self) -> bool {
         match self {
             | Self::Not | Self::Rand => true,
+            | Self::First
+            | Self::Second
             | Self::Empty
             | Self::Length
             | Self::ToStr
@@ -575,6 +584,9 @@ impl Unary {
                 Self::Qualifier(Qualifier::Node(QualifierNode::System)),
                 AssertionTypes::Node,
             ) => Ok(AssertionTypes::System),
+
+            | (Self::First, AssertionTypes::Tuple((a, _))) => Ok(*a.clone()),
+            | (Self::Second, AssertionTypes::Tuple((_, b))) => Ok(*b.clone()),
             | (op, type_exp) => Err(format!(
                 "Expression has incompatible type with operation: type \
                      {type_exp:?} with operation \"{op:?}\"."
@@ -602,7 +614,11 @@ impl Binary {
             | Self::Quotient
             | Self::Reminder
             | Self::Concat => false,
-            | Self::SubStr | Self::Min | Self::Max | Self::CommonSubStr => true,
+            | Self::SubStr
+            | Self::Min
+            | Self::Max
+            | Self::CommonSubStr
+            | Self::Tuple => true,
         }
     }
 
@@ -628,8 +644,11 @@ impl Binary {
             | Self::Quotient
             | Self::Reminder
             | Self::Concat => true,
-            | Self::SubStr | Self::Min | Self::Max | Self::CommonSubStr =>
-                false,
+            | Self::SubStr
+            | Self::Min
+            | Self::Max
+            | Self::CommonSubStr
+            | Self::Tuple => false,
         }
     }
 
@@ -750,6 +769,10 @@ impl Binary {
                 AssertionTypes::String,
                 AssertionTypes::String,
             ) => Ok(AssertionTypes::String),
+            | (Self::Tuple, a, b) => Ok(AssertionTypes::Tuple((
+                Box::new(a.clone()),
+                Box::new(b.clone()),
+            ))),
             | _ => Err(format!(
                 "Expressions have incompatible types: {t1:?} and \
 			     {t2:?} with operation {self:?}."
@@ -803,8 +826,8 @@ impl TypeContext {
         }
     }
 
-    fn return_type(&mut self, ty: AssertionTypes) -> Result<(), String> {
-        if let Some(ty_return) = self.return_ty {
+    fn return_type(&mut self, ty: &AssertionTypes) -> Result<(), String> {
+        if let Some(ty_return) = &self.return_ty {
             if ty_return == ty {
                 Ok(())
             } else {
@@ -814,7 +837,7 @@ impl TypeContext {
                 ))
             }
         } else {
-            self.return_ty = Some(ty);
+            self.return_ty = Some(ty.clone());
             Ok(())
         }
     }
@@ -927,7 +950,7 @@ impl TypeContext {
             | Variable::Special(s) => Ok(s.type_of()),
             | Variable::Id(v) =>
                 if let Some(ty) = self.data.get(v) {
-                    Ok(*ty)
+                    Ok(ty.clone())
                 } else {
                     Err(format!("Could not find variable {v:?}."))
                 },
@@ -1101,6 +1124,8 @@ impl AssertReturnValue {
                 AssertReturnValue::Context(c),
                 Unary::Qualifier(Qualifier::Context(q)),
             ) => Ok(q.get(&c)),
+            | (AssertReturnValue::Tuple((v1, _)), Unary::First) => Ok(*v1),
+            | (AssertReturnValue::Tuple((_, v2)), Unary::Second) => Ok(*v2),
             | (val, u) => Err(format!(
                 "Incompatible unary operation {u:?} on value \
 			     {val:?}."
@@ -1187,6 +1212,7 @@ impl AssertReturnValue {
                 }
                 String(s)
             },
+            | (Binary::Tuple, t1, t2) => Tuple((Box::new(t1), Box::new(t2))),
             | (b, val1, val2) => {
                 return Err(format!(
                     "Operation {b:?} on values {val1:?} and \
@@ -1244,7 +1270,7 @@ where
         },
         | Tree::Return(exp) => {
             let type_exp = typecheck_expression(exp, c)?;
-            c.return_type(type_exp)?;
+            c.return_type(&type_exp)?;
             Ok(AssertionTypes::NoType)
         },
         | Tree::For(var, range, t) => {
@@ -1263,7 +1289,7 @@ where
     S: SpecialVariables<G>,
 {
     typecheck_helper(tree, c)?;
-    Ok(c.return_ty.unwrap_or(AssertionTypes::NoType))
+    Ok(c.return_ty.clone().unwrap_or(AssertionTypes::NoType))
 }
 
 fn typecheck_expression<S, G>(
@@ -1307,7 +1333,7 @@ where
             let type_exp1 = typecheck_expression(exp1, c)?;
             let type_exp2 = typecheck_expression(exp2, c)?;
             if let (AssertionTypes::Integer, AssertionTypes::Integer) =
-                (type_exp1, type_exp2)
+                (&type_exp1, &type_exp2)
             {
                 Ok(AssertionTypes::RangeInteger)
             } else {

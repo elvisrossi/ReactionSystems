@@ -29,7 +29,8 @@ match {
       "ReactantsAbsent", "SystemContext", "SystemEntities", "[", "\"", "]", "^",
       "^^", "edge", "else", "empty", "false", "for", "if", "in", "label",
       "length", "let", "neighbours", "not", "rand", "return", "source",
-      "system", "target", "then", "toel", "tostr", "true", "{", "||", "}",
+      "system", "target", "then", "toel", "tostr", "true", "tuple", "{", "||",
+      "}", "first", "second",
 } else {
     r"[0-9]+" => NUMBER
 } else {
@@ -226,6 +227,8 @@ AssertUnarySuffix: relabel::Unary = {
     "length" => relabel::Unary::Length,
     "tostr" => relabel::Unary::ToStr,
     "toel" => relabel::Unary::ToEl,
+    "first" => relabel::Unary::First,
+    "second" => relabel::Unary::Second,
 
     #[precedence(level="1")]
     <q: AssertQualifier> => relabel::Unary::Qualifier(q),
@@ -316,4 +319,5 @@ AssertBinaryPrefix: relabel::Binary = {
     "min" => relabel::Binary::Min,
     "max" => relabel::Binary::Max,
     "commonsubstr" => relabel::Binary::CommonSubStr,
+    "tuple" => relabel::Binary::Tuple,
 }

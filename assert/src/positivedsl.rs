@@ -99,6 +99,10 @@ pub enum PositiveUnary {
     Length,
     ToStr,
     ToEl,
+
+    First,
+    Second,
+
     Qualifier(PositiveQualifier),
 }
 
@@ -186,6 +190,7 @@ pub enum PositiveBinary {
     Quotient,
     Reminder,
     Concat,
+    Tuple,
 
     SubStr,
     Min,
@@ -193,11 +198,12 @@ pub enum PositiveBinary {
     CommonSubStr,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub(super) enum PositiveAssertionTypes {
     Boolean,
     Integer,
     String,
+    Tuple((Box<PositiveAssertionTypes>, Box<PositiveAssertionTypes>)),
     Label,
     Set,
     PositiveElement,
@@ -218,6 +224,12 @@ pub enum PositiveAssertReturnValue {
     Boolean(bool),
     Integer(IntegerType),
     String(String),
+    Tuple(
+        (
+            Box<PositiveAssertReturnValue>,
+            Box<PositiveAssertReturnValue>,
+        ),
+    ),
     Label(label::PositiveLabel),
     Set(set::PositiveSet),
     PositiveElement(element::PositiveType),
@@ -420,6 +432,8 @@ impl PositiveUnary {
     pub(super) fn is_prefix(&self) -> bool {
         match self {
             | Self::Not | Self::Rand => true,
+            | Self::First
+            | Self::Second
             | Self::Empty
             | Self::Length
             | Self::ToStr
@@ -589,6 +603,10 @@ impl PositiveUnary {
                 Self::Qualifier(PositiveQualifier::Node(QualifierNode::System)),
                 PositiveAssertionTypes::Node,
             ) => Ok(PositiveAssertionTypes::System),
+            | (Self::First, PositiveAssertionTypes::Tuple((a, _))) =>
+                Ok(*a.clone()),
+            | (Self::Second, PositiveAssertionTypes::Tuple((_, b))) =>
+                Ok(*b.clone()),
             | (op, type_exp) => Err(format!(
                 "Expression has incompatible type with operation: type \
                      {type_exp:?} with operation \"{op:?}\"."
@@ -616,7 +634,11 @@ impl PositiveBinary {
             | Self::Quotient
             | Self::Reminder
             | Self::Concat => false,
-            | Self::SubStr | Self::Min | Self::Max | Self::CommonSubStr => true,
+            | Self::SubStr
+            | Self::Min
+            | Self::Max
+            | Self::CommonSubStr
+            | Self::Tuple => true,
         }
     }
 
@@ -642,8 +664,11 @@ impl PositiveBinary {
             | Self::Quotient
             | Self::Reminder
             | Self::Concat => true,
-            | Self::SubStr | Self::Min | Self::Max | Self::CommonSubStr =>
-                false,
+            | Self::SubStr
+            | Self::Min
+            | Self::Max
+            | Self::CommonSubStr
+            | Self::Tuple => false,
         }
     }
 
@@ -848,6 +873,10 @@ impl PositiveBinary {
                 PositiveAssertionTypes::String,
                 PositiveAssertionTypes::String,
             ) => Ok(PositiveAssertionTypes::String),
+            | (Self::Tuple, a, b) => Ok(PositiveAssertionTypes::Tuple((
+                Box::new(a.clone()),
+                Box::new(b.clone()),
+            ))),
             | _ => Err(format!(
                 "Expressions have incompatible types: {t1:?} and \
                              {t2:?} with operation {self:?}."
@@ -903,9 +932,9 @@ impl TypeContext {
 
     fn return_type(
         &mut self,
-        ty: PositiveAssertionTypes,
+        ty: &PositiveAssertionTypes,
     ) -> Result<(), String> {
-        if let Some(ty_return) = self.return_ty {
+        if let Some(ty_return) = &self.return_ty {
             if ty_return == ty {
                 Ok(())
             } else {
@@ -915,7 +944,7 @@ impl TypeContext {
                 ))
             }
         } else {
-            self.return_ty = Some(ty);
+            self.return_ty = Some(ty.clone());
             Ok(())
         }
     }
@@ -1032,7 +1061,7 @@ impl TypeContext {
             | PositiveVariable::Special(s) => Ok(s.type_of()),
             | PositiveVariable::Id(v) =>
                 if let Some(ty) = self.data.get(v) {
-                    Ok(*ty)
+                    Ok(ty.clone())
                 } else {
                     Err(format!("Could not find variable {v:?}."))
                 },
@@ -1244,6 +1273,14 @@ impl PositiveAssertReturnValue {
                 PositiveAssertReturnValue::Context(c),
                 PositiveUnary::Qualifier(PositiveQualifier::Context(q)),
             ) => Ok(q.get(&c)),
+            | (
+                PositiveAssertReturnValue::Tuple((v1, _)),
+                PositiveUnary::First,
+            ) => Ok(*v1),
+            | (
+                PositiveAssertReturnValue::Tuple((_, v2)),
+                PositiveUnary::Second,
+            ) => Ok(*v2),
             | (val, u) => Err(format!(
                 "Incompatible unary operation {u:?} on value \
                              {val:?}."
@@ -1361,6 +1398,8 @@ impl PositiveAssertReturnValue {
                 }
                 String(s)
             },
+            | (PositiveBinary::Tuple, t1, t2) =>
+                Tuple((Box::new(t1), Box::new(t2))),
             | (b, val1, val2) => {
                 return Err(format!(
                     "Operation {b:?} on values {val1:?} and \
@@ -1418,7 +1457,7 @@ where
         },
         | PositiveTree::Return(exp) => {
             let type_exp = typecheck_expression(exp, c)?;
-            c.return_type(type_exp)?;
+            c.return_type(&type_exp)?;
             Ok(PositiveAssertionTypes::NoType)
         },
         | PositiveTree::For(var, range, t) => {
@@ -1437,7 +1476,9 @@ where
     S: SpecialVariables<G>,
 {
     typecheck_helper(tree, c)?;
-    Ok(c.return_ty.unwrap_or(PositiveAssertionTypes::NoType))
+    Ok(c.return_ty
+        .clone()
+        .unwrap_or(PositiveAssertionTypes::NoType))
 }
 
 fn typecheck_expression<S, G>(
@@ -1485,7 +1526,7 @@ where
             if let (
                 PositiveAssertionTypes::Integer,
                 PositiveAssertionTypes::Integer,
-            ) = (type_exp1, type_exp2)
+            ) = (&type_exp1, &type_exp2)
             {
                 Ok(PositiveAssertionTypes::RangeInteger)
             } else {

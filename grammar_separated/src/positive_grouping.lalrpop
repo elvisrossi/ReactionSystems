@@ -30,6 +30,7 @@ match {
     "isNondeterministicChoice", "isRepeated", "isSet", "isSummation", "label",
     "length", "let", "neighbours", "node", "not", "rand", "return", "source",
     "system", "target", "then", "toel", "tostr", "true", "{", "||", "}",
+    "first", "second", "tuple", "entities",
 } else {
     r"[0-9]+" => NUMBER
 } else {
@@ -230,6 +231,8 @@ GroupUnarySuffix: positive_grouping::PositiveUnary = {
     "length" => positive_grouping::PositiveUnary::Length,
     "tostr" => positive_grouping::PositiveUnary::ToStr,
     "toel" => positive_grouping::PositiveUnary::ToEl,
+    "first" => positive_grouping::PositiveUnary::First,
+    "second" => positive_grouping::PositiveUnary::Second,
 
     #[precedence(level="1")]
     <q: GroupQualifier> => positive_grouping::PositiveUnary::Qualifier(q),
@@ -318,4 +321,5 @@ GroupBinaryPrefix: positive_grouping::PositiveBinary = {
     "min" => positive_grouping::PositiveBinary::Min,
     "max" => positive_grouping::PositiveBinary::Max,
     "commonsubstr" => positive_grouping::PositiveBinary::CommonSubStr,
+    "tuple" => positive_grouping::PositiveBinary::Tuple,
 }

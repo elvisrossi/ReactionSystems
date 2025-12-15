@@ -130,26 +130,25 @@ impl dsl::Assert<EdgeRelablerInput> {
     pub fn typecheck(&self) -> Result<(), String> {
         let mut context = dsl::TypeContext::new();
         let ty = dsl::typecheck(&self.tree, &mut context)?;
-        match ty {
-            | dsl::AssertionTypes::Boolean
-            | dsl::AssertionTypes::Integer
-            | dsl::AssertionTypes::String
-            | dsl::AssertionTypes::Label
-            | dsl::AssertionTypes::Set
-            | dsl::AssertionTypes::Element
-            | dsl::AssertionTypes::Edge
-            | dsl::AssertionTypes::Node
-            | dsl::AssertionTypes::System
-            | dsl::AssertionTypes::Context => Ok(()),
-            | dsl::AssertionTypes::NoType =>
-                Err("No return type, at least one return statement required."
-                    .into()),
-            | dsl::AssertionTypes::RangeInteger
-            | dsl::AssertionTypes::RangeSet
-            | dsl::AssertionTypes::RangeNeighbours
-            | dsl::AssertionTypes::RangeContexts =>
-                Err(format!("Returned type {ty:?} is not a valid return type.")),
+
+        fn is_valid(ty: &dsl::AssertionTypes) -> Result<(), String> {
+            use dsl::AssertionTypes::*;
+            match ty {
+                | Boolean | Integer | String | Label | Set | Element | Edge
+                | Node | System | Context => Ok(()),
+                | Tuple((t1, t2)) => is_valid(t1).and(is_valid(t2)),
+                | NoType => Err(
+                    "No return type, at least one return statement required."
+                        .into(),
+                ),
+                | RangeInteger | RangeSet | RangeNeighbours | RangeContexts =>
+                    Err(format!(
+                        "Returned type {ty:?} is not a valid return type."
+                    )),
+            }
         }
+
+        is_valid(&ty)
     }
 
     pub fn execute(
@@ -307,26 +306,24 @@ impl dsl::Assert<NodeRelablerInput> {
     pub fn typecheck(&self) -> Result<(), String> {
         let mut context = dsl::TypeContext::new();
         let ty = dsl::typecheck(&self.tree, &mut context)?;
-        match ty {
-            | dsl::AssertionTypes::Boolean
-            | dsl::AssertionTypes::Integer
-            | dsl::AssertionTypes::String
-            | dsl::AssertionTypes::Label
-            | dsl::AssertionTypes::Set
-            | dsl::AssertionTypes::Element
-            | dsl::AssertionTypes::Edge
-            | dsl::AssertionTypes::Node
-            | dsl::AssertionTypes::System
-            | dsl::AssertionTypes::Context => Ok(()),
-            | dsl::AssertionTypes::NoType =>
-                Err("No return type, at least one return statement required."
-                    .into()),
-            | dsl::AssertionTypes::RangeInteger
-            | dsl::AssertionTypes::RangeSet
-            | dsl::AssertionTypes::RangeNeighbours
-            | dsl::AssertionTypes::RangeContexts =>
-                Err(format!("Returned type {ty:?} is not a valid return type.")),
+
+        fn is_valid(ty: &dsl::AssertionTypes) -> Result<(), String> {
+            use dsl::AssertionTypes::*;
+            match ty {
+                | Boolean | Integer | String | Label | Set | Element | Edge
+                | Node | System | Context => Ok(()),
+                | Tuple((t1, t2)) => is_valid(t1).and(is_valid(t2)),
+                | NoType => Err(
+                    "No return type, at least one return statement required."
+                        .into(),
+                ),
+                | RangeInteger | RangeSet | RangeNeighbours | RangeContexts =>
+                    Err(format!(
+                        "Returned type {ty:?} is not a valid return type."
+                    )),
+            }
         }
+        is_valid(&ty)
     }
 
     pub fn execute(
@@ -497,26 +494,26 @@ impl positivedsl::PositiveAssert<PositiveEdgeRelablerInput> {
     pub fn typecheck(&self) -> Result<(), String> {
         let mut context = positivedsl::TypeContext::new();
         let ty = positivedsl::typecheck(&self.tree, &mut context)?;
-        match ty {
-            | positivedsl::PositiveAssertionTypes::Boolean
-            | positivedsl::PositiveAssertionTypes::Integer
-            | positivedsl::PositiveAssertionTypes::String
-            | positivedsl::PositiveAssertionTypes::Label
-            | positivedsl::PositiveAssertionTypes::Set
-            | positivedsl::PositiveAssertionTypes::PositiveElement
-            | positivedsl::PositiveAssertionTypes::Edge
-            | positivedsl::PositiveAssertionTypes::Node
-            | positivedsl::PositiveAssertionTypes::System
-            | positivedsl::PositiveAssertionTypes::Context => Ok(()),
-            | positivedsl::PositiveAssertionTypes::NoType =>
-                Err("No return type, at least one return statement required."
-                    .into()),
-            | positivedsl::PositiveAssertionTypes::RangeInteger
-            | positivedsl::PositiveAssertionTypes::RangeSet
-            | positivedsl::PositiveAssertionTypes::RangeContexts
-            | positivedsl::PositiveAssertionTypes::RangeNeighbours =>
-                Err(format!("Returned type {ty:?} is not a valid return type.")),
+
+        fn is_valid(
+            ty: &positivedsl::PositiveAssertionTypes,
+        ) -> Result<(), String> {
+            use positivedsl::PositiveAssertionTypes::*;
+            match ty {
+                | Boolean | Integer | String | Label | Set
+                | PositiveElement | Edge | Node | System | Context => Ok(()),
+                | Tuple((t1, t2)) => is_valid(t1).and(is_valid(t2)),
+                | NoType => Err(
+                    "No return type, at least one return statement required."
+                        .into(),
+                ),
+                | RangeInteger | RangeSet | RangeContexts | RangeNeighbours =>
+                    Err(format!(
+                        "Returned type {ty:?} is not a valid return type."
+                    )),
+            }
         }
+        is_valid(&ty)
     }
 
     pub fn execute(
@@ -693,26 +690,26 @@ impl positivedsl::PositiveAssert<PositiveNodeRelablerInput> {
     pub fn typecheck(&self) -> Result<(), String> {
         let mut context = positivedsl::TypeContext::new();
         let ty = positivedsl::typecheck(&self.tree, &mut context)?;
-        match ty {
-            | positivedsl::PositiveAssertionTypes::Boolean
-            | positivedsl::PositiveAssertionTypes::Integer
-            | positivedsl::PositiveAssertionTypes::String
-            | positivedsl::PositiveAssertionTypes::Label
-            | positivedsl::PositiveAssertionTypes::Set
-            | positivedsl::PositiveAssertionTypes::PositiveElement
-            | positivedsl::PositiveAssertionTypes::Edge
-            | positivedsl::PositiveAssertionTypes::Node
-            | positivedsl::PositiveAssertionTypes::System
-            | positivedsl::PositiveAssertionTypes::Context => Ok(()),
-            | positivedsl::PositiveAssertionTypes::NoType =>
-                Err("No return type, at least one return statement required."
-                    .into()),
-            | positivedsl::PositiveAssertionTypes::RangeInteger
-            | positivedsl::PositiveAssertionTypes::RangeSet
-            | positivedsl::PositiveAssertionTypes::RangeContexts
-            | positivedsl::PositiveAssertionTypes::RangeNeighbours =>
-                Err(format!("Returned type {ty:?} is not a valid return type.")),
+
+        fn is_valid(
+            ty: &positivedsl::PositiveAssertionTypes,
+        ) -> Result<(), String> {
+            use positivedsl::PositiveAssertionTypes::*;
+            match ty {
+                | Boolean | Integer | String | Label | Set
+                | PositiveElement | Edge | Node | System | Context => Ok(()),
+                | Tuple((t1, t2)) => is_valid(t1).and(is_valid(t2)),
+                | NoType => Err(
+                    "No return type, at least one return statement required."
+                        .into(),
+                ),
+                | RangeInteger | RangeSet | RangeContexts | RangeNeighbours =>
+                    Err(format!(
+                        "Returned type {ty:?} is not a valid return type."
+                    )),
+            }
         }
+        is_valid(&ty)
     }
 
     pub fn execute(

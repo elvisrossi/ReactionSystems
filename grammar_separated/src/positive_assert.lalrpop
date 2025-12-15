@@ -28,7 +28,8 @@ match {
     "if", "in", "isGuarded", "isIdentifier", "isNill",
     "isNondeterministicChoice", "isRepeated", "isSet", "isSummation", "label",
     "length", "let", "neighbours", "not", "rand", "return", "source", "system",
-    "target", "then", "toel", "tostr", "true", "{", "||", "}",
+    "target", "then", "toel", "tostr", "true", "{", "||", "}", "first",
+    "second", "tuple",
 } else {
     r"[0-9]+" => NUMBER
 } else {
@@ -229,6 +230,8 @@ AssertUnarySuffix: positive_relabel::PositiveUnary = {
     "length" => positive_relabel::PositiveUnary::Length,
     "tostr" => positive_relabel::PositiveUnary::ToStr,
     "toel" => positive_relabel::PositiveUnary::ToEl,
+    "first" => positive_relabel::PositiveUnary::First,
+    "second" => positive_relabel::PositiveUnary::Second,
 
     #[precedence(level="1")]
     <q: AssertQualifier> => positive_relabel::PositiveUnary::Qualifier(q),
@@ -317,4 +320,5 @@ AssertBinaryPrefix: positive_relabel::PositiveBinary = {
     "min" => positive_relabel::PositiveBinary::Min,
     "max" => positive_relabel::PositiveBinary::Max,
     "commonsubstr" => positive_relabel::PositiveBinary::CommonSubStr,
+    "tuple" => positive_relabel::PositiveBinary::Tuple,
 }

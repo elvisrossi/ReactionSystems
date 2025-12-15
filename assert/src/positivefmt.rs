@@ -138,6 +138,8 @@ impl fmt::Debug for PositiveUnary {
             | Self::Length => write!(f, ".length"),
             | Self::ToStr => write!(f, ".tostr"),
             | Self::ToEl => write!(f, ".toel"),
+            | Self::First => write!(f, ".first"),
+            | Self::Second => write!(f, ".second"),
             | Self::Qualifier(q) => write!(f, ".{q:?}"),
         }
     }
@@ -254,6 +256,7 @@ impl fmt::Debug for PositiveBinary {
             | Self::Min => write!(f, "min"),
             | Self::Max => write!(f, "max"),
             | Self::CommonSubStr => write!(f, "commonsubstr"),
+            | Self::Tuple => write!(f, "tuple"),
         }
     }
 }
@@ -264,6 +267,7 @@ impl fmt::Debug for PositiveAssertReturnValue {
             | Self::Boolean(b) => write!(f, "{b:?}"),
             | Self::Integer(i) => write!(f, "{i:?}"),
             | Self::String(s) => write!(f, r#""{s:?}""#),
+            | Self::Tuple((t1, t2)) => write!(f, "({t1:?}, {t2:?})"),
             | Self::Label(l) => write!(f, "{{debug: {l:?}}}"),
             | Self::Set(set) => write!(f, "{{debug: {set:?}}}"),
             | Self::PositiveElement(el) => write!(f, "{{debug: {el:?}}}"),
@@ -285,6 +289,7 @@ impl fmt::Debug for PositiveAssertionTypes {
             | Self::Boolean => write!(f, "boolean"),
             | Self::Integer => write!(f, "integer"),
             | Self::String => write!(f, "string"),
+            | Self::Tuple((t1, t2)) => write!(f, "({t1:?}, {t2:?})"),
             | Self::Label => write!(f, "label"),
             | Self::Set => write!(f, "set"),
             | Self::PositiveElement => write!(f, "element"),
@@ -512,6 +517,8 @@ impl PrintableWithTranslator for PositiveUnary {
             | Self::Length => write!(f, ".length"),
             | Self::ToStr => write!(f, ".tostr"),
             | Self::ToEl => write!(f, ".toel"),
+            | Self::First => write!(f, ".first"),
+            | Self::Second => write!(f, ".second"),
             | Self::Qualifier(q) => {
                 write!(f, ".{}", Formatter::from(translator, q))
             },
@@ -622,6 +629,12 @@ impl PrintableWithTranslator for PositiveAssertReturnValue {
             | Self::Boolean(b) => write!(f, "{b}"),
             | Self::Integer(i) => write!(f, "{i}"),
             | Self::String(s) => write!(f, r#""{s}""#),
+            | Self::Tuple((t1, t2)) => write!(
+                f,
+                "({}, {})",
+                Formatter::from(translator, &**t1),
+                Formatter::from(translator, &**t2)
+            ),
             | Self::Label(l) => write!(f, "{}", Formatter::from(translator, l)),
             | Self::Set(set) => {
                 write!(f, "{}", Formatter::from(translator, set))
