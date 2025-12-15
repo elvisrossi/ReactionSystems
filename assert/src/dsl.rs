@@ -1320,8 +1320,7 @@ where
         | Range::IterateOverSet(exp) => {
             let type_exp = typecheck_expression(exp, c)?;
             match type_exp {
-                | AssertionTypes::Set =>
-                    Ok(AssertionTypes::RangeSet),
+                | AssertionTypes::Set => Ok(AssertionTypes::RangeSet),
                 | AssertionTypes::RangeNeighbours =>
                     Ok(AssertionTypes::RangeNeighbours),
                 | AssertionTypes::RangeContexts =>

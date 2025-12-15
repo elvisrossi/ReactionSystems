@@ -313,14 +313,17 @@ impl QualifierSystem {
 }
 
 impl QualifierContext {
-    pub(super) fn get(&self, l: &process::PositiveProcess) -> PositiveAssertReturnValue {
+    pub(super) fn get(
+        &self,
+        l: &process::PositiveProcess,
+    ) -> PositiveAssertReturnValue {
         use process::PositiveProcess::*;
         match self {
-            | Self::IsNill => PositiveAssertReturnValue::Boolean(matches!(l, Nill)),
-            | Self::IsIdentifier =>
-                PositiveAssertReturnValue::Boolean(matches!(l, RecursiveIdentifier {
-                    identifier: _,
-                })),
+            | Self::IsNill =>
+                PositiveAssertReturnValue::Boolean(matches!(l, Nill)),
+            | Self::IsIdentifier => PositiveAssertReturnValue::Boolean(
+                matches!(l, RecursiveIdentifier { identifier: _ }),
+            ),
             | Self::IsSet =>
                 PositiveAssertReturnValue::Boolean(matches!(l, EntitySet {
                     entities:     _,
@@ -341,9 +344,11 @@ impl QualifierContext {
                 PositiveAssertReturnValue::Boolean(matches!(l, Summation {
                     children: _,
                 })),
-            | Self::IsNondeterministicChoice => PositiveAssertReturnValue::Boolean(
-                matches!(l, NondeterministicChoice { children: _ }),
-            ),
+            | Self::IsNondeterministicChoice =>
+                PositiveAssertReturnValue::Boolean(matches!(
+                    l,
+                    NondeterministicChoice { children: _ }
+                )),
 
             | Self::GetSet => PositiveAssertReturnValue::Set(
                 if let EntitySet {
@@ -503,7 +508,9 @@ impl PositiveUnary {
                 PositiveAssertionTypes::System,
             ) => Ok(PositiveAssertionTypes::Context),
             | (
-                Self::Qualifier(PositiveQualifier::Context(QualifierContext::IsNill)),
+                Self::Qualifier(PositiveQualifier::Context(
+                    QualifierContext::IsNill,
+                )),
                 PositiveAssertionTypes::Context,
             ) => Ok(PositiveAssertionTypes::Boolean),
             | (
@@ -513,7 +520,9 @@ impl PositiveUnary {
                 PositiveAssertionTypes::Context,
             ) => Ok(PositiveAssertionTypes::Boolean),
             | (
-                Self::Qualifier(PositiveQualifier::Context(QualifierContext::IsSet)),
+                Self::Qualifier(PositiveQualifier::Context(
+                    QualifierContext::IsSet,
+                )),
                 PositiveAssertionTypes::Context,
             ) => Ok(PositiveAssertionTypes::Boolean),
             | (
@@ -541,7 +550,9 @@ impl PositiveUnary {
                 PositiveAssertionTypes::Context,
             ) => Ok(PositiveAssertionTypes::Boolean),
             | (
-                Self::Qualifier(PositiveQualifier::Context(QualifierContext::GetSet)),
+                Self::Qualifier(PositiveQualifier::Context(
+                    QualifierContext::GetSet,
+                )),
                 PositiveAssertionTypes::Context,
             ) => Ok(PositiveAssertionTypes::Set),
             | (
@@ -1596,14 +1607,14 @@ where
                         } => vec![PositiveAssertReturnValue::Context(
                             (*next_process).clone(),
                         )]
-                            .into_iter(),
+                        .into_iter(),
                         | Guarded {
                             reaction: _,
                             next_process,
                         } => vec![PositiveAssertReturnValue::Context(
                             (*next_process).clone(),
                         )]
-                            .into_iter(),
+                        .into_iter(),
                         | WaitEntity {
                             repeat: _,
                             repeated_process,
@@ -1611,19 +1622,27 @@ where
                         } => vec![PositiveAssertReturnValue::Context(
                             (*repeated_process).clone(),
                         )]
-                            .into_iter(),
+                        .into_iter(),
                         | Summation { children } => children
                             .iter()
-                            .map(|c| PositiveAssertReturnValue::Context((**c).clone()))
+                            .map(|c| {
+                                PositiveAssertReturnValue::Context(
+                                    (**c).clone(),
+                                )
+                            })
                             .collect::<Vec<_>>()
                             .into_iter(),
                         | NondeterministicChoice { children } => children
                             .iter()
-                            .map(|c| PositiveAssertReturnValue::Context((**c).clone()))
+                            .map(|c| {
+                                PositiveAssertReturnValue::Context(
+                                    (**c).clone(),
+                                )
+                            })
                             .collect::<Vec<_>>()
                             .into_iter(),
                     })
-                }
+                },
                 | _ => Err(format!("{val:?} is not a set in for cycle.")),
             }
         },
