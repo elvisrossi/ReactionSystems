@@ -23,9 +23,12 @@ match {
     "AvailableEntities", "Context", "Entities", "Inhibitors",
     "InhibitorsPresent", "Products", "Reactants", "ReactantsAbsent",
     "SystemContext", "SystemEntities", "[", "\"", "]", "^", "^^", "edge",
-    "else", "empty", "false", "for", "if", "in", "label", "length", "let",
-    "neighbours", "not", "rand", "return", "source", "system", "target", "then",
-    "toel", "tostr", "true", "{", "||", "}",
+    "else", "empty", "false", "for", "getGuardProducts", "getGuardReactants",
+    "getNextProcesses", "getRepeatedCounter", "getRepeatedProcess", "getSet",
+    "if", "in", "isGuarded", "isIdentifier", "isNill",
+    "isNondeterministicChoice", "isRepeated", "isSet", "isSummation", "label",
+    "length", "let", "neighbours", "not", "rand", "return", "source", "system",
+    "target", "then", "toel", "tostr", "true", "{", "||", "}",
 } else {
     r"[0-9]+" => NUMBER
 } else {
@@ -252,6 +255,24 @@ AssertQualifierSystem: positive_relabel::QualifierSystem = {
     "SystemContext" => positive_relabel::QualifierSystem::Context,
 }
 
+AssertQualifierContext: positive_relabel::QualifierContext = {
+    "isNill" => positive_relabel::QualifierContext::IsNill,
+    "isIdentifier" => positive_relabel::QualifierContext::IsIdentifier,
+    "isSet" => positive_relabel::QualifierContext::IsSet,
+    "isGuarded" => positive_relabel::QualifierContext::IsGuarded,
+    "isRepeated" => positive_relabel::QualifierContext::IsRepeated,
+    "isSummation" => positive_relabel::QualifierContext::IsSummation,
+    "isNondeterministicChoice" => positive_relabel::QualifierContext::IsNondeterministicChoice,
+
+    "getSet" => positive_relabel::QualifierContext::GetSet,
+    "getGuardReactants" => positive_relabel::QualifierContext::GetGuardReactants,
+    "getGuardProducts" => positive_relabel::QualifierContext::GetGuardProducts,
+    "getRepeatedCounter" => positive_relabel::QualifierContext::GetRepeatedCounter,
+    "getRepeatedProcess" => positive_relabel::QualifierContext::GetRepeatedProcess,
+
+    "getNextProcesses" => positive_relabel::QualifierContext::GetNextProcesses,
+}
+
 AssertQualifierEdge: positive_relabel::QualifierEdge = {
     "source" => positive_relabel::QualifierEdge::Source,
     "target" => positive_relabel::QualifierEdge::Target,
@@ -265,6 +286,7 @@ AssertQualifierNode: positive_relabel::QualifierNode = {
 
 AssertQualifier: positive_relabel::PositiveQualifier = {
     <q: AssertQualifierSystem> => positive_relabel::PositiveQualifier::System(q),
+    <q: AssertQualifierContext> => positive_relabel::PositiveQualifier::Context(q),
     <q: AssertQualifierLabel> => positive_relabel::PositiveQualifier::Label(q),
     <q: AssertQualifierRestricted> => positive_relabel::PositiveQualifier::Restricted(q),
     <q: AssertQualifierEdge> => positive_relabel::PositiveQualifier::Edge(q),

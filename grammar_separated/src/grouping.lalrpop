@@ -21,12 +21,16 @@ extern {
 match {
     "!", "!=", "%", "&&", "'", "(", ")", "*", "+", ",", "-", "..", "/", ":",
     "::", ";", "<", "<=", "=", "==", ">", ">=", "AllInhibitors", "AllReactants",
-    "AvailableEntities", "Context", "Entities", "Inhibitors",
-    "InhibitorsPresent", "Products", "Reactants", "ReactantsAbsent",
-    "SystemContext", "SystemEntities", "[", "\"", "]", "^", "^^", "edge",
-    "else", "empty", "false", "for", "if", "in", "label", "length", "let",
-    "neighbours", "not", "rand", "return", "source", "system", "target", "then",
-    "toel", "tostr", "true", "{", "||", "}", "node", "entities",
+    "AvailableEntities", "Context", "Entities", "getGuardInhibitors",
+    "getGuardProducts", "getGuardReactants", "getIdentifier",
+    "getNextProcesses", "getRepeatedCounter", "getRepeatedProcess", "getSet",
+    "Inhibitors", "InhibitorsPresent", "isGuarded", "isIdentifier", "isNill",
+    "isNondeterministicChoice", "isRepeated", "isSet", "isSummation",
+    "Products", "Reactants", "ReactantsAbsent", "SystemContext",
+    "SystemEntities", "[", "\"", "]", "^", "^^", "edge", "else", "empty",
+    "entities", "false", "for", "if", "in", "label", "length", "let",
+    "neighbours", "node", "not", "rand", "return", "source", "system", "target",
+    "then", "toel", "tostr", "true", "{", "||", "}",
 } else {
     r"[0-9]+" => NUMBER
 } else {
@@ -249,6 +253,26 @@ GroupQualifierSystem: grouping::QualifierSystem = {
     "SystemContext" => grouping::QualifierSystem::Context,
 }
 
+GroupQualifierContext: grouping::QualifierContext = {
+    "isNill" => grouping::QualifierContext::IsNill,
+    "isIdentifier" => grouping::QualifierContext::IsIdentifier,
+    "isSet" => grouping::QualifierContext::IsSet,
+    "isGuarded" => grouping::QualifierContext::IsGuarded,
+    "isRepeated" => grouping::QualifierContext::IsRepeated,
+    "isSummation" => grouping::QualifierContext::IsSummation,
+    "isNondeterministicChoice" => grouping::QualifierContext::IsNondeterministicChoice,
+
+    "getIdentifier" => grouping::QualifierContext::GetIdentifier,
+    "getSet" => grouping::QualifierContext::GetSet,
+    "getGuardReactants" => grouping::QualifierContext::GetGuardReactants,
+    "getGuardInhibitors" => grouping::QualifierContext::GetGuardInhibitors,
+    "getGuardProducts" => grouping::QualifierContext::GetGuardProducts,
+    "getRepeatedCounter" => grouping::QualifierContext::GetRepeatedCounter,
+    "getRepeatedProcess" => grouping::QualifierContext::GetRepeatedProcess,
+
+    "getNextProcesses" => grouping::QualifierContext::GetNextProcesses,
+}
+
 GroupQualifierEdge: grouping::QualifierEdge = {
     "source" => grouping::QualifierEdge::Source,
     "target" => grouping::QualifierEdge::Target,
@@ -262,6 +286,7 @@ GroupQualifierNode: grouping::QualifierNode = {
 
 GroupQualifier: grouping::Qualifier = {
     <q: GroupQualifierSystem> => grouping::Qualifier::System(q),
+    <q: GroupQualifierContext> => grouping::Qualifier::Context(q),
     <q: GroupQualifierLabel> => grouping::Qualifier::Label(q),
     <q: GroupQualifierRestricted> => grouping::Qualifier::Restricted(q),
     <q: GroupQualifierEdge> => grouping::Qualifier::Edge(q),

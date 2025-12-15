@@ -24,9 +24,12 @@ match {
     "AvailableEntities", "Context", "Entities", "Inhibitors",
     "InhibitorsPresent", "Products", "Reactants", "ReactantsAbsent",
     "SystemContext", "SystemEntities", "[", "\"", "]", "^", "^^", "edge",
-    "else", "empty", "false", "for", "if", "in", "label", "length", "let",
-    "neighbours", "not", "rand", "return", "source", "system", "target", "then",
-    "toel", "tostr", "true", "{", "||", "}", "node",
+    "else", "empty", "false", "for", "getGuardProducts", "getGuardReactants",
+    "getNextProcesses", "getRepeatedCounter", "getRepeatedProcess", "getSet",
+    "if", "in", "isGuarded", "isIdentifier", "isNill",
+    "isNondeterministicChoice", "isRepeated", "isSet", "isSummation", "label",
+    "length", "let", "neighbours", "node", "not", "rand", "return", "source",
+    "system", "target", "then", "toel", "tostr", "true", "{", "||", "}",
 } else {
     r"[0-9]+" => NUMBER
 } else {
@@ -253,6 +256,24 @@ GroupQualifierSystem: positive_grouping::QualifierSystem = {
     "SystemContext" => positive_grouping::QualifierSystem::Context,
 }
 
+GroupQualifierContext: positive_grouping::QualifierContext = {
+    "isNill" => positive_grouping::QualifierContext::IsNill,
+    "isIdentifier" => positive_grouping::QualifierContext::IsIdentifier,
+    "isSet" => positive_grouping::QualifierContext::IsSet,
+    "isGuarded" => positive_grouping::QualifierContext::IsGuarded,
+    "isRepeated" => positive_grouping::QualifierContext::IsRepeated,
+    "isSummation" => positive_grouping::QualifierContext::IsSummation,
+    "isNondeterministicChoice" => positive_grouping::QualifierContext::IsNondeterministicChoice,
+
+    "getSet" => positive_grouping::QualifierContext::GetSet,
+    "getGuardReactants" => positive_grouping::QualifierContext::GetGuardReactants,
+    "getGuardProducts" => positive_grouping::QualifierContext::GetGuardProducts,
+    "getRepeatedCounter" => positive_grouping::QualifierContext::GetRepeatedCounter,
+    "getRepeatedProcess" => positive_grouping::QualifierContext::GetRepeatedProcess,
+
+    "getNextProcesses" => positive_grouping::QualifierContext::GetNextProcesses,
+}
+
 GroupQualifierEdge: positive_grouping::QualifierEdge = {
     "source" => positive_grouping::QualifierEdge::Source,
     "target" => positive_grouping::QualifierEdge::Target,
@@ -266,6 +287,7 @@ GroupQualifierNode: positive_grouping::QualifierNode = {
 
 GroupQualifier: positive_grouping::PositiveQualifier = {
     <q: GroupQualifierSystem> => positive_grouping::PositiveQualifier::System(q),
+    <q: GroupQualifierContext> => positive_grouping::PositiveQualifier::Context(q),
     <q: GroupQualifierLabel> => positive_grouping::PositiveQualifier::Label(q),
     <q: GroupQualifierRestricted> => positive_grouping::PositiveQualifier::Restricted(q),
     <q: GroupQualifierEdge> => positive_grouping::PositiveQualifier::Edge(q),

@@ -38,6 +38,7 @@ pub mod useful_types_edge_relabeler {
         QualifierRestricted,
         QualifierLabel,
         QualifierSystem,
+        QualifierContext,
         QualifierEdge,
         QualifierNode,
         Qualifier,
@@ -211,6 +212,7 @@ pub mod useful_types_node_relabeler {
         QualifierRestricted,
         QualifierLabel,
         QualifierSystem,
+        QualifierContext,
         QualifierEdge,
         QualifierNode,
         Qualifier,
@@ -395,6 +397,7 @@ pub mod useful_types_positive_edge_relabeler {
         QualifierRestricted,
         QualifierLabel,
         QualifierSystem,
+        QualifierContext,
         QualifierEdge,
         QualifierNode,
         PositiveQualifier,
@@ -510,6 +513,7 @@ impl positivedsl::PositiveAssert<PositiveEdgeRelablerInput> {
                     .into()),
             | positivedsl::PositiveAssertionTypes::RangeInteger
             | positivedsl::PositiveAssertionTypes::RangeSet
+            | positivedsl::PositiveAssertionTypes::RangeContexts
             | positivedsl::PositiveAssertionTypes::RangeNeighbours =>
                 Err(format!("Returned type {ty:?} is not a valid return type.")),
         }
@@ -579,6 +583,7 @@ pub mod useful_types_positive_node_relabeler {
         QualifierRestricted,
         QualifierLabel,
         QualifierSystem,
+        QualifierContext,
         QualifierEdge,
         QualifierNode,
         PositiveQualifier,
@@ -704,6 +709,7 @@ impl positivedsl::PositiveAssert<PositiveNodeRelablerInput> {
                     .into()),
             | positivedsl::PositiveAssertionTypes::RangeInteger
             | positivedsl::PositiveAssertionTypes::RangeSet
+            | positivedsl::PositiveAssertionTypes::RangeContexts
             | positivedsl::PositiveAssertionTypes::RangeNeighbours =>
                 Err(format!("Returned type {ty:?} is not a valid return type.")),
         }

@@ -176,6 +176,29 @@ impl fmt::Debug for QualifierSystem {
     }
 }
 
+impl fmt::Debug for QualifierContext {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            | Self::IsNill => write!(f, "isNill"),
+            | Self::IsIdentifier => write!(f, "isIdentifier"),
+            | Self::IsSet => write!(f, "isSet"),
+            | Self::IsGuarded => write!(f, "isGuarded"),
+            | Self::IsRepeated => write!(f, "isRepeated"),
+            | Self::IsSummation => write!(f, "isSummation"),
+            | Self::IsNondeterministicChoice =>
+                write!(f, "isNondeterministicChoice"),
+
+            | Self::GetSet => write!(f, "getSet"),
+            | Self::GetGuardReactants => write!(f, "getGuardReactants"),
+            | Self::GetGuardProducts => write!(f, "getGuardProducts"),
+            | Self::GetRepeatedCounter => write!(f, "getRepeatedCounter"),
+            | Self::GetRepeatedProcess => write!(f, "getRepeatedProcess"),
+
+            | Self::GetNextProcesses => write!(f, "getNextProcesses"),
+        }
+    }
+}
+
 impl fmt::Debug for QualifierEdge {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -201,6 +224,7 @@ impl fmt::Debug for PositiveQualifier {
             | Self::Label(q) => write!(f, "{q:?}"),
             | Self::Restricted(q) => write!(f, "{q:?}"),
             | Self::System(q) => write!(f, "{q:?}"),
+            | Self::Context(q) => write!(f, "{q:?}"),
             | Self::Edge(q) => write!(f, "{q:?}"),
             | Self::Node(q) => write!(f, "{q:?}"),
         }
@@ -250,6 +274,7 @@ impl fmt::Debug for PositiveAssertReturnValue {
             },
             | Self::System(sys) => write!(f, "{{debug: {sys:?}}}"),
             | Self::Context(ctx) => write!(f, "{{debug: {ctx:?}}}"),
+            | Self::RangeContext(ctx) => write!(f, "{{debug: {ctx:?}}}"),
         }
     }
 }
@@ -269,6 +294,7 @@ impl fmt::Debug for PositiveAssertionTypes {
             | Self::RangeInteger => write!(f, "range of integers"),
             | Self::RangeSet => write!(f, "range of set"),
             | Self::RangeNeighbours => write!(f, "range of edges"),
+            | Self::RangeContexts => write!(f, "range of contexts"),
             | Self::Edge => write!(f, "edge"),
             | Self::Node => write!(f, "node"),
         }
@@ -523,6 +549,16 @@ impl PrintableWithTranslator for QualifierSystem {
     }
 }
 
+impl PrintableWithTranslator for QualifierContext {
+    fn print(
+        &self,
+        f: &mut fmt::Formatter,
+        _translator: &Translator,
+    ) -> fmt::Result {
+        write!(f, "{self:?}")
+    }
+}
+
 impl PrintableWithTranslator for QualifierEdge {
     fn print(
         &self,
@@ -555,6 +591,9 @@ impl PrintableWithTranslator for PositiveQualifier {
                 write!(f, "{}", Formatter::from(translator, q))
             },
             | Self::System(q) => {
+                write!(f, "{}", Formatter::from(translator, q))
+            },
+            | Self::Context(q) => {
                 write!(f, "{}", Formatter::from(translator, q))
             },
             | Self::Edge(q) => write!(f, "{}", Formatter::from(translator, q)),
@@ -600,6 +639,13 @@ impl PrintableWithTranslator for PositiveAssertReturnValue {
             },
             | Self::Context(ctx) => {
                 write!(f, "{}", Formatter::from(translator, ctx))
+            },
+            | Self::RangeContext(ctx) => {
+                write!(
+                    f,
+                    "{{next processes of: {}}}",
+                    Formatter::from(translator, ctx)
+                )
             },
         }
     }

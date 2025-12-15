@@ -127,6 +127,25 @@ pub enum QualifierSystem {
 }
 
 #[derive(Clone, Copy, Serialize, Deserialize, Hash)]
+pub enum QualifierContext {
+    IsNill,
+    IsIdentifier,
+    IsSet,
+    IsGuarded,
+    IsRepeated,
+    IsSummation,
+    IsNondeterministicChoice,
+
+    GetSet,
+    GetGuardReactants,
+    GetGuardProducts,
+    GetRepeatedCounter,
+    GetRepeatedProcess,
+
+    GetNextProcesses,
+}
+
+#[derive(Clone, Copy, Serialize, Deserialize, Hash)]
 pub enum QualifierEdge {
     Source,
     Target,
@@ -142,6 +161,7 @@ pub enum QualifierNode {
 #[derive(Clone, Copy, Serialize, Deserialize, Hash)]
 pub enum PositiveQualifier {
     System(QualifierSystem),
+    Context(QualifierContext),
     Label(QualifierLabel),
     Restricted(QualifierRestricted),
     Edge(QualifierEdge),
@@ -187,6 +207,7 @@ pub(super) enum PositiveAssertionTypes {
     RangeInteger,
     RangeSet,
     RangeNeighbours,
+    RangeContexts,
 
     Node,
     Edge,
@@ -205,6 +226,7 @@ pub enum PositiveAssertReturnValue {
     Neighbours(petgraph::graph::NodeIndex),
     System(system::PositiveSystem),
     Context(process::PositiveProcess),
+    RangeContext(process::PositiveProcess),
 }
 
 // -----------------------------------------------------------------------------
@@ -286,6 +308,105 @@ impl QualifierSystem {
                 PositiveAssertReturnValue::Context(l.context_process.clone()),
             | Self::Entities =>
                 PositiveAssertReturnValue::Set(l.available_entities.clone()),
+        }
+    }
+}
+
+impl QualifierContext {
+    pub(super) fn get(&self, l: &process::PositiveProcess) -> PositiveAssertReturnValue {
+        use process::PositiveProcess::*;
+        match self {
+            | Self::IsNill => PositiveAssertReturnValue::Boolean(matches!(l, Nill)),
+            | Self::IsIdentifier =>
+                PositiveAssertReturnValue::Boolean(matches!(l, RecursiveIdentifier {
+                    identifier: _,
+                })),
+            | Self::IsSet =>
+                PositiveAssertReturnValue::Boolean(matches!(l, EntitySet {
+                    entities:     _,
+                    next_process: _,
+                })),
+            | Self::IsGuarded =>
+                PositiveAssertReturnValue::Boolean(matches!(l, Guarded {
+                    reaction:     _,
+                    next_process: _,
+                })),
+            | Self::IsRepeated =>
+                PositiveAssertReturnValue::Boolean(matches!(l, WaitEntity {
+                    repeat: _,
+                    repeated_process: _,
+                    next_process: _,
+                })),
+            | Self::IsSummation =>
+                PositiveAssertReturnValue::Boolean(matches!(l, Summation {
+                    children: _,
+                })),
+            | Self::IsNondeterministicChoice => PositiveAssertReturnValue::Boolean(
+                matches!(l, NondeterministicChoice { children: _ }),
+            ),
+
+            | Self::GetSet => PositiveAssertReturnValue::Set(
+                if let EntitySet {
+                    entities,
+                    next_process: _,
+                } = l
+                {
+                    entities.clone()
+                } else {
+                    Default::default()
+                },
+            ),
+            | Self::GetGuardReactants => PositiveAssertReturnValue::Set(
+                if let Guarded {
+                    reaction,
+                    next_process: _,
+                } = l
+                {
+                    reaction.reactants.clone()
+                } else {
+                    Default::default()
+                },
+            ),
+            | Self::GetGuardProducts => PositiveAssertReturnValue::Set(
+                if let Guarded {
+                    reaction,
+                    next_process: _,
+                } = l
+                {
+                    reaction.products.clone()
+                } else {
+                    Default::default()
+                },
+            ),
+            | Self::GetRepeatedCounter => PositiveAssertReturnValue::Integer(
+                if let WaitEntity {
+                    repeat,
+                    repeated_process: _,
+                    next_process: _,
+                } = l
+                {
+                    *repeat
+                } else {
+                    0
+                },
+            ),
+            | Self::GetRepeatedProcess => {
+                PositiveAssertReturnValue::Context(
+                    if let WaitEntity {
+                        repeat: _,
+                        repeated_process,
+                        next_process: _,
+                    } = l
+                    {
+                        (**repeated_process).clone()
+                    } else {
+                        Default::default() // nill
+                    },
+                )
+            },
+
+            | Self::GetNextProcesses =>
+                PositiveAssertReturnValue::RangeContext(l.clone()),
         }
     }
 }
@@ -381,6 +502,78 @@ impl PositiveUnary {
                 )),
                 PositiveAssertionTypes::System,
             ) => Ok(PositiveAssertionTypes::Context),
+            | (
+                Self::Qualifier(PositiveQualifier::Context(QualifierContext::IsNill)),
+                PositiveAssertionTypes::Context,
+            ) => Ok(PositiveAssertionTypes::Boolean),
+            | (
+                Self::Qualifier(PositiveQualifier::Context(
+                    QualifierContext::IsIdentifier,
+                )),
+                PositiveAssertionTypes::Context,
+            ) => Ok(PositiveAssertionTypes::Boolean),
+            | (
+                Self::Qualifier(PositiveQualifier::Context(QualifierContext::IsSet)),
+                PositiveAssertionTypes::Context,
+            ) => Ok(PositiveAssertionTypes::Boolean),
+            | (
+                Self::Qualifier(PositiveQualifier::Context(
+                    QualifierContext::IsGuarded,
+                )),
+                PositiveAssertionTypes::Context,
+            ) => Ok(PositiveAssertionTypes::Boolean),
+            | (
+                Self::Qualifier(PositiveQualifier::Context(
+                    QualifierContext::IsRepeated,
+                )),
+                PositiveAssertionTypes::Context,
+            ) => Ok(PositiveAssertionTypes::Boolean),
+            | (
+                Self::Qualifier(PositiveQualifier::Context(
+                    QualifierContext::IsSummation,
+                )),
+                PositiveAssertionTypes::Context,
+            ) => Ok(PositiveAssertionTypes::Boolean),
+            | (
+                Self::Qualifier(PositiveQualifier::Context(
+                    QualifierContext::IsNondeterministicChoice,
+                )),
+                PositiveAssertionTypes::Context,
+            ) => Ok(PositiveAssertionTypes::Boolean),
+            | (
+                Self::Qualifier(PositiveQualifier::Context(QualifierContext::GetSet)),
+                PositiveAssertionTypes::Context,
+            ) => Ok(PositiveAssertionTypes::Set),
+            | (
+                Self::Qualifier(PositiveQualifier::Context(
+                    QualifierContext::GetGuardReactants,
+                )),
+                PositiveAssertionTypes::Context,
+            ) => Ok(PositiveAssertionTypes::Set),
+            | (
+                Self::Qualifier(PositiveQualifier::Context(
+                    QualifierContext::GetGuardProducts,
+                )),
+                PositiveAssertionTypes::Context,
+            ) => Ok(PositiveAssertionTypes::Set),
+            | (
+                Self::Qualifier(PositiveQualifier::Context(
+                    QualifierContext::GetRepeatedCounter,
+                )),
+                PositiveAssertionTypes::Context,
+            ) => Ok(PositiveAssertionTypes::Integer),
+            | (
+                Self::Qualifier(PositiveQualifier::Context(
+                    QualifierContext::GetRepeatedProcess,
+                )),
+                PositiveAssertionTypes::Context,
+            ) => Ok(PositiveAssertionTypes::Context),
+            | (
+                Self::Qualifier(PositiveQualifier::Context(
+                    QualifierContext::GetNextProcesses,
+                )),
+                PositiveAssertionTypes::Context,
+            ) => Ok(PositiveAssertionTypes::RangeContexts),
             | (
                 Self::Qualifier(PositiveQualifier::Node(QualifierNode::System)),
                 PositiveAssertionTypes::Node,
@@ -809,6 +1002,10 @@ impl TypeContext {
                 self.data.insert(v.clone(), PositiveAssertionTypes::Edge);
                 Ok(())
             },
+            | PositiveAssertionTypes::RangeContexts => {
+                self.data.insert(v.clone(), PositiveAssertionTypes::Context);
+                Ok(())
+            },
             | _ => Err(format!("Range has incorrect type {ty:?}.")),
         }
     }
@@ -1032,6 +1229,10 @@ impl PositiveAssertReturnValue {
                 PositiveAssertReturnValue::System(sys),
                 PositiveUnary::Qualifier(PositiveQualifier::System(q)),
             ) => Ok(q.get(&sys)),
+            | (
+                PositiveAssertReturnValue::Context(c),
+                PositiveUnary::Qualifier(PositiveQualifier::Context(q)),
+            ) => Ok(q.get(&c)),
             | (val, u) => Err(format!(
                 "Incompatible unary operation {u:?} on value \
                              {val:?}."
@@ -1290,6 +1491,8 @@ where
                     Ok(PositiveAssertionTypes::RangeSet),
                 | PositiveAssertionTypes::RangeNeighbours =>
                     Ok(PositiveAssertionTypes::RangeNeighbours),
+                | PositiveAssertionTypes::RangeContexts =>
+                    Ok(PositiveAssertionTypes::RangeContexts),
                 | _ => Err(format!(
                     "Expressions in range is not a set or \
                                   neighbours of a node, but is: {type_exp:?}."
@@ -1381,6 +1584,46 @@ where
                     .map(|x| PositiveAssertReturnValue::Edge(x.id()))
                     .collect::<Vec<_>>()
                     .into_iter()),
+                | PositiveAssertReturnValue::RangeContext(ctxs) => {
+                    use process::PositiveProcess::*;
+                    Ok(match ctxs {
+                        | Nill => vec![].into_iter(),
+                        | RecursiveIdentifier { identifier: _ } =>
+                            vec![].into_iter(),
+                        | EntitySet {
+                            entities: _,
+                            next_process,
+                        } => vec![PositiveAssertReturnValue::Context(
+                            (*next_process).clone(),
+                        )]
+                            .into_iter(),
+                        | Guarded {
+                            reaction: _,
+                            next_process,
+                        } => vec![PositiveAssertReturnValue::Context(
+                            (*next_process).clone(),
+                        )]
+                            .into_iter(),
+                        | WaitEntity {
+                            repeat: _,
+                            repeated_process,
+                            next_process: _,
+                        } => vec![PositiveAssertReturnValue::Context(
+                            (*repeated_process).clone(),
+                        )]
+                            .into_iter(),
+                        | Summation { children } => children
+                            .iter()
+                            .map(|c| PositiveAssertReturnValue::Context((**c).clone()))
+                            .collect::<Vec<_>>()
+                            .into_iter(),
+                        | NondeterministicChoice { children } => children
+                            .iter()
+                            .map(|c| PositiveAssertReturnValue::Context((**c).clone()))
+                            .collect::<Vec<_>>()
+                            .into_iter(),
+                    })
+                }
                 | _ => Err(format!("{val:?} is not a set in for cycle.")),
             }
         },
