@@ -741,6 +741,30 @@ impl System {
     pub fn direct_get_context_elements(&self) -> Option<Set> {
         self.context_elements.lock().unwrap().clone()
     }
+
+
+    pub fn to_single_products(&self) -> Self {
+        let mut new_sys = Self::default();
+        new_sys.precomputed_context_elements(self.direct_get_context_elements());
+        new_sys.precomputed_product_elements(self.direct_get_product_elements());
+
+        new_sys.delta = Arc::clone(&self.delta);
+        new_sys.available_entities = self.available_entities.clone();
+        new_sys.context_process = self.context_process.clone();
+        new_sys.reaction_rules = {
+            let mut new_reactions = vec![];
+            for r in self.reaction_rules.iter() {
+                for el in r.products.iter() {
+                    new_reactions.push(Reaction::from(r.reactants.clone(),
+                                                      r.inhibitors.clone(),
+                                                      [*el].into()))
+                }
+            }
+            Arc::new(new_reactions)
+        };
+
+        new_sys
+    }
 }
 
 // -----------------------------------------------------------------------------
