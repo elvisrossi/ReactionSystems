@@ -11,7 +11,7 @@ use crate::translator::Translator;
 fn slice_atoi() {
     let mut translator = Translator::new();
 
-    let reactions = vec![
+    let reactions = [
         (
             vec!["tgfbr", "stat3", "il6r"],
             vec!["tbet", "gata3", "foxp3"],
@@ -161,7 +161,7 @@ fn slice_positive_atoi() {
     let mut translator = Translator::new();
 
     let reactions = {
-        let reactions = vec![
+        let reactions = [
             (
                 vec!["tgfbr", "stat3", "il6r"],
                 vec!["tbet", "gata3", "foxp3"],

@@ -220,6 +220,14 @@ impl From<Vec<IdType>> for Set {
     }
 }
 
+impl FromIterator<IdType> for Set {
+    fn from_iter<T: IntoIterator<Item = IdType>>(iter: T) -> Self {
+        Self {
+            identifiers: iter.into_iter().collect(),
+        }
+    }
+}
+
 impl Set {
     /// Converts set to positive set. All elements with the same state.
     pub fn to_positive_set(&self, state: IdState) -> PositiveSet {
@@ -773,5 +781,11 @@ impl PositiveSet {
                 .collect::<Vec<_>>()
                 .into(),
         )
+    }
+}
+
+impl From<PositiveSet> for Set {
+    fn from(value: PositiveSet) -> Self {
+        value.positives().iter().map(|el| *el.0).collect::<_>()
     }
 }

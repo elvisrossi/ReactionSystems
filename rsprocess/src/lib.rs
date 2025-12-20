@@ -13,6 +13,8 @@ pub mod set;
 pub mod system;
 pub mod trace;
 
+pub mod boolean;
+
 pub mod dot;
 pub mod frequency;
 pub mod graph;
@@ -28,3 +30,6 @@ mod set_test;
 
 #[cfg(test)]
 mod trace_test;
+
+#[cfg(test)]
+mod boolean_test;
