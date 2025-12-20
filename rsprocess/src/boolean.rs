@@ -16,6 +16,21 @@ pub enum BooleanFunction {
     Or(Box<BooleanFunction>, Box<BooleanFunction>),
 }
 
+impl BooleanFunction {
+    pub fn evaluate(&self, assignments: &BTreeMap<IdType, bool>) -> bool {
+        match self {
+            | Self::False => false,
+            | Self::True => true,
+            | Self::Not(bf) => !bf.evaluate(assignments),
+            | Self::Variable(i) => *assignments.get(i).unwrap_or(&false),
+            | Self::And(bf1, bf2) =>
+                bf1.evaluate(assignments) && bf2.evaluate(assignments),
+            | Self::Or(bf1, bf2) =>
+                bf1.evaluate(assignments) || bf2.evaluate(assignments),
+        }
+    }
+}
+
 impl PrintableWithTranslator for BooleanFunction {
     fn print(
         &self,
@@ -256,6 +271,22 @@ impl CNFBooleanFunction {
 pub struct BooleanNetwork {
     initial_state: BTreeMap<IdType, bool>,
     update_rules:  BTreeMap<IdType, BooleanFunction>,
+}
+
+impl BooleanNetwork {
+    pub fn step(&self) -> BooleanNetwork {
+        BooleanNetwork {
+            initial_state: {
+                BTreeMap::from_iter(
+                    self.update_rules
+                        .iter()
+                        .map(|(el, bf)| (*el, bf.evaluate(&self.initial_state)))
+                        .collect::<Vec<_>>(),
+                )
+            },
+            update_rules:  self.update_rules.clone(),
+        }
+    }
 }
 
 impl PrintableWithTranslator for BooleanNetwork {
