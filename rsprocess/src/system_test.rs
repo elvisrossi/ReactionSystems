@@ -363,7 +363,7 @@ fn slice_trace_2() {
 }
 
 #[test]
-fn from_boolean_positive() {
+fn from_boolean_positive_1() {
     let bn = BooleanNetwork {
         initial_state: BTreeMap::from([(1, true), (2, true), (3, true)]),
         update_rules:  BTreeMap::from([
@@ -389,4 +389,91 @@ fn from_boolean_positive() {
     let rs: PositiveSystem = bn.into();
 
     assert_eq!(rs.reaction_rules.len(), 8);
+}
+
+#[test]
+fn from_boolean_positive_2() {
+    let bn = BooleanNetwork {
+        initial_state: BTreeMap::from([(1, true), (2, true), (3, true)]),
+        update_rules:  BTreeMap::from([
+            (
+                1,
+                BooleanFunction::Or(
+                    Box::new(BooleanFunction::Not(Box::new(
+                        BooleanFunction::Variable(1),
+                    ))),
+                    Box::new(BooleanFunction::And(
+                        Box::new(BooleanFunction::True),
+                        Box::new(BooleanFunction::Variable(3)),
+                    )),
+                ),
+            ),
+            (2, BooleanFunction::True),
+            (
+                3,
+                BooleanFunction::Not(Box::new(BooleanFunction::Variable(2))),
+            ),
+        ]),
+    };
+    let rs: PositiveSystem = bn.into();
+
+    assert_eq!(rs.reaction_rules.len(), 6);
+}
+
+#[test]
+fn from_boolean_1() {
+    let bn = BooleanNetwork {
+        initial_state: BTreeMap::from([(1, true), (2, true), (3, true)]),
+        update_rules:  BTreeMap::from([
+            (
+                1,
+                BooleanFunction::Or(
+                    Box::new(BooleanFunction::Not(Box::new(
+                        BooleanFunction::Variable(1),
+                    ))),
+                    Box::new(BooleanFunction::And(
+                        Box::new(BooleanFunction::Variable(2)),
+                        Box::new(BooleanFunction::Variable(3)),
+                    )),
+                ),
+            ),
+            (2, BooleanFunction::Variable(3)),
+            (
+                3,
+                BooleanFunction::Not(Box::new(BooleanFunction::Variable(2))),
+            ),
+        ]),
+    };
+    let rs: System = bn.into();
+
+    assert_eq!(rs.reaction_rules.len(), 4);
+}
+
+#[test]
+fn from_boolean_2() {
+    let bn = BooleanNetwork {
+        initial_state: BTreeMap::from([(1, true), (2, true), (3, true)]),
+        update_rules:  BTreeMap::from([
+            (
+                1,
+                BooleanFunction::Or(
+                    Box::new(BooleanFunction::Not(Box::new(
+                        BooleanFunction::Variable(1),
+                    ))),
+                    Box::new(BooleanFunction::And(
+                        Box::new(BooleanFunction::True),
+                        Box::new(BooleanFunction::Variable(3)),
+                    )),
+                ),
+            ),
+            (2, BooleanFunction::True),
+            (
+                3,
+                BooleanFunction::Not(Box::new(BooleanFunction::Variable(2))),
+            ),
+        ]),
+    };
+    let rs: System = bn.into();
+
+    assert_eq!(rs.reaction_rules.len(), 4);
 }

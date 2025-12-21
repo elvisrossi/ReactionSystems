@@ -774,6 +774,75 @@ impl System {
     }
 }
 
+impl From<BooleanNetwork> for System {
+    fn from(value: BooleanNetwork) -> Self {
+        let reactions: Vec<Reaction> = {
+            let mut res = vec![];
+            for (el, bf) in value.update_rules.iter() {
+                let bf_p = bf.remove_literals();
+                let dnf_p = DNFBooleanFunction::from(bf_p.clone());
+
+                for conjunctive in dnf_p.formula {
+                    let mut partial_r = vec![];
+                    let mut partial_i = vec![];
+                    let mut all_true = true;
+                    let mut one_false = false;
+
+                    for l in conjunctive {
+                        match l {
+                            | DNFLiteral::False => {
+                                one_false = true;
+                                all_true = false;
+                                break;
+                            },
+                            | DNFLiteral::True => {},
+                            | DNFLiteral::Variable { positive, variable } => {
+                                if positive {
+                                    partial_r.push(variable);
+                                } else {
+                                    partial_i.push(variable);
+                                }
+                                all_true = false;
+                            },
+                        }
+                    }
+                    if !one_false && !all_true {
+                        res.push(Reaction::from(
+                            Set::from(partial_r),
+                            Set::from(partial_i),
+                            Set::from([*el]),
+                        ));
+                    } else if all_true {
+                        res.push(Reaction::from(
+                            Set::default(),
+                            Set::default(),
+                            Set::from([*el]),
+                        ));
+                    }
+                }
+            }
+            res
+        };
+
+        Self::from(
+            Arc::new(Environment::default()),
+            Set::from_iter(
+                value
+                    .initial_state
+                    .iter()
+                    .filter_map(
+                        |(el, p)|
+                        if *p { Some(*el) } else { None }
+                    )
+                    .collect::<Vec<_>>(),
+            ),
+            Process::default(),
+            Arc::new(reactions),
+        )
+    }
+}
+
+
 // -----------------------------------------------------------------------------
 //                                 Statistics
 // -----------------------------------------------------------------------------
@@ -1103,32 +1172,37 @@ impl From<BooleanNetwork> for PositiveSystem {
 
                 for conjunctive in dnf_p.formula {
                     let mut partial = vec![];
-                    let mut all_true = false;
-                    for c in conjunctive {
-                        match c {
-                            | DNFLiteral::False => {},
-                            | DNFLiteral::True => {
-                                res.push(PositiveReaction::from(
-                                    PositiveSet::default(),
-                                    PositiveSet::from([PositiveType::from((
-                                        *el,
-                                        IdState::Positive,
-                                    ))]),
-                                ));
-                                all_true = true;
+                    let mut all_true = true;
+                    let mut one_false = false;
+
+                    for l in conjunctive {
+                        match l {
+                            | DNFLiteral::False => {
+                                one_false = true;
+                                all_true = false;
                                 break;
                             },
+                            | DNFLiteral::True => {},
                             | DNFLiteral::Variable { positive, variable } => {
                                 partial.push(PositiveType::from((
                                     variable,
                                     positive.into(),
                                 )));
+                                all_true = false;
                             },
                         }
                     }
-                    if !all_true {
+                    if !one_false && !all_true {
                         res.push(PositiveReaction::from(
                             PositiveSet::from(partial),
+                            PositiveSet::from([PositiveType::from((
+                                *el,
+                                IdState::Positive,
+                            ))]),
+                        ));
+                    } else if all_true {
+                        res.push(PositiveReaction::from(
+                            PositiveSet::default(),
                             PositiveSet::from([PositiveType::from((
                                 *el,
                                 IdState::Positive,
@@ -1142,32 +1216,37 @@ impl From<BooleanNetwork> for PositiveSystem {
 
                 for conjunctive in dnf_n.formula {
                     let mut partial = vec![];
-                    let mut all_true = false;
-                    for c in conjunctive {
-                        match c {
-                            | DNFLiteral::False => {},
-                            | DNFLiteral::True => {
-                                res.push(PositiveReaction::from(
-                                    PositiveSet::default(),
-                                    PositiveSet::from([PositiveType::from((
-                                        *el,
-                                        IdState::Negative,
-                                    ))]),
-                                ));
-                                all_true = true;
+                    let mut all_true = true;
+                    let mut one_false = false;
+
+                    for l in conjunctive {
+                        match l {
+                            | DNFLiteral::False => {
+                                one_false = true;
+                                all_true = false;
                                 break;
                             },
+                            | DNFLiteral::True => {},
                             | DNFLiteral::Variable { positive, variable } => {
                                 partial.push(PositiveType::from((
                                     variable,
                                     positive.into(),
                                 )));
+                                all_true = false;
                             },
                         }
                     }
-                    if !all_true {
+                    if !one_false && !all_true {
                         res.push(PositiveReaction::from(
                             PositiveSet::from(partial),
+                            PositiveSet::from([PositiveType::from((
+                                *el,
+                                IdState::Negative,
+                            ))]),
+                        ));
+                    } else if all_true {
+                        res.push(PositiveReaction::from(
+                            PositiveSet::default(),
                             PositiveSet::from([PositiveType::from((
                                 *el,
                                 IdState::Negative,
