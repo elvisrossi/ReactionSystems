@@ -38,7 +38,7 @@ impl BooleanFunction {
                 | Self::False => Self::True,
                 | Self::True => Self::False,
                 | Self::Not(bf) => bf.remove_literals(),
-                | _ => bf.remove_literals(),
+                | _ => Self::Not(Box::new(bf.remove_literals())),
             },
             | Self::Variable(i) => Self::Variable(*i),
             | Self::And(bf1, bf2) => match (&**bf1, &**bf2) {
@@ -524,8 +524,8 @@ impl DNFBooleanFunction {
 
 #[derive(Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BooleanNetwork {
-    initial_state: BTreeMap<IdType, bool>,
-    update_rules:  BTreeMap<IdType, BooleanFunction>,
+    pub initial_state: BTreeMap<IdType, bool>,
+    pub update_rules:  BTreeMap<IdType, BooleanFunction>,
 }
 
 impl BooleanNetwork {

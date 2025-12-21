@@ -59,6 +59,16 @@ impl std::ops::Not for IdState {
     }
 }
 
+impl From<bool> for IdState {
+    fn from(value: bool) -> Self {
+        if value {
+            Self::Positive
+        } else {
+            Self::Negative
+        }
+    }
+}
+
 #[derive(
     Clone,
     Copy,

@@ -1,17 +1,16 @@
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use super::set::PositiveSet;
-use super::system::BasicSystem;
-use crate::system::ExtensionsSystem;
+use super::element::{IdState, PositiveType};
+use super::environment::{Environment, PositiveEnvironment};
+use super::process::{PositiveProcess, Process};
+use super::reaction::{PositiveReaction, Reaction};
+use super::set::{BasicSet, PositiveSet, Set};
+use super::system::{BasicSystem, ExtensionsSystem, PositiveSystem, System};
+use crate::boolean::{BooleanFunction, BooleanNetwork};
 
 #[test]
 fn one_transition() {
-    use super::environment::Environment;
-    use super::process::Process;
-    use super::reaction::Reaction;
-    use super::set::{BasicSet, Set};
-    use super::system::{ExtensionsSystem, System};
-
     let system = System::from(
         Arc::new(Environment::default()),
         Set::from([1, 2]),
@@ -41,13 +40,6 @@ fn one_transition() {
 
 #[test]
 fn one_transition_2() {
-    use super::element::{IdState, PositiveType};
-    use super::environment::PositiveEnvironment;
-    use super::process::PositiveProcess;
-    use super::reaction::PositiveReaction;
-    use super::set::{BasicSet, PositiveSet};
-    use super::system::{ExtensionsSystem, PositiveSystem};
-
     let system = PositiveSystem::from(
         Arc::new(PositiveEnvironment::default()),
         PositiveSet::from([
@@ -117,12 +109,6 @@ fn one_transition_2() {
 
 #[test]
 fn convertion() {
-    use super::environment::Environment;
-    use super::process::Process;
-    use super::reaction::Reaction;
-    use super::set::{BasicSet, Set};
-    use super::system::{PositiveSystem, System};
-
     let system = System::from(
         Arc::new(Environment::default()),
         Set::from([1, 2]),
@@ -145,12 +131,6 @@ fn convertion() {
 
 #[test]
 fn traces_1() {
-    use super::environment::Environment;
-    use super::process::Process;
-    use super::reaction::Reaction;
-    use super::set::Set;
-    use super::system::{ExtensionsSystem, System};
-
     let system = System::from(
         Arc::new(Environment::from([
             (100, Process::WaitEntity {
@@ -231,12 +211,6 @@ fn traces_1() {
 
 #[test]
 fn traces_empty_env() {
-    use super::environment::Environment;
-    use super::process::Process;
-    use super::reaction::Reaction;
-    use super::set::Set;
-    use super::system::{ExtensionsSystem, System};
-
     let system = System::from(
         Arc::new(Environment::from([])),
         Set::from([1, 2]),
@@ -263,11 +237,6 @@ fn traces_empty_env() {
 #[test]
 fn conversion_reactions() {
     use super::element::IdState::*;
-    use super::environment::Environment;
-    use super::process::Process;
-    use super::reaction::{PositiveReaction, Reaction};
-    use super::set::Set;
-    use super::system::{PositiveSystem, System};
 
     let system = System::from(
         Arc::new(Environment::from([])),
@@ -305,11 +274,6 @@ fn conversion_reactions() {
 #[test]
 fn conversion_entities() {
     use super::element::IdState::*;
-    use super::environment::Environment;
-    use super::process::Process;
-    use super::reaction::Reaction;
-    use super::set::Set;
-    use super::system::{PositiveSystem, System};
 
     let system = System::from(
         Arc::new(Environment::from([])),
@@ -331,12 +295,6 @@ fn conversion_entities() {
 
 #[test]
 fn slice_trace() {
-    use super::environment::Environment;
-    use super::process::Process;
-    use super::reaction::Reaction;
-    use super::set::Set;
-    use super::system::{PositiveSystem, System};
-
     let mut translator = crate::translator::Translator::new();
 
     let mut tr = |a| translator.encode(a);
@@ -368,12 +326,6 @@ fn slice_trace() {
 
 #[test]
 fn slice_trace_2() {
-    use super::environment::Environment;
-    use super::process::Process;
-    use super::reaction::Reaction;
-    use super::set::Set;
-    use super::system::{PositiveSystem, System};
-
     let mut translator = crate::translator::Translator::new();
 
     let mut tr = |a| translator.encode(a);
@@ -408,4 +360,33 @@ fn slice_trace_2() {
     let res_run = system.run().unwrap();
 
     assert_eq!(res_slice.systems, res_run);
+}
+
+#[test]
+fn from_boolean_positive() {
+    let bn = BooleanNetwork {
+        initial_state: BTreeMap::from([(1, true), (2, true), (3, true)]),
+        update_rules:  BTreeMap::from([
+            (
+                1,
+                BooleanFunction::Or(
+                    Box::new(BooleanFunction::Not(Box::new(
+                        BooleanFunction::Variable(1),
+                    ))),
+                    Box::new(BooleanFunction::And(
+                        Box::new(BooleanFunction::Variable(2)),
+                        Box::new(BooleanFunction::Variable(3)),
+                    )),
+                ),
+            ),
+            (2, BooleanFunction::Variable(3)),
+            (
+                3,
+                BooleanFunction::Not(Box::new(BooleanFunction::Variable(2))),
+            ),
+        ]),
+    };
+    let rs: PositiveSystem = bn.into();
+
+    assert_eq!(rs.reaction_rules.len(), 8);
 }

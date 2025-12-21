@@ -21,6 +21,10 @@ use super::set::{BasicSet, ExtensionsSet, PositiveSet, Set};
 use super::trace::Trace;
 use super::transitions::TransitionsIterator;
 use super::translator::{Formatter, PrintableWithTranslator, Translator};
+use crate::boolean::{
+    BooleanFunction, BooleanNetwork, DNFBooleanFunction, DNFLiteral,
+};
+use crate::element::PositiveType;
 use crate::trace::{EnabledReactions, SlicingElement, SlicingTrace};
 use crate::transitions::TraceIterator;
 
@@ -1076,20 +1080,6 @@ impl From<System> for PositiveSystem {
         let positive_entities =
             value.available_entities.to_positive_set(IdState::Positive);
 
-        // let negative_entities = value
-        //     .context_process
-        //     .all_elements()
-        //     .union(&value.environment().all_elements())
-        //     .union(&value.reactions().iter().fold(
-        //         Set::default(),
-        //         |acc: Set, el| {
-        //             acc.union(&el.inhibitors)
-        //                 .union(&el.products)
-        //                 .union(&el.reactants)
-        //         },
-        //     ))
-        //     .subtraction(&value.available_entities)
-        //     .to_positive_set(IdState::Negative);
         let negative_entities =
             value.products_elements().to_positive_set(IdState::Negative);
         let new_available_entities =
@@ -1100,6 +1090,116 @@ impl From<System> for PositiveSystem {
         let new_context = value.context_process.into();
 
         Self::from(new_env, new_available_entities, new_context, new_reactions)
+    }
+}
+
+impl From<BooleanNetwork> for PositiveSystem {
+    fn from(value: BooleanNetwork) -> Self {
+        let reactions: Vec<PositiveReaction> = {
+            let mut res = vec![];
+            for (el, bf) in value.update_rules.iter() {
+                let bf_p = bf.remove_literals();
+                let dnf_p = DNFBooleanFunction::from(bf_p.clone());
+
+                for conjunctive in dnf_p.formula {
+                    let mut partial = vec![];
+                    let mut all_true = false;
+                    for c in conjunctive {
+                        match c {
+                            | DNFLiteral::False => {},
+                            | DNFLiteral::True => {
+                                res.push(PositiveReaction::from(
+                                    PositiveSet::default(),
+                                    PositiveSet::from([PositiveType::from((
+                                        *el,
+                                        IdState::Positive,
+                                    ))]),
+                                ));
+                                all_true = true;
+                                break;
+                            },
+                            | DNFLiteral::Variable { positive, variable } => {
+                                partial.push(PositiveType::from((
+                                    variable,
+                                    positive.into(),
+                                )));
+                            },
+                        }
+                    }
+                    if !all_true {
+                        res.push(PositiveReaction::from(
+                            PositiveSet::from(partial),
+                            PositiveSet::from([PositiveType::from((
+                                *el,
+                                IdState::Positive,
+                            ))]),
+                        ));
+                    }
+                }
+                let bf_n =
+                    BooleanFunction::Not(Box::new(bf_p)).remove_literals();
+                let dnf_n = DNFBooleanFunction::from(bf_n);
+
+                for conjunctive in dnf_n.formula {
+                    let mut partial = vec![];
+                    let mut all_true = false;
+                    for c in conjunctive {
+                        match c {
+                            | DNFLiteral::False => {},
+                            | DNFLiteral::True => {
+                                res.push(PositiveReaction::from(
+                                    PositiveSet::default(),
+                                    PositiveSet::from([PositiveType::from((
+                                        *el,
+                                        IdState::Negative,
+                                    ))]),
+                                ));
+                                all_true = true;
+                                break;
+                            },
+                            | DNFLiteral::Variable { positive, variable } => {
+                                partial.push(PositiveType::from((
+                                    variable,
+                                    positive.into(),
+                                )));
+                            },
+                        }
+                    }
+                    if !all_true {
+                        res.push(PositiveReaction::from(
+                            PositiveSet::from(partial),
+                            PositiveSet::from([PositiveType::from((
+                                *el,
+                                IdState::Negative,
+                            ))]),
+                        ));
+                    }
+                }
+            }
+            res
+        };
+
+        Self::from(
+            Arc::new(PositiveEnvironment::default()),
+            PositiveSet::from_iter(
+                value
+                    .initial_state
+                    .iter()
+                    .map(|el| {
+                        (
+                            *el.0,
+                            if *el.1 {
+                                IdState::Positive
+                            } else {
+                                IdState::Negative
+                            },
+                        )
+                    })
+                    .collect::<Vec<_>>(),
+            ),
+            PositiveProcess::default(),
+            Arc::new(reactions),
+        )
     }
 }
 

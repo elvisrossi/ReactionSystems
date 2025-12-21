@@ -638,11 +638,11 @@ fn dnf_22() {
 
     let correct_results = [
         true, true, false, true, true, true, true, true, false, false, false,
-        false, false, false, false, false, true, true, false, true, true,
-        true, true, true, true, true, false, true, true, true, true, true,
-        true, true, false, true, true, true, true, true, true, true, false,
-        true, true, true, true, true, true, true, false, true, true, true,
-        true, true, true, true, false, true, true, true, true, true
+        false, false, false, false, false, true, true, false, true, true, true,
+        true, true, true, true, false, true, true, true, true, true, true,
+        true, false, true, true, true, true, true, true, true, false, true,
+        true, true, true, true, true, true, false, true, true, true, true,
+        true, true, true, false, true, true, true, true, true,
     ];
 
     for (assignment, res) in assignments.iter().zip(correct_results) {
@@ -655,8 +655,10 @@ fn dnf_23() {
     let bf = boolean!(And((Or((Variable(0)), (Variable(1)))), (Variable(2))));
     let cnf: DNFBooleanFunction = bf.into();
 
-    assert_eq!(cnf.formula, [vec![dnfl!(true, 0), dnfl!(true, 2)],
-                             vec![dnfl!(true, 1), dnfl!(true, 2)]]);
+    assert_eq!(cnf.formula, [vec![dnfl!(true, 0), dnfl!(true, 2)], vec![
+        dnfl!(true, 1),
+        dnfl!(true, 2)
+    ]]);
 }
 
 #[test]
@@ -672,7 +674,9 @@ fn dnf_25() {
     let bf = boolean!(Or((Variable(0)), (Or((Variable(1)), (Variable(2))))));
     let cnf: DNFBooleanFunction = bf.into();
 
-    assert_eq!(cnf.formula, [[dnfl!(true, 0)],[dnfl!(true, 1)],[dnfl!(true, 2)]]);
+    assert_eq!(cnf.formula, [[dnfl!(true, 0)], [dnfl!(true, 1)], [dnfl!(
+        true, 2
+    )]]);
 }
 
 #[test]
@@ -748,8 +752,10 @@ fn dnf_32() {
     let bf = boolean!(Not(Or((Variable(0)), (Not(Or((True), (False)))))));
     let cnf: DNFBooleanFunction = bf.into();
 
-    assert_eq!(cnf.formula, [[dnfl!(false, 0), dnfl!(True)],
-                             [dnfl!(false, 0), dnfl!(False)]]);
+    assert_eq!(cnf.formula, [[dnfl!(false, 0), dnfl!(True)], [
+        dnfl!(false, 0),
+        dnfl!(False)
+    ]]);
 }
 
 #[test]
