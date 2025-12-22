@@ -69,3 +69,14 @@ pub mod positive_grouping {
 pub mod instructions {
     include!(concat!(env!("OUT_DIR"), "/src/instructions.rs"));
 }
+
+#[rustfmt::skip]
+#[allow(clippy::extra_unused_lifetimes)]
+#[allow(clippy::needless_lifetimes)]
+#[allow(clippy::let_unit_value)]
+#[allow(clippy::just_underscores_and_digits)]
+#[allow(clippy::uninlined_format_args)]
+#[allow(clippy::type_complexity)]
+pub mod boolean {
+    include!(concat!(env!("OUT_DIR"), "/src/boolean.rs"));
+}

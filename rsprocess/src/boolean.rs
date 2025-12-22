@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::element::IdType;
 use crate::translator::{Formatter, PrintableWithTranslator};
 
-#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum BooleanFunction {
     #[default]
     False,
@@ -78,17 +78,17 @@ impl PrintableWithTranslator for BooleanFunction {
             | False => write!(f, "False"),
             | True => write!(f, "True"),
             | Not(next) =>
-                write!(f, "Not({})", Formatter::from(translator, &**next)),
-            | Variable(x) => write!(f, "{})", Formatter::from(translator, x)),
+                write!(f, "NOT({})", Formatter::from(translator, &**next)),
+            | Variable(x) => write!(f, "{}", Formatter::from(translator, x)),
             | And(next1, next2) => write!(
                 f,
-                "And({}, {})",
+                "({} AND {})",
                 Formatter::from(translator, &**next1),
                 Formatter::from(translator, &**next2)
             ),
             | Or(next1, next2) => write!(
                 f,
-                "Or({}, {})",
+                "({} OR {})",
                 Formatter::from(translator, &**next1),
                 Formatter::from(translator, &**next2)
             ),
@@ -151,13 +151,13 @@ impl PrintableWithTranslator for CNFLiteral {
     ) -> std::fmt::Result {
         use CNFLiteral::*;
         match self {
-            | False => write!(f, "F"),
-            | True => write!(f, "T"),
+            | False => write!(f, "False"),
+            | True => write!(f, "True"),
             | Variable { positive, variable } =>
                 if *positive {
                     write!(f, "{}", Formatter::from(translator, variable))
                 } else {
-                    write!(f, "-{}", Formatter::from(translator, variable))
+                    write!(f, "NOT({})", Formatter::from(translator, variable))
                 },
         }
     }
@@ -362,13 +362,13 @@ impl PrintableWithTranslator for DNFLiteral {
     ) -> std::fmt::Result {
         use DNFLiteral::*;
         match self {
-            | False => write!(f, "F"),
-            | True => write!(f, "T"),
+            | False => write!(f, "False"),
+            | True => write!(f, "True"),
             | Variable { positive, variable } =>
                 if *positive {
                     write!(f, "{}", Formatter::from(translator, variable))
                 } else {
-                    write!(f, "-{}", Formatter::from(translator, variable))
+                    write!(f, "NOT({})", Formatter::from(translator, variable))
                 },
         }
     }
@@ -522,7 +522,7 @@ impl DNFBooleanFunction {
 // Boolean Networks
 // -----------------------------------------------------------------------------
 
-#[derive(Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct BooleanNetwork {
     pub initial_state: BTreeMap<IdType, bool>,
     pub update_rules:  BTreeMap<IdType, BooleanFunction>,
@@ -553,7 +553,7 @@ impl PrintableWithTranslator for BooleanNetwork {
         write!(f, "Initial State: ")?;
         let mut it = self.initial_state.iter().peekable();
         while let Some((x, b)) = it.next() {
-            write!(f, "({} -> {})", Formatter::from(translator, x), b)?;
+            write!(f, "({} = {})", Formatter::from(translator, x), b)?;
             if it.peek().is_some() {
                 write!(f, ",")?;
             }
@@ -564,9 +564,9 @@ impl PrintableWithTranslator for BooleanNetwork {
         writeln!(f, "Update Rules:")?;
 
         for (x, bf) in self.update_rules.iter() {
-            write!(
+            writeln!(
                 f,
-                "\t{} -> {}",
+                "\t{} = {}",
                 Formatter::from(translator, x),
                 Formatter::from(translator, bf)
             )?;

@@ -1,0 +1,145 @@
+use std::collections::BTreeMap;
+use std::str::FromStr;
+use lalrpop_util::ParseError;
+
+use rsprocess::translator::Translator;
+use rsprocess::element::IdType;
+use rsprocess::boolean::{BooleanFunction, BooleanNetwork};
+use crate::custom_error;
+
+grammar(translator: &mut Translator);
+
+extern {
+    type Error = custom_error::UserError;
+}
+
+// -----------------------------------------------------------------------------
+//                                  Helpers
+// -----------------------------------------------------------------------------
+
+// order
+match {
+    "\"", "True", "False", "(", ")", "NOT", "AND", "OR",
+} else {
+    r"[0-9]+" => NUMBER
+} else {
+    r"([[:alpha:]])([[:word:]])*" => WORD
+    // r"(\p{L}|\p{Emoji})(\p{L}|\p{Emoji}|\p{Dash}|\p{N})*" => WORD,
+} else {
+    r#""[^"]+""# => PATH, // " <- ignore comment, its for the linter in emacs
+} else {
+    _
+}
+
+// matches words (letter followed by numbers, letters or _)
+Literal: String = {
+    WORD => <>.into(),
+};
+
+LiteralProcess: String = {
+    Literal => <>,
+    "True" => <>.into(),
+    "False" => <>.into(),
+    "NOT" => <>.into(),
+    "AND" => <>.into(),
+    "OR" => <>.into(),
+};
+
+Num: i64 = {
+    <sign: "-"?> <start: @L> <n: NUMBER> <end: @R> =>? {
+        if sign.is_some() {
+            i64::from_str(n)
+                  .map(|n| -n)
+                  .map_err(|_| ParseError::User {
+                      error: custom_error::UserError {
+                          token: (start, n.into(), end),
+                          error: custom_error::UserErrorTypes::NumberTooBigi64
+                      }
+                  })
+        } else {
+            i64::from_str(n)
+                  .map_err(|_| ParseError::User {
+                      error: custom_error::UserError {
+                          token: (start, n.into(), end),
+                          error: custom_error::UserErrorTypes::NumberTooBigi64
+                      }
+                  })
+        }
+
+    }
+};
+
+NumUsize: usize = {
+    <start: @L> <n: NUMBER> <end: @R> =>? usize::from_str(n)
+               .map_err(|_| ParseError::User {
+                   error: custom_error::UserError {
+                       token: (start, n.into(), end),
+                       error: custom_error::UserErrorTypes::NumberTooBigUsize
+                   }
+               })
+};
+
+Path: String = {
+    PATH => <>.trim_end_matches("\"").trim_start_matches("\"").to_string()
+};
+
+// macro for matching sequence of patterns with C as separator
+Separated<T, C>: Vec<T> = {
+    <mut v:(<T> C)+> <e:T?> => match e {
+        None => v,
+        Some(e) => {
+            v.push(e);
+            v
+        }
+    }
+};
+
+Separated_Or<T, C>: Vec<T> = {
+    <v: T> => vec![v],
+    <v: Separated<T, C>> => v
+}
+
+Separated_Empty<LP, T, C, RP>: Vec<T> = {
+    LP RP => vec![],
+    LP <v: T> RP => vec![v],
+    LP <v: Separated<T, C>> RP => v
+}
+
+// -----------------------------------------------------------------------------
+//                           BooleanNetwork Parser
+// -----------------------------------------------------------------------------
+
+pub BooleanFunction: BooleanFunction = {
+    <b1: BooleanFunction> <o: BoolOperator> <b2: BooleanFunctionTerm> =>
+        if o { BooleanFunction::And(Box::new(b1), Box::new(b2)) }
+        else { BooleanFunction::Or(Box::new(b1), Box::new(b2)) },
+
+    <b: BooleanFunctionTerm> => b
+}
+
+BoolOperator: bool = {
+    "AND" => true,
+    "OR" => false,
+}
+
+BooleanFunctionTerm: BooleanFunction = {
+    "True" => BooleanFunction::True,
+    "False" => BooleanFunction::False,
+    <v: Literal> => BooleanFunction::Variable(translator.encode(v)),
+
+    "NOT" <b: BooleanFunctionTerm> => BooleanFunction::Not(Box::new(b)),
+
+    "(" <b: BooleanFunction> ")" => b
+}
+
+
+pub BooleanNetwork: BooleanNetwork = {
+    <ass: BooleanAssignment*> => BooleanNetwork {
+            initial_state: Default::default(),
+            update_rules: BTreeMap::from_iter(ass),
+        }
+}
+
+BooleanAssignment: (IdType, BooleanFunction) = {
+    <v: Literal> "=" <b: BooleanFunction> => (translator.encode(v), b),
+}
